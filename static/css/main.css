@@ -1,0 +1,612 @@
+/* =========================
+   GLOBAL
+========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f5f7fb;
+    color: #1f2937;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+
+/* =========================
+   APP CONTAINER
+========================= */
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar {
+    width: 270px;
+    background: #ffffff;
+    border-right: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+}
+
+.brand {
+    padding: 4px 12px 28px;
+}
+
+.brand-title {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.brand-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.menu-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    padding: 0 12px;
+    margin-bottom: 10px;
+    letter-spacing: 0.8px;
+}
+
+.applications {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.application {
+    width: 100%;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: left;
+    cursor: pointer;
+    color: #374151;
+}
+
+.application:hover {
+    background: #f3f4f6;
+}
+
+.application.active {
+    background: #eef2ff;
+    color: #2563eb;
+}
+
+.application.disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.app-icon {
+    width: 24px;
+    text-align: center;
+    font-size: 18px;
+}
+
+.app-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.coming-soon {
+    font-size: 9px;
+    color: #9ca3af;
+}
+
+
+/* =========================
+   MAIN CONTENT
+========================= */
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #f9fafb;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.chat-header {
+    height: 80px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+}
+
+.chat-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.chat-header p {
+    margin: 5px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.ai-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+}
+
+
+/* =========================
+   CHAT AREA
+========================= */
+
+.chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+}
+
+
+/* =========================
+   MESSAGES
+========================= */
+
+.message {
+    display: flex;
+    margin-bottom: 18px;
+}
+
+.ai-message {
+    justify-content: flex-start;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.message-bubble {
+    max-width: 600px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 17px;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.message-bubble p {
+    margin: 0 0 7px;
+}
+
+.message-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.user-message .message-bubble {
+    background: #2563eb;
+    color: white;
+    border: none;
+}
+
+
+/* =========================
+   SUGGESTIONS
+========================= */
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-left: 46px;
+    margin-top: 10px;
+    margin-bottom: 25px;
+}
+
+.suggestions button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    padding: 10px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
+}
+
+.suggestions button:hover {
+    background: #f3f4f6;
+}
+
+
+/* =========================
+   AI OPTIONS
+========================= */
+
+.ai-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 12px 0 18px 48px;
+}
+
+.ai-option-button {
+    border: 1px solid #d1d5db;
+    background: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.ai-option-button:hover {
+    background: #f3f4f6;
+}
+
+
+/* =========================
+   TICKET CONFIRMATION
+========================= */
+
+.ticket-confirmation {
+    margin: 12px 0 18px 48px;
+}
+
+.confirmation-card {
+    max-width: 420px;
+    padding: 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: white;
+}
+
+.confirmation-card h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.ticket-detail {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.confirmation-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.confirm-button,
+.cancel-button {
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.confirm-button {
+    background: #2563eb;
+    color: white;
+}
+
+.cancel-button {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.confirm-button:hover {
+    background: #1d4ed8;
+}
+
+.cancel-button:hover {
+    background: #d1d5db;
+}
+
+
+/* =========================
+   CHAT INPUT
+========================= */
+
+.chat-input-container {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 18px 32px 20px;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    align-items: center;
+    max-width: 900px;
+    margin: 0 auto;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 5px;
+}
+
+#message-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px 14px;
+    font-size: 14px;
+    background: transparent;
+}
+
+.send-button {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 9px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+    font-size: 17px;
+}
+
+.send-button:hover {
+    background: #1d4ed8;
+}
+
+.input-help {
+    text-align: center;
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 9px;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+
+    .sidebar {
+        width: 210px;
+    }
+
+    .chat-header {
+        padding: 0 18px;
+    }
+
+    .chat-area {
+        padding: 20px;
+    }
+
+    .chat-input-container {
+        padding: 15px;
+    }
+
+    .coming-soon {
+        display: none;
+    }
+
+    
+}
+
+.ai-option-button:disabled,
+.confirm-button:disabled,
+.cancel-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =========================
+   NEW CHAT
+========================= */
+
+.new-chat-button {
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px 14px;
+
+    border: 1px solid #2563eb;
+    border-radius: 9px;
+
+    background: #2563eb;
+    color: white;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.new-chat-button:hover {
+    background: #1d4ed8;
+}
+
+.ticket-status-list {
+    margin: 12px 0 18px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 520px;
+}
+
+.ticket-status-card {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.ticket-status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.ticket-status-badge {
+    background: #e8f0ff;
+    color: #2563eb;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.ticket-status-title {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.ticket-status-meta {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.ticket-detail-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 10px 0;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ticket-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ticket-detail-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.ticket-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-top: 1px solid #f0f0f0;
+    font-size: 14px;
+}
+
+.ticket-detail-row span {
+    color: #6b7280;
+}
+
+.ticket-detail-description {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.ticket-detail-description span {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.ticket-detail-description p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.ticket-detail-footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.ticket-detail-footer a {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.ticket-answer-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 10px 0;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ticket-answer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ticket-answer-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.ticket-answer-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-top: 1px solid #f0f0f0;
+    font-size: 14px;
+}
+
+.ticket-answer-row span {
+    color: #6b7280;
+}

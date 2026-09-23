@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+darpan_env/
+venv/
+env/
+
+# Secrets
+.env
+.env.*
+
+# Database
+db.sqlite3
+
+# AI model weights
+models/*.gguf
+models/*.safetensors
+models/*.bin
+
+# Django generated files
+*.log
+media/
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
