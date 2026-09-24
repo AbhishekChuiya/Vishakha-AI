@@ -10,12 +10,13 @@ class ConversationState:
         self.location = None
         self.priority = None
         self.ticket_number = None
+        self.ticket_query = None
+        self.search_query = None
         self.current_question = None
         self.status = "idle"
-        self.ticket_query = None
+        self.search_scope = None
 
     def update_from_agent(self, data):
-
         self.intent = data.get("intent")
 
         if data.get("category"):
@@ -36,9 +37,17 @@ class ConversationState:
         if data.get("ticket_query"):
             self.ticket_query = data["ticket_query"]
 
+        if data.get("search_query"):
+            self.search_query = data["search_query"]
+        if data.get("search_scope"):
+            self.search_scope = data["search_scope"]
+
     def get_missing_fields(self):
 
         missing = []
+
+        if not self.category:
+            missing.append("category")
 
         if not self.description:
             missing.append("description")
@@ -69,21 +78,21 @@ class ConversationState:
     # =====================================================
 
     def to_dict(self):
-
         return {
             "intent": self.intent,
             "category": self.category,
             "description": self.description,
             "location": self.location,
             "priority": self.priority,
-            "current_question": self.current_question,
-            "status": self.status,
             "ticket_number": self.ticket_number,
             "ticket_query": self.ticket_query,
+            "search_query": self.search_query,
+            "current_question": self.current_question,
+            "status": self.status,
+            "search_scope": self.search_scope,
         }
 
     def from_dict(self, data):
-
         if not data:
             return
 
@@ -92,7 +101,9 @@ class ConversationState:
         self.description = data.get("description")
         self.location = data.get("location")
         self.priority = data.get("priority")
-        self.current_question = data.get("current_question")
-        self.status = data.get("status", "idle")
         self.ticket_number = data.get("ticket_number")
         self.ticket_query = data.get("ticket_query")
+        self.search_query = data.get("search_query")
+        self.current_question = data.get("current_question")
+        self.status = data.get("status", "idle")
+        self.search_scope = data.get("search_scope")

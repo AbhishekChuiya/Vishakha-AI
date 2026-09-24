@@ -616,6 +616,16 @@ function handleAIResponse(result) {
         return;
     }
 
+    if (result.type === "ticket_search") {
+        addAIMessage(result.message);
+
+        if (result.tickets && result.tickets.length > 0) {
+            addTicketSearchCards(result.tickets);
+        }
+
+        return;
+    }
+
     if (result.type === "ticket_answer") {
         addAIMessage(result.message);
 
@@ -675,38 +685,70 @@ function addTicketStatusCards(tickets) {
         const card =
             document.createElement("div");
 
+
+            
         card.className =
             "ticket-status-card";
 
+        const ticketUrl =
+            ticket.web_url || "#";
+
         card.innerHTML = `
 
-            <div class="ticket-status-header">
+        <div class="ticket-status-header">
 
-                <strong>
-                    ${escapeHtml(ticket.ticket_number || "Unknown")}
-                </strong>
+            <strong>
+                ${escapeHtml(
+                    ticket.ticket_number || "Unknown"
+                )}
+            </strong>
 
-                <span class="ticket-status-badge">
-                    ${escapeHtml(ticket.status)}
-                </span>
+            <span class="ticket-status-badge">
+                ${escapeHtml(
+                    ticket.status || "Unknown"
+                )}
+            </span>
 
-            </div>
+        </div>
 
-            <div class="ticket-status-title">
+        <div class="ticket-status-title">
 
-                ${escapeHtml(ticket.title || "No title")}
+            ${escapeHtml(
+                ticket.title || "No title"
+            )}
 
-            </div>
+        </div>
 
-            <div class="ticket-status-meta">
+        <div class="ticket-status-meta">
 
-                <span>
-                    Priority: ${escapeHtml(ticket.priority)}
-                </span>
+            <span>
+                Priority:
+                ${escapeHtml(
+                    ticket.priority || "Unknown"
+                )}
+            </span>
 
-            </div>
+        </div>
 
-        `;
+        ${
+            ticketUrl !== "#"
+                ? `
+                <div class="ticket-status-footer">
+
+                    <a
+                        href="${escapeHtml(ticketUrl)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Open Ticket ↗
+                    </a>
+
+                </div>
+                `
+                : ""
+        }
+
+    `;
 
         container.appendChild(card);
 
@@ -715,6 +757,8 @@ function addTicketStatusCards(tickets) {
     chatMessages.appendChild(container);
 
     scrollToBottom();
+
+    saveChatHistory();
 }
 
 /* =========================================================
@@ -1117,15 +1161,20 @@ function addTicketDetailCard(ticket) {
 }
 
 function addTicketAnswerCard(ticket, answerType) {
+
     const container = document.createElement("div");
     container.className = "ticket-answer-card";
 
     let content = "";
 
     if (answerType === "STATUS") {
+
         content = `
             <div class="ticket-answer-header">
-                <strong>${escapeHtml(ticket.ticket_number || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(ticket.ticket_number || "Unknown")}
+                </strong>
+
                 <span class="ticket-status-badge">
                     ${escapeHtml(ticket.status || "Unknown")}
                 </span>
@@ -1137,56 +1186,167 @@ function addTicketAnswerCard(ticket, answerType) {
 
             <div class="ticket-answer-row">
                 <span>Priority</span>
-                <strong>${escapeHtml(ticket.priority || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(ticket.priority || "Unknown")}
+                </strong>
             </div>
         `;
+
     }
 
     else if (answerType === "ASSIGNED_TO") {
+
         content = `
             <div class="ticket-answer-header">
-                <strong>${escapeHtml(ticket.ticket_number || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(ticket.ticket_number || "Unknown")}
+                </strong>
             </div>
 
             <div class="ticket-answer-row">
                 <span>Assigned To</span>
-                <strong>${escapeHtml(ticket.assigned_to || "Not assigned")}</strong>
+                <strong>
+                    ${escapeHtml(
+                        ticket.assigned_to || "Not assigned"
+                    )}
+                </strong>
             </div>
 
             <div class="ticket-answer-row">
                 <span>Status</span>
-                <strong>${escapeHtml(ticket.status || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(ticket.status || "Unknown")}
+                </strong>
             </div>
         `;
+
     }
 
     else if (answerType === "REQUESTER") {
+
         content = `
             <div class="ticket-answer-header">
-                <strong>${escapeHtml(ticket.ticket_number || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(
+                        ticket.ticket_number || "Unknown"
+                    )}
+                </strong>
             </div>
 
             <div class="ticket-answer-row">
                 <span>Raised By</span>
-                <strong>${escapeHtml(ticket.requester || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(
+                        ticket.requester || "Unknown"
+                    )}
+                </strong>
             </div>
         `;
+
     }
 
     else if (answerType === "CREATED_DATE") {
+
         content = `
             <div class="ticket-answer-header">
-                <strong>${escapeHtml(ticket.ticket_number || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(
+                        ticket.ticket_number || "Unknown"
+                    )}
+                </strong>
             </div>
 
             <div class="ticket-answer-row">
                 <span>Created At</span>
-                <strong>${escapeHtml(ticket.created_at || "Unknown")}</strong>
+                <strong>
+                    ${escapeHtml(
+                        ticket.created_at || "Unknown"
+                    )}
+                </strong>
+            </div>
+        `;
+    }
+
+    // ONE Open Ticket button only
+    if (ticket.web_url) {
+
+        content += `
+            <div class="ticket-answer-footer">
+
+                <a
+                    href="${escapeHtml(ticket.web_url)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Open Ticket ↗
+                </a>
+
             </div>
         `;
     }
 
     container.innerHTML = content;
+
+    chatMessages.appendChild(container);
+
+    scrollToBottom();
+
+    saveChatHistory();
+}
+
+function addTicketSearchCards(tickets) {
+    const container = document.createElement("div");
+    container.className = "ticket-search-list";
+
+    tickets.forEach(function(ticket) {
+        const card = document.createElement("div");
+        card.className = "ticket-search-card";
+
+        const ticketUrl = ticket.web_url || "#";
+
+        card.innerHTML = `
+            <div class="ticket-search-header">
+                <strong>
+                    ${escapeHtml(ticket.ticket_number || "Unknown")}
+                </strong>
+
+                <span class="ticket-status-badge">
+                    ${escapeHtml(ticket.status || "Unknown")}
+                </span>
+            </div>
+
+            <div class="ticket-search-title">
+                ${escapeHtml(ticket.title || "No title")}
+            </div>
+
+            <div class="ticket-search-meta">
+                <span>
+                    Priority:
+                    <strong>
+                        ${escapeHtml(ticket.priority || "Unknown")}
+                    </strong>
+                </span>
+            </div>
+
+            ${
+                ticketUrl !== "#"
+                    ? `
+                    <div class="ticket-search-footer">
+                        <a
+                            href="${escapeHtml(ticketUrl)}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Open Ticket ↗
+                        </a>
+                    </div>
+                    `
+                    : ""
+            }
+        `;
+
+        container.appendChild(card);
+    });
 
     chatMessages.appendChild(container);
 

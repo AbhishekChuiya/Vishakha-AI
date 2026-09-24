@@ -209,37 +209,33 @@ class AgentWorkflow:
                 "type": "error",
                 "message": "I couldn't retrieve your ticket status."
             }
+            
     def process_message(self, user_message):
 
+        # ----------------------------------------------
+        # HANDLE ANSWER TO CURRENT QUESTION
+        # ----------------------------------------------
+
+        if self.state.current_question:
+            return self.handle_option(user_message)
+
         agent_result = self.orchestrator.understand_request(
-            user_message
+            user_message,
+            current_ticket_number=self.state.ticket_number
         )
 
-        self.state.update_from_agent(
-            agent_result
-        )
+        self.state.update_from_agent(agent_result)
 
-        # ==========================================
         # CREATE TICKET
-        # ==========================================
-
         if self.state.intent == "CREATE_TICKET":
-
             return self.handle_create_ticket()
 
-
-        # ==========================================
         # CHECK TICKET STATUS
-        # ==========================================
-
         if self.state.intent == "CHECK_TICKET_STATUS":
-
             return self.handle_ticket_status()
 
-
-        # ==========================================
-        # OTHER
-        # ==========================================
+        if self.state.intent == "SEARCH_TICKETS":
+            return self.handle_search_tickets()
 
         return {
             "type": "message",
@@ -362,8 +358,8 @@ class AgentWorkflow:
         # All information collected
         # ----------------------------------------------
 
-        self.state.current_question = None
-
+        self.state.current_question = "confirmation"
+        
         return {
             "type": "confirmation",
             "message": "Please confirm the ticket details.",
@@ -379,30 +375,199 @@ class AgentWorkflow:
         field = self.state.current_question
 
         if not field:
-
             return {
                 "type": "message",
                 "message": "There is no pending question.",
             }
 
-        # Save selected option
+        # ----------------------------------------------
+        # Confirmation
+        # ----------------------------------------------
+
+        if field == "confirmation":
+
+            if option == "Confirm & Create Ticket":
+                return self.confirm_ticket()
+
+            if option == "Cancel":
+                return self.cancel()
+
+            return {
+                "type": "message",
+                "message": (
+                    "Please select either "
+                    "'Confirm & Create Ticket' or 'Cancel'."
+                ),
+                "options": [
+                    "Confirm & Create Ticket",
+                    "Cancel",
+                ],
+            }
+
+        # ----------------------------------------------
+        # Description
+        # ----------------------------------------------
 
         if field == "description":
 
             self.state.description = option
+            self.state.current_question = None
 
-        elif field == "location":
+            return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # Location
+        # ----------------------------------------------
+
+        if field == "location":
+
+            valid_locations = [
+                "Ahmedabad Plant",
+                "Noida Plant",
+                "Corporate Office",
+                "Other",
+            ]
+
+            if option not in valid_locations:
+
+                return {
+                    "type": "question",
+                    "field": "location",
+                    "message": "Please select a valid location.",
+                    "options": valid_locations,
+                }
 
             self.state.location = option
+            self.state.current_question = None
 
-        elif field == "priority":
+            return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # Priority
+        # ----------------------------------------------
+
+        if field == "priority":
+
+            valid_priorities = [
+                "Low",
+                "Medium",
+                "High",
+                "Critical",
+            ]
+
+            if option not in valid_priorities:
+
+                return {
+                    "type": "question",
+                    "field": "priority",
+                    "message": "Please select a valid priority.",
+                    "options": valid_priorities,
+                }
 
             self.state.priority = option
+            self.state.current_question = None
 
-        self.state.current_question = None
+            return self.handle_create_ticket()
 
-        return self.handle_create_ticket()
+        return {
+            "type": "message",
+            "message": "Invalid option.",
+        }    
+    
+    def handle_search_tickets(self):
+        try:
+            if not self.state.search_query:
+                return {
+                    "type": "message",
+                    "message": "What would you like me to search for?"
+                }
 
+            search_query = self.state.search_query
+            search_scope = self.state.search_scope
+
+            # --------------------------------------------------
+            # SEARCH MY TICKETS
+            # --------------------------------------------------
+            if search_scope == "MY_TICKETS":
+                result = self.ticketing.search_my_tickets(
+                    search_query=search_query
+                )
+
+            # --------------------------------------------------
+            # SEARCH ALL TICKETS
+            # --------------------------------------------------
+            else:
+                result = self.ticketing.search_tickets(
+                    search_query=search_query
+                )
+
+            tickets = result.get("content", [])
+
+            if not tickets:
+                scope_text = (
+                    "your"
+                    if search_scope == "MY_TICKETS"
+                    else "all"
+                )
+
+                return {
+                    "type": "ticket_search",
+                    "message": (
+                        f"I couldn't find any {scope_text} tickets "
+                        f"related to '{search_query}'."
+                    ),
+                    "search_query": search_query,
+                    "search_scope": search_scope,
+                    "tickets": []
+                }
+
+            ticket_list = []
+
+            for ticket in tickets:
+                status = ticket.get("status") or {}
+                priority = ticket.get("priority") or {}
+
+                ticket_list.append({
+                    "ticket_number": ticket.get("ticketNumber"),
+                    "title": ticket.get("title"),
+                    "status": status.get("status", "Unknown"),
+                    "priority": priority.get("name", "Unknown"),
+                    "web_url": ticket.get("webUrl"),
+                })
+
+            total = result.get(
+                "totalElements",
+                len(ticket_list)
+            )
+
+            if search_scope == "MY_TICKETS":
+                message = (
+                    f"I found {total} of your ticket(s) "
+                    f"related to '{search_query}'."
+                )
+            else:
+                message = (
+                    f"I found {total} ticket(s) "
+                    f"related to '{search_query}'."
+                )
+
+            return {
+                "type": "ticket_search",
+                "message": message,
+                "search_query": search_query,
+                "search_scope": search_scope,
+                "total": total,
+                "tickets": ticket_list
+            }
+
+        except Exception as e:
+            print("TICKET SEARCH ERROR:", str(e))
+
+            return {
+                "type": "error",
+                "message": "I couldn't search the ticketing system."
+            }
+                
     def confirm_ticket(self):
 
         if not self.state.is_complete():
@@ -414,39 +579,60 @@ class AgentWorkflow:
                 ),
             }
 
-        result = self.ticketing.create_ticket(
+        try:
 
-            category=self.state.category,
+            result = self.ticketing.create_ticket(
 
-            description=self.state.description,
+                category=self.state.category,
 
-            location=self.state.location,
+                description=self.state.description,
 
-            priority=self.state.priority,
-        )
+                location=self.state.location,
 
-        if result.get("ticketNumber"):
+                priority=self.state.priority,
+            )
 
-            ticket_number = result["ticketNumber"]
+            if result.get("ticketNumber"):
 
-            web_url = result.get("webUrl")
+                ticket_number = result["ticketNumber"]
 
-            self.state.reset()
+                web_url = result.get("webUrl")
+
+                self.state.reset()
+
+                return {
+                    "type": "success",
+                    "message": "Ticket created successfully.",
+                    "ticket_number": ticket_number,
+                    "web_url": web_url,
+                }
 
             return {
-                "type": "success",
-                "message": "Ticket created successfully.",
-                "ticket_number": ticket_number,
-                "web_url": web_url,
+                "type": "error",
+                "message": "The ticket could not be created.",
+                "details": result,
+                "options": [
+                    "Confirm & Create Ticket",
+                    "Cancel",
+                ],
             }
 
-        return {
-            "type": "error",
-            "message": (
-                "The ticket could not be created."
-            ),
-            "details": result,
-        }
+        except Exception as e:
+
+            print("TICKET CREATION ERROR:", str(e))
+
+            return {
+                "type": "error",
+                "message": (
+                    "I couldn't create the ticket in the "
+                    "Service Excellence Portal."
+                ),
+                "details": str(e),
+                "options": [
+                    "Confirm & Create Ticket",
+                    "Cancel",
+                ],
+            }
 
     def cancel(self):
 

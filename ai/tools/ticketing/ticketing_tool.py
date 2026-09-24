@@ -59,3 +59,16 @@ class TicketingTool:
             return None
 
         return self.client.get_ticket_by_id(ticket_id)
+
+    def search_tickets(self, search_query, size=20):
+        return self.client.search_tickets(
+            search_query=search_query,
+            size=size
+        )
+
+
+    def search_my_tickets(self, search_query, size=20):
+        return self.client.search_my_tickets(
+            search_query=search_query,
+            size=size
+        )

@@ -166,3 +166,54 @@ class TicketingClient:
         response.raise_for_status()
 
         return response.json()
+
+    def search_tickets(self, search_query, size=20):
+        url = f"{self.base_url}/api/itsm/v1/tickets"
+
+        headers = {
+            "Authorization": f"Bearer {self.pat}",
+            "Accept": "application/json",
+        }
+
+        params = {
+            "search": search_query,
+            "size": size,
+        }
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=30,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def search_my_tickets(self, search_query, size=20):
+        url = f"{self.base_url}/api/itsm/v1/tickets"
+
+        headers = {
+            "Authorization": f"Bearer {self.pat}",
+            "Accept": "application/json",
+        }
+
+        params = {
+            "search": search_query,
+            "requesterEmail": self.requester,
+            "includeClosed": "true",
+            "size": size,
+            "sort": "createdDate,desc",
+        }
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=30,
+        )
+
+        response.raise_for_status()
+
+        return response.json()

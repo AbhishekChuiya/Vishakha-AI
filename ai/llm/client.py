@@ -2,12 +2,10 @@ import requests
 
 
 class LocalLLM:
-
     def __init__(self):
         self.base_url = "http://127.0.0.1:8080"
 
     def chat(self, messages):
-
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
             json={
@@ -18,8 +16,13 @@ class LocalLLM:
             timeout=120,
         )
 
+        if not response.ok:
+            print("\n========== LLM ERROR ==========")
+            print("HTTP STATUS:", response.status_code)
+            print("RESPONSE:", response.text)
+            print("================================\n")
+
         response.raise_for_status()
 
         data = response.json()
-
         return data["choices"][0]["message"]["content"]
