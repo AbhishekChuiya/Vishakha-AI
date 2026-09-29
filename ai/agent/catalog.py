@@ -175,123 +175,199 @@ CATEGORIES = {
     },
 
     "Security": {
-    "Security Incident Management": [
-        "Theft Reporting",
-        "Security Breach Reporting",
-        "Lost ID Card Reporting",
-    ],
-},
-"Branding": {
-    "Design & Creatives": [
-        "Brochures & Catalogues",
-        "Flyers & Posters",
-        "Presentations & Decks",
-        "Infographics & Data Visualization",
-        "Digital Artwork & Illustrations",
-        "Product Design / Packaging",
-        "Logo & Brand Guidelines",
-        "Other (Specify)",
-    ],
-    "Digital & Social Media": [
-    "Instagram Posts & Reels",
-    "Facebook Posts & Campaigns",
-    "LinkedIn Articles & Posts",
-    "Twitter/X Posts",
-    "YouTube Thumbnails & Banners",
-    "Short-form Videos",
-    "Story Templates",
-    "Email Campaign Design",
-    "Website Banner/Graphics",
-    "Social Media Campaign Strategy",
-    "Other (Specify)",
-],
-"Print & Production": [
-    "Business Cards & Stationery",
-    "Marketing Brochures & Collaterals",
-    "Posters & Signage",
-    "Standees & Display Materials",
-    "Backdrops & Banners",
-    "Packaging Design",
-    "Labels & Stickers",
-    "Mailers & Direct Mail",
-    "Certificates & Invitations",
-    "Annual Reports",
-    "Other (Specify)",
-],
-"Events & Exhibitions": [
-    "Branding Materials",
-    "Stage/Backdrop Design",
-    "Stall/Booth Branding",
-    "Event Signage & Directional",
-    "Event Invitation & Collateral",
-    "Venue Booking Support",
-    "Event Program/Agenda Design",
-    "Promotional Materials for Event",
-    "Merchandise Design",
-    "Registration/Check-in Materials",
-    "End to end overall exhibition Support",
-    "Other (Specify)",
-],
-"Corporate Communication": [
-    "Internal Newsletters",
-    "Corporate Mailers",
-    "Internal Announcements",
-    "Corporate Reports",
-    "Press Releases",
-    "Memorandums & Notices",
-    "Induction Materials",
-    "Team Communications",
-    "Board Presentations",
-    "Shareholder Communications",
-    "Other (Specify)",
-],
-"Video & Multimedia": [
-    "Corporate Videos / Company Profile",
-    "Product Videos / Demo Videos",
-    "Brand Storytelling Videos",
-    "Training & Induction Videos",
-    "Event Coverage/Highlights Video",
-    "Motion Graphics & Animation",
-    "Explainer Videos",
-    "Testimonial Videos",
-    "Social Media Video Content",
-    "Commercial/Advertisement Video",
-    "Video Editing & Post-Production",
-    "Other (Specify)",
-],
-"CSR Branding": [
-    "CSR Campaign Materials",
-    "CSR Newsletter/Report",
-    "CSR Event Branding",
-    "CSR Awareness Posters",
-    "CSR Social Media Content",
-    "CSR Documentary/Video",
-    "Partnership Materials",
-    "Sustainability Report Design",
-    "Volunteer Collaterals",
-    "Presentation",
-    "Other (Specify)",
-],
-"Internal Communications": [
-    "Employee Handbook Updates",
-    "Internal Memos & Updates",
-    "Team Meeting Materials",
-    "Department Announcements",
-    "Culture & Values Communications",
-    "HR Communications",
-    "Safety & Compliance Materials",
-    "Recognition Programs",
-    "Internal Blog",
-    "Employee Engagement Materials",
-    "Campaign",
-    "Other (Specify)",
-],
-},
-}
+        "Security Incident Management": [
+            "Theft Reporting",
+            "Security Breach Reporting",
+            "Lost ID Card Reporting",
+            ],
+        },
+
+    "Branding": {
+        "Design & Creatives": [
+            "Brochures & Catalogues",
+            "Flyers & Posters",
+            "Presentations & Decks",
+            "Infographics & Data Visualization",
+            "Digital Artwork & Illustrations",
+            "Product Design / Packaging",
+            "Logo & Brand Guidelines",
+            "Other (Specify)",
+            ],
+        "Digital & Social Media": [
+            "Instagram Posts & Reels",
+            "Facebook Posts & Campaigns",
+            "LinkedIn Articles & Posts",
+            "Twitter/X Posts",
+            "YouTube Thumbnails & Banners",
+            "Short-form Videos",
+            "Story Templates",
+            "Email Campaign Design",
+            "Website Banner/Graphics",
+            "Social Media Campaign Strategy",
+            "Other (Specify)",
+            ],
+        "Print & Production": [
+            "Business Cards & Stationery",
+            "Marketing Brochures & Collaterals",
+            "Posters & Signage",
+            "Standees & Display Materials",
+            "Backdrops & Banners",
+            "Packaging Design",
+            "Labels & Stickers",
+            "Mailers & Direct Mail",
+            "Certificates & Invitations",
+            "Annual Reports",
+            "Other (Specify)",
+            ],
+        "Events & Exhibitions": [
+            "Branding Materials",
+            "Stage/Backdrop Design",
+            "Stall/Booth Branding",
+            "Event Signage & Directional",
+            "Event Invitation & Collateral",
+            "Venue Booking Support",
+            "Event Program/Agenda Design",
+            "Promotional Materials for Event",
+            "Merchandise Design",
+            "Registration/Check-in Materials",
+            "End to end overall exhibition Support",
+            "Other (Specify)",
+            ],
+        "Corporate Communication": [
+            "Internal Newsletters",
+            "Corporate Mailers",
+            "Internal Announcements",
+            "Corporate Reports",
+            "Press Releases",
+            "Memorandums & Notices",
+            "Induction Materials",
+            "Team Communications",
+            "Board Presentations",
+            "Shareholder Communications",
+            "Other (Specify)",
+            ],
+        "Video & Multimedia": [
+            "Corporate Videos / Company Profile",
+            "Product Videos / Demo Videos",
+            "Brand Storytelling Videos",
+            "Training & Induction Videos",
+            "Event Coverage/Highlights Video",
+            "Motion Graphics & Animation",
+            "Explainer Videos",
+            "Testimonial Videos",
+            "Social Media Video Content",
+            "Commercial/Advertisement Video",
+            "Video Editing & Post-Production",
+            "Other (Specify)",
+            ],
+        "CSR Branding": [
+            "CSR Campaign Materials",
+            "CSR Newsletter/Report",
+            "CSR Event Branding",
+            "CSR Awareness Posters",
+            "CSR Social Media Content",
+            "CSR Documentary/Video",
+            "Partnership Materials",
+            "Sustainability Report Design",
+            "Volunteer Collaterals",
+            "Presentation",
+            "Other (Specify)",
+            ],
+        "Internal Communications": [
+            "Employee Handbook Updates",
+            "Internal Memos & Updates",
+            "Team Meeting Materials",
+            "Department Announcements",
+            "Culture & Values Communications",
+            "HR Communications",
+            "Safety & Compliance Materials",
+            "Recognition Programs",
+            "Internal Blog",
+            "Employee Engagement Materials",
+            "Campaign",
+            "Other (Specify)",
+            ],
+        },
+
+    "HR Department": {
+        "Employee Relations": [
+            "Grievance Logging",
+            "Code of Conduct Violation",
+        ],
+        "Training & Development": [
+            "Training Nomination",
+            "R&R Nomination",
+        ],
+        "Gyaanshala": [
+            "New service requirement",
+            "Employee Login assistance",
+        ],
+    },
+
+    "Insurance": {
+        "Claim Initiation": [
+            "Employee insurance claim",
+            "Asset insurance claim",
+            ],
+        },
+    
+    "Finance": {
+        "Finance": [
+            "Employee Shareholding Declaration",
+        ],
+        "Financial Control": [
+            "Capex Proposal Submission & Approval",
+            "Budget Deviation Request",
+            "Advance Payment Request",
+            "Pricing Deviation Approval",
+            "Discount Approval Request",
+            ],
+        },
+
+    "Compliance & Risk": {
+        "Document Review": [
+            "Contract review",
+            "Purchase Order T&C review",
+            ],
+        },
+
+
+    "Projects": {
+        "Engineering Change Management": [
+            "ECN (Engineering Change Notice)",
+            "ECR (Engineering Change Request)",
+            ],
+        },
+
+    "Quality management": {
+        "Customer Complaint": [
+            "Customer Process",
+            "Handeling",
+            "Others",
+            "Packaging",
+            "Process",
+            "Raw Material",
+            "Storage",
+            "Transit",
+            ],
+        },
+
+    "Strategy": {
+        "Digital Transformation": [
+            "Automation Proposal",
+        ],
+        "Innovation Management": [
+            "Cost Saving Idea",
+            ],
+        },
+
+
+    }
 
 
 
 SUBCATEGORY_REQUEST_TYPES = {
+    
     "Admin": {
         "Canteen Management": {
             "Meal Booking (VIP & Special guest)": ["Service Request"],
@@ -331,7 +407,6 @@ SUBCATEGORY_REQUEST_TYPES = {
         },
     },
 
-
     "Safety": {
         "Incident Reporting & Management": {
             "Accident Reporting": ["Incident Request"],
@@ -357,143 +432,218 @@ SUBCATEGORY_REQUEST_TYPES = {
     },
 
     "Security": {
-    "Security Incident Management": {
-        "Theft Reporting": ["Incident Request"],
-        "Security Breach Reporting": ["Incident Request"],
-        "Lost ID Card Reporting": ["Incident Request"],
-        },
-    },  
+        "Security Incident Management": {
+            "Theft Reporting": ["Incident Request"],
+            "Security Breach Reporting": ["Incident Request"],
+            "Lost ID Card Reporting": ["Incident Request"],
+                },
+        },  
+    
     "Branding": {
-    "Design & Creatives": {
-        "Brochures & Catalogues": ["Service Request"],
-        "Flyers & Posters": ["Service Request"],
-        "Presentations & Decks": ["Service Request"],
-        "Infographics & Data Visualization": ["Service Request"],
-        "Digital Artwork & Illustrations": ["Service Request"],
-        "Product Design / Packaging": ["Change Management"],
-        "Logo & Brand Guidelines": ["Change Management"],
+        
+        "Design & Creatives": {
+            "Brochures & Catalogues": ["Service Request"],
+            "Flyers & Posters": ["Service Request"],
+            "Presentations & Decks": ["Service Request"],
+            "Infographics & Data Visualization": ["Service Request"],
+            "Digital Artwork & Illustrations": ["Service Request"],
+            "Product Design / Packaging": ["Change Management"],
+            "Logo & Brand Guidelines": ["Change Management"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "Digital & Social Media": {
+        "Instagram Posts & Reels": ["Service Request"],
+        "Facebook Posts & Campaigns": ["Service Request"],
+        "LinkedIn Articles & Posts": ["Service Request"],
+        "Twitter/X Posts": ["Service Request"],
+        "YouTube Thumbnails & Banners": ["Service Request"],
+        "Short-form Videos": ["Service Request"],
+        "Story Templates": ["Service Request"],
+        "Email Campaign Design": ["Service Request"],
+        "Website Banner/Graphics": ["Change Management"],
+        "Social Media Campaign Strategy": ["Request For Information"],
         "Other (Specify)": [
             "Request For Information",
             "Service Request",
-        ],
+            ],
+        },
+        "Print & Production": {
+            "Business Cards & Stationery": ["Service Request"],
+            "Marketing Brochures & Collaterals": ["Service Request"],
+            "Posters & Signage": ["Service Request"],
+            "Standees & Display Materials": ["Service Request"],
+            "Backdrops & Banners": ["Service Request"],
+            "Packaging Design": ["Change Management"],
+            "Labels & Stickers": ["Service Request"],
+            "Mailers & Direct Mail": ["Service Request"],
+            "Certificates & Invitations": ["Service Request"],
+            "Annual Reports": ["Service Request"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "Events & Exhibitions": {
+            "Branding Materials": ["Service Request"],
+            "Stage/Backdrop Design": ["Service Request"],
+            "Stall/Booth Branding": ["Service Request"],
+            "Event Signage & Directional": ["Service Request"],
+            "Event Invitation & Collateral": ["Service Request"],
+            "Venue Booking Support": ["Service Request"],
+            "Event Program/Agenda Design": ["Service Request"],
+            "Promotional Materials for Event": ["Service Request"],
+            "Merchandise Design": ["Service Request"],
+            "Registration/Check-in Materials": ["Service Request"],
+            "End to end overall exhibition Support": ["Service Request"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "Corporate Communication": {
+            "Internal Newsletters": ["Service Request"],
+            "Corporate Mailers": ["Service Request"],
+            "Internal Announcements": ["Service Request"],
+            "Corporate Reports": ["Service Request"],
+            "Press Releases": ["Change Management"],
+            "Memorandums & Notices": ["Service Request"],
+            "Induction Materials": ["Service Request"],
+            "Team Communications": ["Service Request"],
+            "Board Presentations": ["Service Request"],
+            "Shareholder Communications": ["Change Management"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "Video & Multimedia": {
+            "Corporate Videos / Company Profile": ["Service Request"],
+            "Product Videos / Demo Videos": ["Service Request"],
+            "Brand Storytelling Videos": ["Service Request"],
+            "Training & Induction Videos": ["Service Request"],
+            "Event Coverage/Highlights Video": ["Service Request"],
+            "Motion Graphics & Animation": ["Service Request"],
+            "Explainer Videos": ["Service Request"],
+            "Testimonial Videos": ["Service Request"],
+            "Social Media Video Content": ["Service Request"],
+            "Commercial/Advertisement Video": ["Change Management"],
+            "Video Editing & Post-Production": ["Service Request"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "CSR Branding": {
+            "CSR Campaign Materials": ["Service Request"],
+            "CSR Newsletter/Report": ["Service Request"],
+            "CSR Event Branding": ["Service Request"],
+            "CSR Awareness Posters": ["Service Request"],
+            "CSR Social Media Content": ["Service Request"],
+            "CSR Documentary/Video": ["Service Request"],
+            "Partnership Materials": ["Change Management"],
+            "Sustainability Report Design": ["Service Request"],
+            "Volunteer Collaterals": ["Service Request"],
+            "Presentation": ["Service Request"],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+        "Internal Communications": {
+            "Employee Handbook Updates": ["Change Management"],
+            "Internal Memos & Updates": ["Service Request"],
+            "Team Meeting Materials": ["Service Request"],
+            "Department Announcements": ["Service Request"],
+            "Culture & Values Communications": ["Service Request"],
+            "HR Communications": ["Service Request"],
+            "Safety & Compliance Materials": ["Change Management"],
+            "Recognition Programs": ["Service Request"],
+            "Internal Blog": ["Service Request"],
+            "Employee Engagement Materials": ["Service Request"],
+            "Campaign": [
+                "Service Request",
+                "Change Management",
+            ],
+            "Other (Specify)": [
+                "Request For Information",
+                "Service Request",
+            ],
+        },
+},
+    
+    "HR Department": {
+        "Employee Relations": {
+            "Grievance Logging": ["Incident Request"],
+            "Code of Conduct Violation": ["Incident Request"],
+        },
+        "Training & Development": {
+            "Training Nomination": ["Service Request"],
+            "R&R Nomination": ["Service Request"],
+        },
+        "Gyaanshala": {
+            "New service requirement": ["Service Request"],
+            "Employee Login assistance": ["Service Request"],
+        },
     },
-    "Digital & Social Media": {
-    "Instagram Posts & Reels": ["Service Request"],
-    "Facebook Posts & Campaigns": ["Service Request"],
-    "LinkedIn Articles & Posts": ["Service Request"],
-    "Twitter/X Posts": ["Service Request"],
-    "YouTube Thumbnails & Banners": ["Service Request"],
-    "Short-form Videos": ["Service Request"],
-    "Story Templates": ["Service Request"],
-    "Email Campaign Design": ["Service Request"],
-    "Website Banner/Graphics": ["Change Management"],
-    "Social Media Campaign Strategy": ["Request For Information"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"Print & Production": {
-    "Business Cards & Stationery": ["Service Request"],
-    "Marketing Brochures & Collaterals": ["Service Request"],
-    "Posters & Signage": ["Service Request"],
-    "Standees & Display Materials": ["Service Request"],
-    "Backdrops & Banners": ["Service Request"],
-    "Packaging Design": ["Change Management"],
-    "Labels & Stickers": ["Service Request"],
-    "Mailers & Direct Mail": ["Service Request"],
-    "Certificates & Invitations": ["Service Request"],
-    "Annual Reports": ["Service Request"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"Events & Exhibitions": {
-    "Branding Materials": ["Service Request"],
-    "Stage/Backdrop Design": ["Service Request"],
-    "Stall/Booth Branding": ["Service Request"],
-    "Event Signage & Directional": ["Service Request"],
-    "Event Invitation & Collateral": ["Service Request"],
-    "Venue Booking Support": ["Service Request"],
-    "Event Program/Agenda Design": ["Service Request"],
-    "Promotional Materials for Event": ["Service Request"],
-    "Merchandise Design": ["Service Request"],
-    "Registration/Check-in Materials": ["Service Request"],
-    "End to end overall exhibition Support": ["Service Request"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"Corporate Communication": {
-    "Internal Newsletters": ["Service Request"],
-    "Corporate Mailers": ["Service Request"],
-    "Internal Announcements": ["Service Request"],
-    "Corporate Reports": ["Service Request"],
-    "Press Releases": ["Change Management"],
-    "Memorandums & Notices": ["Service Request"],
-    "Induction Materials": ["Service Request"],
-    "Team Communications": ["Service Request"],
-    "Board Presentations": ["Service Request"],
-    "Shareholder Communications": ["Change Management"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"Video & Multimedia": {
-    "Corporate Videos / Company Profile": ["Service Request"],
-    "Product Videos / Demo Videos": ["Service Request"],
-    "Brand Storytelling Videos": ["Service Request"],
-    "Training & Induction Videos": ["Service Request"],
-    "Event Coverage/Highlights Video": ["Service Request"],
-    "Motion Graphics & Animation": ["Service Request"],
-    "Explainer Videos": ["Service Request"],
-    "Testimonial Videos": ["Service Request"],
-    "Social Media Video Content": ["Service Request"],
-    "Commercial/Advertisement Video": ["Change Management"],
-    "Video Editing & Post-Production": ["Service Request"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"CSR Branding": {
-    "CSR Campaign Materials": ["Service Request"],
-    "CSR Newsletter/Report": ["Service Request"],
-    "CSR Event Branding": ["Service Request"],
-    "CSR Awareness Posters": ["Service Request"],
-    "CSR Social Media Content": ["Service Request"],
-    "CSR Documentary/Video": ["Service Request"],
-    "Partnership Materials": ["Change Management"],
-    "Sustainability Report Design": ["Service Request"],
-    "Volunteer Collaterals": ["Service Request"],
-    "Presentation": ["Service Request"],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-"Internal Communications": {
-    "Employee Handbook Updates": ["Change Management"],
-    "Internal Memos & Updates": ["Service Request"],
-    "Team Meeting Materials": ["Service Request"],
-    "Department Announcements": ["Service Request"],
-    "Culture & Values Communications": ["Service Request"],
-    "HR Communications": ["Service Request"],
-    "Safety & Compliance Materials": ["Change Management"],
-    "Recognition Programs": ["Service Request"],
-    "Internal Blog": ["Service Request"],
-    "Employee Engagement Materials": ["Service Request"],
-    "Campaign": [
-        "Service Request",
-        "Change Management",
-    ],
-    "Other (Specify)": [
-        "Request For Information",
-        "Service Request",
-    ],
-},
-},
+
+    "Insurance": {
+        "Claim Initiation": {
+            "Employee insurance claim": ["Service Request"],
+            "Asset insurance claim": ["Service Request"],
+        },
+    },
+
+    "Finance": {
+        "Finance": {
+            "Employee Shareholding Declaration": ["Service Request"],
+        },
+        "Financial Control": {
+            "Capex Proposal Submission & Approval": ["Service Request"],
+            "Budget Deviation Request": ["Service Request"],
+            "Advance Payment Request": ["Service Request"],
+            "Pricing Deviation Approval": ["Service Request"],
+            "Discount Approval Request": ["Service Request"],
+        },
+    },
+
+    "Compliance & Risk": {
+        "Document Review": {
+            "Contract review": ["Service Request"],
+            "Purchase Order T&C review": ["Service Request"],
+        },
+    },
+
+    "Projects": {
+        "Engineering Change Management": {
+            "ECN (Engineering Change Notice)": ["Change Management"],
+            "ECR (Engineering Change Request)": ["Change Management"],
+        },
+    },
+
+    "Quality management": {
+        "Customer Complaint": {
+            "Customer Process": ["Customer Complaint"],
+            "Handeling": ["Customer Complaint"],
+            "Others": ["Customer Complaint"],
+            "Packaging": ["Customer Complaint"],
+            "Process": ["Customer Complaint"],
+            "Raw Material": ["Customer Complaint"],
+            "Storage": ["Customer Complaint"],
+            "Transit": ["Customer Complaint"],
+        },
+    },
+
+    "Strategy": {
+        "Digital Transformation": {
+            "Automation Proposal": ["Service Request"],
+        },
+        "Innovation Management": {
+            "Cost Saving Idea": ["Service Request"],
+        },
+    },
+
 }
+

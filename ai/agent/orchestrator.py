@@ -107,6 +107,37 @@ class AgentOrchestrator:
         → CREATE_TICKET
         → department = "Branding"
 
+        "I want to report a grievance regarding an issue at work"
+        → CREATE_TICKET
+        → department = "HR Department"
+
+        "I want to raise an employee grievance"
+        → CREATE_TICKET
+        → department = "HR Department"
+
+        "I want to report a code of conduct violation"
+        → CREATE_TICKET
+        → department = "HR Department"
+
+        IMPORTANT:
+
+        Reporting a NEW grievance, complaint, violation, workplace
+        issue, or employee-relations issue is CREATE_TICKET.
+
+        The word "report" does not mean the employee is searching
+        existing tickets.
+
+        Compare:
+
+        "I want to report a grievance regarding an issue at work"
+        → CREATE_TICKET
+
+        "Show my existing grievance tickets"
+        → SEARCH_TICKETS
+
+        "What is the status of INC-00123?"
+        → CHECK_TICKET_STATUS
+
         IMPORTANT DISTINCTION:
 
         A request to CREATE or PREPARE something is NOT a ticket search.
@@ -124,6 +155,40 @@ class AgentOrchestrator:
         → CREATE_TICKET
 
         This does NOT mean SEARCH_TICKETS.
+
+        "I need information about our social media campaign strategy"
+        → CREATE_TICKET
+        → department = "Branding"
+
+        "I need information regarding our branding guidelines"
+        → CREATE_TICKET
+        → department = "Branding"
+
+        IMPORTANT:
+
+        Phrases such as:
+        - "I need information about..."
+        - "I need information regarding..."
+        - "I need details about..."
+        - "I need clarification about..."
+
+        can represent a NEW Request For Information service requirement.
+
+        If the employee says they NEED information, details, guidance,
+        clarification, or assistance from a company department, treat it
+        as CREATE_TICKET unless they explicitly ask to search, find, show,
+        or list EXISTING tickets.
+
+        Compare:
+
+        "I need information about our social media campaign strategy"
+        → CREATE_TICKET
+
+        "Show me existing tickets about social media campaign strategy"
+        → SEARCH_TICKETS
+
+        "Find my social media campaign tickets"
+        → SEARCH_TICKETS
 
         --------------------------------------------------
         CHECK_TICKET_STATUS
@@ -199,7 +264,7 @@ class AgentOrchestrator:
 
         "What can you do?"
         → OTHER
-        
+
         ==================================================
         DEPARTMENT
         ==================================================
@@ -280,6 +345,168 @@ class AgentOrchestrator:
         department = null
 
         Do not invent a department when the request is ambiguous.
+
+        HR DEPARTMENT:
+
+        Use "HR Department" for employee-related HR matters such as:
+        - employee grievances
+        - workplace grievances
+        - code of conduct complaints or violations
+        - training nominations
+        - reward and recognition (R&R) nominations
+        - Gyaanshala service requirements
+        - Gyaanshala employee login assistance
+
+        Examples:
+
+        "I want to report a grievance regarding an issue at work"
+        → department = "HR Department"
+
+        "I want to raise an employee grievance"
+        → department = "HR Department"
+
+        "I want to report a code of conduct violation"
+        → department = "HR Department"
+
+        "I want to nominate an employee for training"
+        → department = "HR Department"
+
+        "I want to nominate someone for R&R"
+        → department = "HR Department"
+
+        "I need help logging into Gyaanshala"
+        → department = "HR Department"
+
+        IMPORTANT:
+
+        Do not classify an employee grievance as Safety merely because
+        the grievance happened "at work" or in the workplace.
+
+        Use "Safety" when the actual issue concerns physical safety,
+        unsafe acts, unsafe conditions, accidents, near misses, PPE,
+        safety audits, safety inspections, safety induction, or
+        safety training.
+
+        Compare:
+
+        "I want to report a grievance regarding an issue at work"
+        → department = "HR Department"
+
+        "There is an unsafe condition near my work area"
+        → department = "Safety"
+
+        
+        DEPARTMENT SELECTION RULES:
+
+        - You MUST select the department only from the allowed department list.
+        - NEVER invent a department.
+        - NEVER return departments such as "Legal", "Procurement", "Marketing",
+        "Facilities", or other department names unless they are explicitly present
+        in the allowed department list.
+        - Use the employee's requirement to identify the closest matching allowed
+        department.
+
+        Compliance & Risk examples:
+        - Contract review -> Compliance & Risk
+        - Review a contract before signing -> Compliance & Risk
+        - Purchase Order T&C review -> Compliance & Risk
+        - Review PO terms and conditions -> Compliance & Risk
+
+        Examples:
+
+        Employee:
+        "I need a contract reviewed before signing"
+
+        Correct:
+        {
+        "intent": "CREATE_TICKET",
+        "department": "Compliance & Risk"
+        }
+
+        Incorrect:
+        {
+        "intent": "CREATE_TICKET",
+        "department": "Legal"
+        }
+
+        "Legal" is invalid because it is not an allowed department.
+        
+        Projects examples:
+        - Engineering change request -> Projects
+        - Engineering change notice -> Projects
+        - ECR (Engineering Change Request) -> Projects
+        - ECN (Engineering Change Notice) -> Projects
+        - Machine modification requiring an engineering change -> Projects
+        - Equipment modification requiring an engineering change -> Projects
+
+        Example:
+
+        Employee:
+        "I need to raise an engineering change request for a machine modification"
+
+        Correct:
+        {{
+        "intent": "CREATE_TICKET",
+        "department": "Projects"
+        }}
+
+        Incorrect:
+        {{
+        "intent": "CREATE_TICKET",
+        "department": "Engineering"
+        }}
+
+        "Engineering" is invalid because it is not an allowed department.
+        Engineering change requests and engineering change notices belong to
+        the "Projects" department.
+
+        Strategy examples:
+
+        - Automation proposal -> Strategy
+        - Proposal to automate a manual process -> Strategy
+        - Idea to automate an existing business process -> Strategy
+        - Digital transformation proposal -> Strategy
+        - Process digitization idea -> Strategy
+        - Cost saving idea -> Strategy
+        - Innovation proposal -> Strategy
+
+        IMPORTANT:
+
+        Determine the department from the PURPOSE of the employee's request,
+        not only from business words mentioned in the description.
+
+        For example, if an employee wants to AUTOMATE a Finance, HR, Admin,
+        Procurement, Production, or other business process, and the request
+        is proposing a new automation/digital-transformation initiative,
+        the department should be "Strategy".
+
+        The business process being automated does not automatically determine
+        the department.
+
+        Example:
+
+        Employee:
+        "I have an idea to automate our manual invoice processing"
+
+        Correct:
+        {{
+        "intent": "CREATE_TICKET",
+        "department": "Strategy"
+        }}
+
+        Incorrect:
+        {{
+        "intent": "CREATE_TICKET",
+        "department": "Finance"
+        }}
+
+        This is a Strategy request because the employee is proposing
+        automation of an existing manual process. "Invoice" is only the
+        business process being automated.
+
+        However, normal Finance operational requests such as advance payment,
+        budget deviation, pricing deviation, discount approval, or employee
+        shareholding declaration should still be classified as "Finance".
 
         ==================================================
         REQUEST TYPE
@@ -773,7 +1000,7 @@ class AgentOrchestrator:
         department,
         request_type,
         allowed_categories,
-        ):
+    ):
         """
         Classify a ticket description into an allowed category/subcategory.
 
@@ -882,57 +1109,68 @@ class AgentOrchestrator:
                     "Safety Training Scheduling",
                 ),
             ],
+
             "Security": [
-            (
-                [
-                    "stole",
-                    "stolen",
-                    "theft",
-                    "stealing",
-                ],
-                "Security Incident Management",
-                "Theft Reporting",
-            ),
-            (
-                [
-                    "security breach",
-                    "breach",
-                    "unauthorized physical access",
-                    "unauthorised physical access",
-                    "intrusion",
-                ],
-                "Security Incident Management",
-                "Security Breach Reporting",
-            ),
-            (
-                [
-                    "lost id card",
-                    "lost my id card",
-                    "id card lost",
-                    "missing id card",
-                    "lost identity card",
-                ],
-                "Security Incident Management",
-                "Lost ID Card Reporting",
-            ),
-        ],
-        "Branding": [
-            (
-                ["board presentation", "board presentations", "board meeting"],
-                "Corporate Communication",
-                "Board Presentations",
-            ),
-            (
-                ["exhibition stall", "exhibition booth", "stall branding", "booth branding"],
-                "Events & Exhibitions",
-                "Stall/Booth Branding",
-            ),
-        ],
+                (
+                    [
+                        "stole",
+                        "stolen",
+                        "theft",
+                        "stealing",
+                    ],
+                    "Security Incident Management",
+                    "Theft Reporting",
+                ),
+                (
+                    [
+                        "security breach",
+                        "breach",
+                        "unauthorized physical access",
+                        "unauthorised physical access",
+                        "intrusion",
+                    ],
+                    "Security Incident Management",
+                    "Security Breach Reporting",
+                ),
+                (
+                    [
+                        "lost id card",
+                        "lost my id card",
+                        "id card lost",
+                        "missing id card",
+                        "lost identity card",
+                    ],
+                    "Security Incident Management",
+                    "Lost ID Card Reporting",
+                ),
+            ],
+
+            "Branding": [
+                (
+                    [
+                        "board presentation",
+                        "board presentations",
+                        "board meeting",
+                    ],
+                    "Corporate Communication",
+                    "Board Presentations",
+                ),
+                (
+                    [
+                        "exhibition stall",
+                        "exhibition booth",
+                        "stall branding",
+                        "booth branding",
+                    ],
+                    "Events & Exhibitions",
+                    "Stall/Booth Branding",
+                ),
+            ],
         }
 
         for keywords, category, subcategory in deterministic_rules.get(
             department,
-            []
+            [],
         ):
             if any(
                 keyword in description_lower
@@ -950,6 +1188,10 @@ class AgentOrchestrator:
                         "subcategory": subcategory,
                     }
 
+        # -------------------------------------------------
+        # Build exact allowed Category -> Subcategory list
+        # -------------------------------------------------
+
         allowed_lines = []
 
         for category, subcategories in allowed_categories.items():
@@ -960,64 +1202,292 @@ class AgentOrchestrator:
 
         allowed_text = "\n".join(allowed_lines)
 
+        # -------------------------------------------------
+        # LLM classification
+        # -------------------------------------------------
+
         system_prompt = f"""
-You are a strict ticket category classifier for Darpan.
+    You are a strict ticket category classifier for Darpan.
 
-Classify the employee's requirement using ONLY the allowed
-Category -> Subcategory combinations below.
+    Classify the employee's requirement using ONLY the allowed
+    Category -> Subcategory combinations below.
 
-Department:
-{department}
+    IMPORTANT CATEGORY RULES:
 
-Request Type selected by the employee:
-{request_type}
+    - "Department" and "Category" are different fields.
 
-Allowed combinations:
+    - NEVER return the department name as the category unless that exact
+    value appears as a category key inside ALLOWED CATEGORIES.
 
-{allowed_text}
+    - The category MUST be copied EXACTLY from one of the category keys
+    in ALLOWED CATEGORIES.
 
-Return ONLY valid JSON in exactly this format:
+    - The subcategory MUST be copied EXACTLY from one of the subcategories
+    belonging to that selected category.
 
-{{
-    "category": null,
-    "subcategory": null
-}}
+    - Do not invent, rename, shorten, normalize, translate, expand,
+    abbreviate, or paraphrase category or subcategory values.
 
-RULES:
+    - Ignore category/subcategory names from general knowledge.
 
-1. Select a category and subcategory ONLY from the allowed combinations.
+    - ALLOWED CATEGORIES is the only valid source for category and
+    subcategory output values.
 
-2. Never create, rename, shorten, translate or invent a category
-   or subcategory.
+    VERY IMPORTANT EXACT-VALUE RULE:
 
-3. Understand normal employee language and map its business meaning
-   to the closest valid combination when the meaning is clear.
+    The employee's wording does NOT need to exactly match the catalog.
+    You should understand the employee's meaning.
 
-4. The category and subcategory must belong to the SAME allowed
-   combination.
+    However, after determining the correct meaning, your OUTPUT MUST use
+    the complete exact value from ALLOWED CATEGORIES.
 
-5. If the requirement does not clearly match an allowed combination,
-   return:
+    For example:
 
-{{
-    "category": null,
-    "subcategory": null
-}}
+    If ALLOWED CATEGORIES contains:
 
-Examples of semantic understanding:
+    "ECR (Engineering Change Request)"
 
-An employee asking for pens, pencils or similar writing supplies
-can match a writing-instrument subcategory if such a combination
-exists in the allowed list.
+    and the employee says:
 
-An employee reporting an AC problem can match an AC repair
-subcategory if such a combination exists in the allowed list.
+    "engineering change request"
 
-Do not use these examples unless the corresponding values actually
-exist in the allowed combinations supplied above.
+    you MUST return:
 
-Return ONLY JSON.
-"""
+    "ECR (Engineering Change Request)"
+
+    NEVER return:
+
+    "Engineering Change Request"
+
+    NEVER return:
+
+    "ECR"
+
+    Likewise, if ALLOWED CATEGORIES contains:
+
+    "ECN (Engineering Change Notice)"
+
+    and the employee says:
+
+    "engineering change notice"
+
+    you MUST return:
+
+    "ECN (Engineering Change Notice)"
+
+    This rule applies GENERICALLY to all categories and subcategories.
+
+    For example, if an allowed value contains:
+    - an abbreviation
+    - text inside parentheses
+    - punctuation
+    - "&"
+    - "/"
+    - "-"
+    - capitalization
+    - prefixes or suffixes
+
+    the complete value must be copied exactly as it appears in
+    ALLOWED CATEGORIES.
+
+    Do not remove any part of an allowed value.
+
+    DEPARTMENT VS CATEGORY EXAMPLE:
+
+    Department:
+    Insurance
+
+    Allowed Categories:
+    {{
+        "Claim Initiation": [
+            "Employee insurance claim",
+            "Asset insurance claim"
+        ]
+    }}
+
+    Description:
+    "I need to submit an employee insurance claim"
+
+    Correct:
+    {{
+        "category": "Claim Initiation",
+        "subcategory": "Employee insurance claim"
+    }}
+
+    Incorrect:
+    {{
+        "category": "Insurance",
+        "subcategory": "Employee insurance claim"
+    }}
+
+    The incorrect answer is invalid because "Insurance" is the department
+    and is not a category key in ALLOWED CATEGORIES.
+
+    CURRENT REQUEST:
+
+    Department:
+    {department}
+
+    Request Type selected by the employee:
+    {request_type}
+
+    ALLOWED CATEGORIES AND SUBCATEGORIES:
+
+    {allowed_text}
+
+    Return ONLY valid JSON in exactly this format:
+
+    {{
+        "category": null,
+        "subcategory": null
+    }}
+
+    RULES:
+
+    1. Select a category and subcategory ONLY from the allowed combinations.
+
+    2. Category must be copied character-for-character from an allowed
+    category value.
+
+    3. Subcategory must be copied character-for-character from an allowed
+    subcategory value.
+
+    4. Never create, rename, shorten, translate, normalize, abbreviate,
+    expand or invent a category or subcategory.
+
+    5. Understand normal employee language and map its business meaning
+    to the closest valid combination when the meaning is clear.
+
+    6. The category and subcategory must belong to the SAME allowed
+    combination.
+
+    7. Do not return only part of an allowed category or subcategory.
+
+    8. If the requirement does not clearly match an allowed combination,
+    return:
+
+    {{
+        "category": null,
+        "subcategory": null
+    }}
+
+    Examples of semantic understanding:
+
+    An employee asking for pens, pencils or similar writing supplies
+    can match a writing-instrument subcategory if such a combination
+    exists in the allowed list.
+
+    An employee reporting an AC problem can match an AC repair
+    subcategory if such a combination exists in the allowed list.
+
+    An employee saying "engineering change request" can match
+    "ECR (Engineering Change Request)" if that exact subcategory
+    exists in the allowed list.
+
+    An employee saying "engineering change notice" can match
+    "ECN (Engineering Change Notice)" if that exact subcategory
+    exists in the allowed list.
+
+    Do not use these examples unless the corresponding values actually
+    exist in the allowed combinations supplied above.
+
+    For Quality Management customer complaints:
+
+    - A complaint about damage, loss, breakage, or an issue occurring
+    during transportation, shipment, delivery, or transit can match
+    "Transit" if that exact subcategory exists in the allowed list.
+
+    - A complaint specifically related to packaging can match
+    "Packaging" if that exact subcategory exists in the allowed list.
+
+    - A complaint related to storage conditions or an issue occurring
+    during storage can match "Storage" if that exact subcategory exists
+    in the allowed list.
+
+    - A complaint related to raw material can match "Raw Material" if
+    that exact subcategory exists in the allowed list.
+
+    These are semantic examples only. Use them only when those exact
+    values exist in ALLOWED CATEGORIES.
+
+    For Strategy requests:
+
+    - If the employee is proposing automation, digitization, workflow
+    automation, system automation, or converting a manual process into
+    an automated/digital process, match "Automation Proposal" under
+    "Digital Transformation" if that exact combination exists.
+
+    - If the employee is proposing an idea whose primary purpose is cost
+    reduction, expense reduction, material saving, energy saving,
+    resource saving, or another explicit cost-saving initiative, match
+    "Cost Saving Idea" under "Innovation Management" if that exact
+    combination exists.
+
+    IMPORTANT:
+
+    Do not classify an automation proposal as "Cost Saving Idea" merely
+    because automation could indirectly save money.
+
+    Classify according to the PRIMARY PURPOSE explicitly expressed by
+    the employee.
+
+    Examples:
+
+    "I have an idea to automate our manual invoice processing"
+    → Digital Transformation
+    → Automation Proposal
+
+    "We should automate the manual approval workflow"
+    → Digital Transformation
+    → Automation Proposal
+
+    "I have an idea to reduce electricity consumption and save energy cost"
+    → Innovation Management
+    → Cost Saving Idea
+
+    "I found a way to reduce packaging material cost"
+    → Innovation Management
+    → Cost Saving Idea
+
+    Use these examples only when the corresponding exact values exist
+    in ALLOWED CATEGORIES.    
+
+    OUTPUT FORMAT RULE:
+
+    Your entire response MUST consist of one JSON object only.
+
+    Do NOT include:
+    - explanations
+    - reasoning
+    - introductory text
+    - concluding text
+    - markdown
+    - code fences
+    - questions such as "Is this correct?"
+
+    The first character of your response must be {{
+    The last character of your response must be }}
+
+    Return ONLY:
+
+    {{
+        "category": "<exact allowed category or null>",
+        "subcategory": "<exact allowed subcategory or null>"
+    }}
+
+    FINAL CHECK BEFORE RESPONDING:
+
+    Before returning JSON, verify:
+
+    - Is category copied exactly from ALLOWED CATEGORIES?
+    - Is subcategory copied exactly from ALLOWED CATEGORIES?
+    - Does the subcategory belong to that category?
+    - Did you accidentally shorten or paraphrase either value?
+
+    If any answer is invalid, correct it using the exact allowed value.
+
+    Return ONLY JSON.
+    """
 
         messages = [
             {
@@ -1066,7 +1536,7 @@ Return ONLY JSON.
         return {
             "category": category,
             "subcategory": subcategory,
-    }
+        }
 
     def _detect_search_scope(self, user_message):
         """

@@ -39,7 +39,7 @@ class TicketingTool:
             else:
                 group_hint = subcategory or category
 
-        elif department in ["Admin", "Safety", "Security", "Branding"]:
+        elif department in ["Admin", "Safety", "Security", "Branding", "HR Department", "Insurance", "Finance", "Compliance & Risk", "Projects", "Quality management", "Strategy"]:
             group_hint = None
 
         else:
