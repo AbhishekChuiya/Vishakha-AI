@@ -49,11 +49,13 @@ class TicketingClient:
         requester=None,
         actor=None,
         impact=None,
+        start_date=None,
+        custom_fields=None,
         group_id=None,
         category=None,
         subcategory=None,
         location=None,
-        ):
+    ):  
         
         url = f"{self.base_url}/api/itsm/v1/tickets"
 
@@ -122,9 +124,22 @@ class TicketingClient:
                 "id": int(group_id)
             }
 
-        # 2. Add impact if provided
+        # Add dynamic custom fields
+        ticket_custom_fields = {}
+
+        # Allow caller to provide additional custom fields
+        if custom_fields:
+            ticket_custom_fields.update(custom_fields)
+
+        # Incident custom fields
         if impact:
-            payload["impact"] = impact
+            ticket_custom_fields["impact"] = impact
+
+        if start_date:
+            ticket_custom_fields["start_date"] = start_date
+
+        if ticket_custom_fields:
+            payload["customFields"] = ticket_custom_fields
 
         # 3. Print payload AFTER creating it
         print("\n========== TICKET API PAYLOAD ==========")

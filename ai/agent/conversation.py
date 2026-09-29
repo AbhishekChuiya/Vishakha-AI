@@ -20,6 +20,7 @@ class ConversationState:
         self.start_time = None
         self.target_date = None
         self.business_justification = None
+        self.urgency = None
 
         self.email = None
         self.phone = None
@@ -98,11 +99,21 @@ class ConversationState:
 
         # Service Request fields
         elif self.request_type == "Service Request":
-            if not self.target_date:
-                missing.append("target_date")
 
-            if not self.business_justification:
-                missing.append("business_justification")
+            # Strategy Service Request (ticket type 60) does not
+            # have Target Date or Business Justification.
+            if self.department != "Strategy":
+
+                if not self.target_date:
+                    missing.append("target_date")
+
+                if not self.business_justification:
+                    missing.append("business_justification")
+
+            # HR Service Request requires Urgency.
+            if self.department == "HR Department":
+                if not self.urgency:
+                    missing.append("urgency")
 
         # IT requests require contact details
         if self.department == "IT":
@@ -146,6 +157,14 @@ class ConversationState:
                 if self.request_type == "Service Request"
                 else None
             ),
+            "urgency": (
+                self.urgency
+                if (
+                    self.department == "HR Department"
+                    and self.request_type == "Service Request"
+                )
+                else None
+            ),
             "email": self.email if self.department == "IT" else None,
             "phone": self.phone if self.department == "IT" else None,
         }
@@ -167,6 +186,7 @@ class ConversationState:
             "start_time": self.start_time,
             "target_date": self.target_date,
             "business_justification": self.business_justification,
+            "urgency": self.urgency,
             "email": self.email,
             "phone": self.phone,
             "ticket_number": self.ticket_number,
@@ -198,6 +218,7 @@ class ConversationState:
         self.business_justification = data.get(
             "business_justification"
         )
+        self.urgency = data.get("urgency")
 
         self.email = data.get("email")
         self.phone = data.get("phone")

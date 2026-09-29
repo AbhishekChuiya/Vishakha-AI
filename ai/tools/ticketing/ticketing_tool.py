@@ -18,6 +18,10 @@ class TicketingTool:
         priority,
         subcategory=None,
         impact=None,
+        start_date=None,
+        target_date=None,
+        business_justification=None,
+        urgency=None,
         request_type=None,
         department=None,
     ):
@@ -56,6 +60,33 @@ class TicketingTool:
         ticket_type_id = int(route["ticket id"])
         group_id = int(route["group id"])
 
+        # Build Service Request custom fields based on the actual ticket type
+        service_custom_fields = {}
+
+        if request_type == "Service Request":
+
+            target_date_field_keys = {
+                11: "neede_by",   # Admin
+                16: "needed_by",  # Safety
+                6: "needed_by",   # Branding
+                52: "need_by",    # HR
+                51: "needed_by",  # Finance
+                54: "needed_by",  # Insurance
+                50: "needed_by",  # Compliance & Risk
+            }
+
+            target_date_key = target_date_field_keys.get(ticket_type_id)
+
+            if target_date_key and target_date:
+                service_custom_fields[target_date_key] = target_date
+
+            if ticket_type_id in target_date_field_keys and business_justification:
+                service_custom_fields["business_justification"] = business_justification
+
+            # HR Service Request has an additional required Urgency field
+            if ticket_type_id == 52 and urgency:
+                service_custom_fields["urgency"] = urgency
+
         print("\n========== EXCEL ROUTING ==========")
         print("Department:", department)
         print("Request Type:", request_type)
@@ -84,8 +115,12 @@ class TicketingTool:
             f"Resolver Group ID: {group_id}"
         )
 
-        if request_type == "Incident Request" and impact:
-            full_description += f"\nImpact: {impact}"
+        if request_type == "Incident Request":
+            if impact:
+                full_description += f"\nImpact: {impact}"
+
+            if start_date:
+                full_description += f"\nWhen did this start?: {start_date}" 
 
         # Ticket type is now taken from Excel, not hardcoded
         result = self.client.create_ticket(
@@ -94,6 +129,16 @@ class TicketingTool:
             ticket_type_id=ticket_type_id,
             priority=priority,
             impact=(impact if request_type == "Incident Request" else None),
+            start_date=(
+                start_date
+                if request_type == "Incident Request"
+                else None
+            ),
+            custom_fields=(
+                service_custom_fields
+                if request_type == "Service Request"
+                else None
+            ),
             group_id=group_id,
             category=category,
             subcategory=subcategory,

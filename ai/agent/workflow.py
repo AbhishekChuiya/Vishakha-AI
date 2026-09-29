@@ -504,10 +504,16 @@ class AgentWorkflow:
             }
 
         # ----------------------------------------------
-        # STEP 7: Target Date (Service Requests only)
+        # STEP 7: Service Request custom fields
         # ----------------------------------------------
 
-        if self.state.request_type == "Service Request":
+        service_request_custom_fields_required = (
+            self.state.request_type == "Service Request"
+            and self.state.department != "Strategy"
+        )
+
+        # Target Date
+        if service_request_custom_fields_required:
 
             if not getattr(self.state, "target_date", None):
 
@@ -521,11 +527,8 @@ class AgentWorkflow:
                     "placeholder": "Select target date",
                 }
 
-        # ----------------------------------------------
-        # Business Justification (Service Requests only)
-        # ----------------------------------------------
-
-        if self.state.request_type == "Service Request":
+        # Business Justification
+        if service_request_custom_fields_required:
 
             if not getattr(self.state, "business_justification", None):
 
@@ -534,9 +537,36 @@ class AgentWorkflow:
                 return {
                     "type": "question",
                     "field": "business_justification",
-                    "message": "Why is this service or requirement needed? Please provide the business justification.",
+                    "message": (
+                        "Why is this service or requirement needed? "
+                        "Please provide the business justification."
+                    ),
                     "input_type": "text",
                     "placeholder": "Enter the business justification...",
+                }
+
+        # ----------------------------------------------
+        # HR Service Request: Urgency
+        # ----------------------------------------------
+
+        if (
+            self.state.department == "HR Department"
+            and self.state.request_type == "Service Request"
+        ):
+
+            if not getattr(self.state, "urgency", None):
+
+                self.state.current_question = "urgency"
+
+                return {
+                    "type": "question",
+                    "field": "urgency",
+                    "message": "What is the urgency of this request?",
+                    "options": [
+                        "High - Work is completely blocked",
+                        "Medium - Work is significantly hindered",
+                        "Low - Work can continue with limitations",
+                    ],
                 }
 
         # ----------------------------------------------
@@ -774,6 +804,37 @@ class AgentWorkflow:
                 }
 
             self.state.business_justification = option.strip()
+            self.state.current_question = None
+
+            return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # HR Service Request: Urgency
+        # ----------------------------------------------
+
+        if field == "urgency":
+
+            valid_urgencies = {
+                "High - Work is completely blocked":
+                    "High - Work is completely blocked",
+
+                "Medium - Work is significantly hindered":
+                    "Medium\t- Work is significantly hindered",
+
+                "Low - Work can continue with limitations":
+                    "Low - Work can continue with limitations",
+            }
+
+            if option not in valid_urgencies:
+
+                return {
+                    "type": "question",
+                    "field": "urgency",
+                    "message": "Please select a valid urgency.",
+                    "options": list(valid_urgencies.keys()),
+                }
+
+            self.state.urgency = valid_urgencies[option]
             self.state.current_question = None
 
             return self.handle_create_ticket()
@@ -1126,6 +1187,36 @@ class AgentWorkflow:
                 impact=(
                     self.state.impact
                     if self.state.request_type == "Incident Request"
+                    else None
+                ),
+
+                start_date=(
+                    self.state.start_time.split("T")[0]
+                    if (
+                        self.state.request_type == "Incident Request"
+                        and self.state.start_time
+                    )
+                    else None
+                ),
+
+                target_date=(
+                    self.state.target_date
+                    if self.state.request_type == "Service Request"
+                    else None
+                ),
+
+                business_justification=(
+                    self.state.business_justification
+                    if self.state.request_type == "Service Request"
+                    else None
+                ),
+
+                urgency=(
+                    self.state.urgency
+                    if (
+                        self.state.department == "HR Department"
+                        and self.state.request_type == "Service Request"
+                    )
                     else None
                 ),
 
