@@ -12,791 +12,576 @@ class AgentOrchestrator:
     def understand_request(self, user_message, current_ticket_number=None):
 
         system_prompt = """
-You are a JSON information extraction engine for a company employee assistant.
+        You are a JSON information extraction engine for Darpan, a company employee assistant.
 
-Read the user's message carefully.
+        Read ONLY the user's current message and return ONLY valid JSON.
+        Do not use markdown or explanations.
+        Never invent information.
 
-Return ONLY valid JSON.
-Do not explain anything.
-Do not use markdown.
-Do not invent information.
+        Return exactly these fields:
 
-The JSON MUST have exactly these fields:
+        {
+            "intent": null,
+            "department": null,
+            "request_type": null,
+            "category": null,
+            "description": null,
+            "location": null,
+            "ticket_number": null,
+            "ticket_query": null,
+            "search_query": null,
+            "search_scope": null,
+            "priority": null,
+            "missing_fields": []
+        }
 
-{
-    "intent": "...",
-    "category": "...",
-    "description": "...",
-    "location": "...",
-    "ticket_number": "...",
-    "ticket_query": "...",
-    "search_query": "...",
-    "search_scope": "...",
-    "priority": "...",
-    "missing_fields": []
-}
+        ==================================================
+        INTENT
+        ==================================================
 
+        Allowed intents:
 
-==================================================
-ALLOWED INTENTS
-==================================================
+        - CREATE_TICKET
+        - CHECK_TICKET_STATUS
+        - SEARCH_TICKETS
+        - OTHER
 
-The allowed intent values are:
+        IMPORTANT:
 
-- CREATE_TICKET
-- CHECK_TICKET_STATUS
-- SEARCH_TICKETS
-- OTHER
+        Darpan is an employee service assistant.
 
+        When an employee asks the company to DO, PROVIDE, PREPARE,
+        CREATE, DESIGN, ARRANGE, REPAIR, REPLACE, APPROVE, INVESTIGATE,
+        ISSUE, BOOK, SUPPORT, CHANGE, REPORT, or otherwise fulfil
+        something for them, use:
 
-==================================================
-ALLOWED CATEGORIES
-==================================================
+        CREATE_TICKET
 
-The allowed category values are:
+        CREATE_TICKET means the employee is requesting a NEW company
+        service or reporting a NEW problem/requirement.
 
-- Laptop Repair
-- Desktop Repair
-- Network Issue
-- Software Issue
-- Other
+        The employee does NOT need to say:
+        - ticket
+        - request
+        - create ticket
+        - raise ticket
+        - service request
 
+        Natural employee requirements are CREATE_TICKET.
 
-==================================================
-ALLOWED PRIORITIES
-==================================================
+        Examples:
 
-The allowed priority values are:
+        "I need 2 pens - red and blue"
+        → CREATE_TICKET
+        → department = "Admin"
 
-- Low
-- Medium
-- High
-- Critical
+        "I need a new mouse"
+        → CREATE_TICKET
+        → department = "IT Department"
 
+        "My laptop is not working"
+        → CREATE_TICKET
+        → department = "IT Department"
 
-==================================================
-TICKET QUERY VALUES
-==================================================
+        "Someone stole material from the warehouse"
+        → CREATE_TICKET
+        → department = "Security"
 
-For CHECK_TICKET_STATUS, ticket_query must be one of:
+        "There is an unsafe condition near the machine"
+        → CREATE_TICKET
+        → department = "Safety"
 
-- STATUS
-- DETAILS
-- ASSIGNED_TO
-- REQUESTER
-- CREATED_DATE
-- UNKNOWN
+        "I need help with my insurance claim"
+        → CREATE_TICKET
+        → department = "Insurance"
 
+        "I need a presentation prepared for the board meeting"
+        → CREATE_TICKET
+        → department = "Branding"
 
-==================================================
-SEARCH SCOPE VALUES
-==================================================
+        "Please create an Instagram reel for our product"
+        → CREATE_TICKET
+        → department = "Branding"
 
-For SEARCH_TICKETS, search_scope MUST be exactly one of:
+        "We need branding for our exhibition stall"
+        → CREATE_TICKET
+        → department = "Branding"
 
-- MY_TICKETS
-- ALL_TICKETS
+        IMPORTANT DISTINCTION:
 
-Never return null for search_scope when intent is SEARCH_TICKETS.
+        A request to CREATE or PREPARE something is NOT a ticket search.
 
+        Example:
 
-==================================================
-CREATE_TICKET RULES
-==================================================
+        "Create an Instagram reel for our product"
+        → CREATE_TICKET
 
-1. If the user wants to report, create, raise, log, or open an
-   IT/service issue, use:
+        This does NOT mean the AI should personally create the reel.
+        It means the employee is requesting that the responsible
+        company department provide that service.
 
-   intent = "CREATE_TICKET"
+        "Prepare a presentation for the board meeting"
+        → CREATE_TICKET
 
-2. If the user mentions laptop, laptop problem, laptop repair,
-   laptop issue, or similar:
+        This does NOT mean SEARCH_TICKETS.
 
-   category = "Laptop Repair"
+        --------------------------------------------------
+        CHECK_TICKET_STATUS
+        --------------------------------------------------
 
-3. If the user mentions desktop or computer desktop problem:
+        Use CHECK_TICKET_STATUS only when the employee is asking about
+        one specific EXISTING ticket.
 
-   category = "Desktop Repair"
+        Examples:
 
-4. If the user mentions network, internet, Wi-Fi, LAN,
-   connectivity, network connection, or similar:
+        "What is the status of INC-00029?"
+        → CHECK_TICKET_STATUS
 
-   category = "Network Issue"
+        "Who is assigned to SRQAD-083?"
+        → CHECK_TICKET_STATUS
 
-5. If the user mentions software, application, or application error:
+        --------------------------------------------------
+        SEARCH_TICKETS
+        --------------------------------------------------
 
-   category = "Software Issue"
-6. DESCRIPTION RULE:
+        Use SEARCH_TICKETS only when the employee clearly wants to
+        find, search, show or list EXISTING tickets.
 
-For CREATE_TICKET, description must ONLY contain information
-explicitly present in the CURRENT user message.
+        SEARCH_TICKETS requires explicit ticket-search meaning.
 
-NEVER copy, reuse, or infer a description from:
-- previous user messages
-- previous tickets
-- conversation history
-- examples
-- current ticket context
+        Examples:
 
-If the current user message does not describe the problem,
-description MUST be null.
+        "Show my laptop tickets"
+        → SEARCH_TICKETS
 
-Examples:
+        "Find tickets about SAP"
+        → SEARCH_TICKETS
 
-User:
-"Create a laptop repair ticket for Ahmedabad Plant."
+        "Search for presentation tickets"
+        → SEARCH_TICKETS
 
-description = null
+        "List all network tickets"
+        → SEARCH_TICKETS
 
-User:
-"My laptop screen is not working. Create a ticket."
+        Do NOT use SEARCH_TICKETS merely because the message contains
+        a word that could also appear in an existing ticket.
 
-description = "My laptop screen is not working"
+        Compare:
 
-User:
-"My laptop keyboard is not working."
+        "I need a presentation prepared for the board meeting"
+        → CREATE_TICKET
 
-description = "My laptop keyboard is not working"
+        "Show me tickets about presentations"
+        → SEARCH_TICKETS
 
+        "I need business cards for new employees"
+        → CREATE_TICKET
 
-7. If the user explicitly mentions a plant, office, location,
-city, or site in the CURRENT message, put that information
-into location.
+        "Find my business card tickets"
+        → SEARCH_TICKETS
 
-8. If the user explicitly says low, medium, high, or critical
-priority in the CURRENT message, put that value into priority.
+        --------------------------------------------------
+        OTHER
+        --------------------------------------------------
 
-9. NEVER copy information from a previous user message into the
-current CREATE_TICKET request.
+        Use OTHER only when the message is genuinely not:
+        - a new employee service/problem/requirement
+        - a specific existing-ticket query
+        - an existing-ticket search
 
-10. NEVER invent missing information.
+        Examples:
 
-11. If information is not provided in the CURRENT user message,
-use null.
+        "Hello"
+        → OTHER
 
+        "Thank you"
+        → OTHER
 
-12. MISSING FIELD RULES:    
+        "What can you do?"
+        → OTHER
+        
+        ==================================================
+        DEPARTMENT
+        ==================================================
 
-For CREATE_TICKET:
-Required fields are ONLY:
-- category
-- description
-- location
-- priority
+        Allowed departments:
 
-For CREATE_TICKET, missing_fields must contain ONLY the required
-fields whose values are null.
+        - Branding
+        - Admin
+        - Safety
+        - Security
+        - Insurance
+        - Compliance & Risk
+        - HR Department
+        - Projects
+        - Finance
+        - IT Department
+        - Quality management
 
-Do NOT include these fields in missing_fields for CREATE_TICKET:
-- ticket_number
-- ticket_query
-- search_query
-- search_scope
+        For CREATE_TICKET, classify the responsible department when the
+        meaning of the user's request clearly identifies it.
 
-For CHECK_TICKET_STATUS:
-Required field:
-- ticket_number
+        Examples of business meaning:
 
-For SEARCH_TICKETS:
-Required field:
-- search_query
+        Laptop, desktop, network, Wi-Fi, software, SAP, Odoo, email,
+        IT hardware or IT access
+        → IT Department
 
-search_scope is NOT a missing field.
-search_scope must be MY_TICKETS or ALL_TICKETS.
+        Office stationery, pens, pencils, markers, registers, office supplies,
+        canteen, meal booking, vehicle booking, courier, business cards,
+        conference room requirements, AC repair, air conditioning problems,
+        electrical issues, plumbing issues, or general office facility problems
+        → Admin
 
-For OTHER:
-missing_fields must be [].
+        IMPORTANT FACILITY RULE:
 
-13. For CREATE_TICKET:
+        Office/building facility equipment such as AC, electrical systems and
+        plumbing belongs to Admin, NOT IT Department.
 
-ticket_number = null
-ticket_query = null
-search_query = null
-search_scope = null
+        Examples:
 
-==================================================
-CHECK_TICKET_STATUS RULES
-==================================================
+        "My AC is not working"
+        → department = "Admin"
 
-14. If the user asks about ticket status, ticket progress,
-    existing ticket, incident status, or asks to check a ticket:
+        "There is a plumbing issue in the office"
+        → department = "Admin"
 
-    intent = "CHECK_TICKET_STATUS"
+        "The office AC needs repair"
+        → department = "Admin"
 
-15. If the user provides a ticket number such as INCS-061,
-    extract it into ticket_number.
+        "My laptop is not working"
+        → department = "IT Department"
 
-16. Preserve the ticket number exactly as provided,
-    except normalizing obvious lowercase/uppercase differences.
+        Theft, unauthorized physical access, security incident
+        → Security
 
-17. If no ticket number is provided:
+        Unsafe condition, workplace safety issue or safety requirement
+        → Safety
 
-    ticket_number = null
+        Employee HR-related request
+        → HR Department
 
-18. Do not create a ticket for a status request.
+        Insurance-related request or claim
+        → Insurance
 
-19. Determine ticket_query as follows:
+        Finance-related request
+        → Finance
 
-    If the user asks:
-    "What is the status?"
-    "What is the current status?"
-    "Is my ticket open?"
-    "Has my ticket been resolved?"
+        Branding-related requirement
+        → Branding
 
-    ticket_query = "STATUS"
+        Compliance or risk-related requirement
+        → Compliance & Risk
 
-    If the user asks:
-    "Show me the details"
-    "What are the ticket details?"
-    "Tell me everything about the ticket"
+        Quality-related requirement
+        → Quality management
 
-    ticket_query = "DETAILS"
+        If the responsible department cannot reasonably be determined:
+        department = null
 
-    If the user asks:
-    "Who is assigned to it?"
-    "Who is handling the ticket?"
-    "Who is working on this ticket?"
+        Do not invent a department when the request is ambiguous.
 
-    ticket_query = "ASSIGNED_TO"
+        ==================================================
+        REQUEST TYPE
+        ==================================================
 
-    If the user asks:
-    "Who raised it?"
-    "Who created the ticket?"
-    "Who submitted the ticket?"
+        Possible request types include:
 
-    ticket_query = "REQUESTER"
+        - Incident Request
+        - Service Request
+        - Change Management
+        - Request For Information
 
-    If the user asks:
-    "When was it created?"
-    "When did I raise this ticket?"
-    "What date was the ticket created?"
+        Extract request_type when the user's CURRENT message contains the
+        request type name, even when it appears as part of a longer sentence.
 
-    ticket_query = "CREATED_DATE"
+        Match these phrases case-insensitively:
 
-    If none of the above can be determined:
+        "incident request" → "Incident Request"
+        "service request" → "Service Request"
+        "change management" → "Change Management"
+        "request for information" → "Request For Information"
 
-    ticket_query = "UNKNOWN"
+        Example:
 
-20. For CHECK_TICKET_STATUS:
+        "Create a SAP BASIS service request"
+        → request_type = "Service Request"
 
-    category = null
-    description = null
-    location = null
-    priority = null
-    search_query = null
-    search_scope = null
+        "Raise an incident request for my laptop"
+        → request_type = "Incident Request"
 
+        If none of these request-type phrases appear:
+        request_type = null
 
-==================================================
-SEARCH_TICKETS RULES
-==================================================
+        Examples:
 
-21. Use SEARCH_TICKETS when the user wants to find, search,
-    show, list, or locate tickets based on a keyword, issue,
-    category, or description.
+        "Create an incident request"
+        → Incident Request
 
-22. If the user provides a specific ticket number such as INCS-061
-    and asks about that specific ticket, use CHECK_TICKET_STATUS,
-    NOT SEARCH_TICKETS.
+        "Create a service request"
+        → Service Request
 
-23. For SEARCH_TICKETS, extract the main keyword or phrase
-    into search_query.
+        If the user does not specify it:
+        request_type = null
 
-Examples:
+        Do not decide Incident vs Service Request merely from the problem.
 
-"Find my laptop tickets"
-→ search_query = "laptop"
+        ==================================================
+        CATEGORY
+        ==================================================
 
-"Show tickets related to network"
-→ search_query = "network"
+        Do NOT invent portal category or subcategory names.
 
-"Find my screen issue ticket"
-→ search_query = "screen"
+        The application has its own department-specific category catalog.
 
-"Show tickets about keyboard problems"
-→ search_query = "keyboard"
+        Only populate category when the user's wording directly provides a
+        known category with high confidence.
 
-24. SEARCH SCOPE:
+        Otherwise:
+        category = null
 
-Use:
+        The application will ask the user to select the valid category and
+        subcategory when necessary.
 
-search_scope = "MY_TICKETS"
+        ==================================================
+        DESCRIPTION
+        ==================================================
 
-when the user clearly refers to their own tickets.
+        For CREATE_TICKET, description must contain only the actual
+        requirement/problem explicitly stated by the user.
 
-Self-reference includes:
+        You may remove command wording such as:
+        "create a ticket for"
+        "raise a ticket for"
+        "create a service request for"
 
-- my
-- I raised
-- I created
-- I submitted
-- I have raised
-- I have created
-- tickets I raised
-- tickets I created
-- tickets assigned to me
+        but NEVER add a problem, symptom, reason, quantity, item or fact
+        that the user did not provide.
 
-Examples:
+        Examples:
 
-"Find my laptop tickets"
+        User:
+        "Create a SAP BASIS service request"
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "laptop"
-→ search_scope = "MY_TICKETS"
+        description = null
 
-"Show my network tickets"
+        Do NOT invent:
+        "My SAP system is not responding"
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "network"
-→ search_scope = "MY_TICKETS"
+        User:
+        "My SAP system is not responding"
 
-"What laptop tickets have I raised?"
+        description = "My SAP system is not responding"
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "laptop"
-→ search_scope = "MY_TICKETS"
+        User:
+        "I need 2 pens - red and blue"
 
-"Show tickets I created about keyboard"
+        department = "Admin"
+        description = "I need 2 pens - red and blue"
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "keyboard"
-→ search_scope = "MY_TICKETS"
+        User:
+        "Create a laptop repair ticket"
 
+        department = "IT Department"
+        description = null
 
-Use:
+        IMPORTANT:
 
-search_scope = "ALL_TICKETS"
+        A command to create a ticket/request is NOT itself a description.
 
-when the user does NOT refer to their own tickets.
+        If removing the ticket-creation command leaves only:
+        - a department name
+        - a system name
+        - a category/subcategory name
+        - a request type
 
-Examples:
+        then description = null.
 
-"Show all laptop tickets"
+        Example:
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "laptop"
-→ search_scope = "ALL_TICKETS"
+        "Create a SAP BASIS service request"
 
-"Find tickets related to network"
+        After removing:
+        "Create a" + "service request"
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "network"
-→ search_scope = "ALL_TICKETS"
+        only "SAP BASIS" remains.
 
-"Show tickets about keyboard problems"
+        SAP BASIS identifies the system/subcategory but does not describe
+        what the user needs.
 
-→ intent = "SEARCH_TICKETS"
-→ search_query = "keyboard"
-→ search_scope = "ALL_TICKETS"
+        Therefore:
+        description = null
 
-25. IMPORTANT:
+        ==================================================
+        LOCATION
+        ==================================================
 
-For EVERY SEARCH_TICKETS request:
+        Populate location only when the user explicitly provides a plant,
+        office, site or location in the current message.
 
-search_scope MUST be either:
+        Otherwise:
+        location = null
 
-"MY_TICKETS"
+        ==================================================
+        PRIORITY
+        ==================================================
 
-or:
+        Allowed priorities:
 
-"ALL_TICKETS"
+        - Low
+        - Medium
+        - High
+        - Critical
 
-NEVER return:
+        Populate priority only when explicitly provided.
 
-null
+        Otherwise:
+        priority = null
 
-for search_scope when intent is SEARCH_TICKETS.
+        ==================================================
+        CHECK TICKET STATUS
+        ==================================================
 
-26. For SEARCH_TICKETS:
+        When asking about one specific ticket:
 
-ticket_number = null
-ticket_query = "UNKNOWN"
-location = null
-priority = null
+        intent = "CHECK_TICKET_STATUS"
 
-category may be determined if obvious.
+        Extract ticket_number when present.
 
-description may contain the issue description if useful.
+        ticket_query must be one of:
 
-27. If no useful search keyword can be identified:
+        - STATUS
+        - DETAILS
+        - ASSIGNED_TO
+        - REQUESTER
+        - CREATED_DATE
+        - UNKNOWN
 
-search_query = null
+        Examples:
 
-But search_scope must still be determined as:
+        "What is the status of INCIT-00503?"
+        → ticket_query = "STATUS"
 
-"MY_TICKETS"
+        "Who is assigned to INCIT-00503?"
+        → ticket_query = "ASSIGNED_TO"
 
-or:
+        "Who raised INCIT-00503?"
+        → ticket_query = "REQUESTER"
 
-"ALL_TICKETS"
+        "When was INCIT-00503 created?"
+        → ticket_query = "CREATED_DATE"
 
+        For CHECK_TICKET_STATUS:
+        department = null
+        request_type = null
+        category = null
+        description = null
+        location = null
+        priority = null
+        search_query = null
+        search_scope = null
 
-==================================================
-OTHER RULES
-==================================================
+        ==================================================
+        SEARCH TICKETS
+        ==================================================
 
-28. Greetings, general questions, or requests unrelated to
-    ticketing:
+        When the user wants to find/list/search tickets:
 
-    intent = "OTHER"
+        intent = "SEARCH_TICKETS"
 
-29. For OTHER:
+        Extract the main search term into search_query.
 
-    category = null
-    description = null
-    location = null
-    priority = null
-    ticket_number = null
-    ticket_query = "UNKNOWN"
-    search_query = null
-    search_scope = null
-    missing_fields = []
+        If the user refers to their own tickets:
+        search_scope = "MY_TICKETS"
 
+        Otherwise:
+        search_scope = "ALL_TICKETS"
 
-==================================================
-IMPORTANT EXAMPLES
-==================================================
+        Examples:
 
-Example 1:
+        "Find my laptop tickets"
+        → search_query = "laptop"
+        → search_scope = "MY_TICKETS"
 
-User:
-Create a laptop repair ticket
+        "Show tickets about network"
+        → search_query = "network"
+        → search_scope = "ALL_TICKETS"
 
-JSON:
-{
-    "intent": "CREATE_TICKET",
-    "category": "Laptop Repair",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": null,
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": [
-        "description",
-        "location",
-        "priority"
-    ]
-}
+        For SEARCH_TICKETS:
+        department = null
+        request_type = null
+        ticket_number = null
 
+        ==================================================
+        CREATE TICKET SAFETY
+        ==================================================
 
-Example 2:
+        For CREATE_TICKET:
 
-User:
-Create a laptop repair ticket for Ahmedabad Plant.
+        Never invent missing information.
 
-JSON:
-{
-    "intent": "CREATE_TICKET",
-    "category": "Laptop Repair",
-    "description": null,
-    "location": "Ahmedabad Plant",
-    "ticket_number": null,
-    "ticket_query": null,
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": [
-        "description",
-        "priority"
-    ]
-}
+        Never copy a description from an example.
 
-Example 3:
+        Never transform a vague request into a specific problem.
 
-User:
-Report a network issue
+        If the user names only a system/item/request type, do not invent
+        why they need it.
 
-JSON:
-{
-    "intent": "CREATE_TICKET",
-    "category": "Network Issue",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": null,
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": [
-        "description",
-        "location",
-        "priority"
-    ]
-}
+        Information not present in the current message must be null.
 
+        Department classification is allowed from clear business meaning,
+        but factual ticket details must come from the user's message.
 
-Example 4:
+        ==================================================
+        FINAL
+        ==================================================
 
-User:
-My laptop screen is not working at Ahmedabad plant.
-Priority should be high.
+        Return ONLY valid JSON.
 
-JSON:
-{
-    "intent": "CREATE_TICKET",
-    "category": "Laptop Repair",
-    "description": "My laptop screen is not working",
-    "location": "Ahmedabad plant",
-    "ticket_number": null,
-    "ticket_query": null,
-    "search_query": null,
-    "search_scope": null,
-    "priority": "High",
-    "missing_fields": []
-}
+        Do not add text before or after the JSON.
 
+        Use null for unknown values.
 
-Example 5:
-
-User:
-Check my ticket status
-
-JSON:
-{
-    "intent": "CHECK_TICKET_STATUS",
-    "category": null,
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "STATUS",
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 6:
-
-User:
-What is the status of INCS-061?
-
-JSON:
-{
-    "intent": "CHECK_TICKET_STATUS",
-    "category": null,
-    "description": null,
-    "location": null,
-    "ticket_number": "INCS-061",
-    "ticket_query": "STATUS",
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 7:
-
-User:
-Who is assigned to it?
-
-If the current ticket is INCS-061:
-
-JSON:
-{
-    "intent": "CHECK_TICKET_STATUS",
-    "category": null,
-    "description": null,
-    "location": null,
-    "ticket_number": "INCS-061",
-    "ticket_query": "ASSIGNED_TO",
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 8:
-
-User:
-Find my laptop tickets
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Laptop Repair",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "laptop",
-    "search_scope": "MY_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 9:
-
-User:
-Show my network tickets
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Network Issue",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "network",
-    "search_scope": "MY_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 10:
-
-User:
-What laptop tickets have I raised?
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Laptop Repair",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "laptop",
-    "search_scope": "MY_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 11:
-
-User:
-Show all laptop tickets
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Laptop Repair",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "laptop",
-    "search_scope": "ALL_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 12:
-
-User:
-Find tickets related to network
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Network Issue",
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "network",
-    "search_scope": "ALL_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 13:
-
-User:
-Show tickets about keyboard problems
-
-JSON:
-{
-    "intent": "SEARCH_TICKETS",
-    "category": "Laptop Repair",
-    "description": "keyboard problems",
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": "keyboard",
-    "search_scope": "ALL_TICKETS",
-    "priority": null,
-    "missing_fields": []
-}
-
-
-Example 14:
-
-User:
-Hello
-
-JSON:
-{
-    "intent": "OTHER",
-    "category": null,
-    "description": null,
-    "location": null,
-    "ticket_number": null,
-    "ticket_query": "UNKNOWN",
-    "search_query": null,
-    "search_scope": null,
-    "priority": null,
-    "missing_fields": []
-}
-
-
-==================================================
-FINAL VALIDATION
-==================================================
-
-Before returning the JSON, verify:
-
-1. intent is one of the allowed intent values.
-
-2. If intent = SEARCH_TICKETS:
-   - search_query is present when a keyword exists.
-   - search_scope is ALWAYS "MY_TICKETS" or "ALL_TICKETS".
-   - search_scope is NEVER null.
-
-3. If intent = CHECK_TICKET_STATUS:
-   - ticket_query is one of the allowed ticket query values.
-
-4. If intent = CREATE_TICKET:
-   - missing_fields contains every missing required field.
-
-5. Do not invent information.
-
-6. Return ONLY JSON.
-"""
-
-
+        Never invent information.
+        """
         # Add current ticket context when available.
         context_message = ""
 
         if current_ticket_number:
             context_message = f"""
-CURRENT TICKET CONTEXT:
+        CURRENT TICKET CONTEXT:
 
-The user is currently discussing ticket:
-{current_ticket_number}
+        The user is currently discussing ticket:
+        {current_ticket_number}
 
-If the user says:
-- it
-- this ticket
-- that ticket
-- my ticket
+        If the user says:
+        - it
+        - this ticket
+        - that ticket
+        - my ticket
 
-and does not provide another ticket number, use:
-{current_ticket_number}
+        and does not provide another ticket number, use:
+        {current_ticket_number}
 
-Do not replace the current ticket number unless the user
-explicitly provides a different ticket number.
-"""
+        Do not replace the current ticket number unless the user
+        explicitly provides a different ticket number.
+
+        IMPORTANT:
+
+        Current ticket context must NEVER be used to populate:
+
+        - department
+        - request_type
+        - category
+        - description
+        - location
+        - priority
+
+        for a new CREATE_TICKET request.
+
+        CREATE_TICKET information must come only from the current
+        user message.
+        """
 
         messages = [
             {
@@ -828,8 +613,36 @@ explicitly provides a different ticket number.
         result = self._parse_json(response)
 
         # ---------------------------------------------------------
+        # Ensure new fields always exist
+        # ---------------------------------------------------------
+        if "department" not in result:
+            result["department"] = None
+
+        # ---------------------------------------------------------
+        # Request Type must ALWAYS be selected by the employee.
+        # Never allow the initial LLM extraction to preselect it.
+        # ---------------------------------------------------------
+
+        if result.get("intent") == "CREATE_TICKET":
+
+            # Request Type must always be selected by the employee.
+            result["request_type"] = None
+
+            # Preserve the employee's original requirement as the
+            # ticket description instead of allowing the LLM to
+            # shorten, rewrite or drop it.
+            original_message = user_message.strip()
+
+            if original_message:
+                result["description"] = original_message
+
+        elif "request_type" not in result:
+            result["request_type"] = None
+
+        # ---------------------------------------------------------
         # Deterministic ticket-query routing
         # ---------------------------------------------------------
+
         if result.get("intent") == "CHECK_TICKET_STATUS":
 
             message_lower = user_message.lower()
@@ -921,7 +734,6 @@ explicitly provides a different ticket number.
 
             result["missing_fields"] = []
 
-
         # ---------------------------------------------------------
         # Deterministic safety fallback for SEARCH_TICKETS
         # ---------------------------------------------------------
@@ -941,7 +753,320 @@ explicitly provides a different ticket number.
                     user_message
                 )
 
+        # ---------------------------------------------------------
+        # Deterministic cleanup for non-create intents
+        # ---------------------------------------------------------
+
+        if result.get("intent") in [
+            "CHECK_TICKET_STATUS",
+            "SEARCH_TICKETS",
+            "OTHER",
+        ]:
+            result["department"] = None
+            result["request_type"] = None
+
         return result
+
+    def classify_category(
+        self,
+        description,
+        department,
+        request_type,
+        allowed_categories,
+        ):
+        """
+        Classify a ticket description into an allowed category/subcategory.
+
+        The LLM is NOT allowed to invent values.
+        It must choose only from allowed_categories.
+        """
+
+        if not description:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        if not department:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        if not request_type:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        if not allowed_categories:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        # -------------------------------------------------
+        # Deterministic classification for clear business terms
+        # -------------------------------------------------
+
+        description_lower = description.lower()
+
+        deterministic_rules = {
+            "Admin": [
+                (
+                    ["ac", "air conditioner", "air conditioning"],
+                    "Facility Management",
+                    "AC Repair",
+                ),
+                (
+                    ["electrical", "electricity", "power issue"],
+                    "Facility Management",
+                    "Electrical Issue",
+                ),
+                (
+                    ["plumbing", "water leakage", "water leak"],
+                    "Facility Management",
+                    "Plumbing Issue",
+                ),
+            ],
+
+            "Safety": [
+                (
+                    ["unsafe condition"],
+                    "Incident Reporting & Management",
+                    "Unsafe Condition Reporting",
+                ),
+                (
+                    ["unsafe act"],
+                    "Incident Reporting & Management",
+                    "Unsafe Act Reporting",
+                ),
+                (
+                    ["near miss"],
+                    "Incident Reporting & Management",
+                    "Near Miss Reporting",
+                ),
+                (
+                    ["accident", "got injured", "was injured", "injury"],
+                    "Incident Reporting & Management",
+                    "Accident Reporting",
+                ),
+                (
+                    ["ppe replacement", "replace my ppe", "replace ppe"],
+                    "PPE Compliance",
+                    "PPE Replacement Request",
+                ),
+                (
+                    ["ppe", "safety helmet", "safety shoes"],
+                    "PPE Compliance",
+                    "PPE Issuance",
+                ),
+                (
+                    ["plant audit"],
+                    "Safety Audits & Inspections",
+                    "Plant Audit Scheduling",
+                ),
+                (
+                    ["office safety inspection"],
+                    "Safety Audits & Inspections",
+                    "Office Safety Inspection",
+                ),
+                (
+                    ["safety induction"],
+                    "Training & Awareness",
+                    "Safety Induction Request",
+                ),
+                (
+                    ["safety training"],
+                    "Training & Awareness",
+                    "Safety Training Scheduling",
+                ),
+            ],
+            "Security": [
+            (
+                [
+                    "stole",
+                    "stolen",
+                    "theft",
+                    "stealing",
+                ],
+                "Security Incident Management",
+                "Theft Reporting",
+            ),
+            (
+                [
+                    "security breach",
+                    "breach",
+                    "unauthorized physical access",
+                    "unauthorised physical access",
+                    "intrusion",
+                ],
+                "Security Incident Management",
+                "Security Breach Reporting",
+            ),
+            (
+                [
+                    "lost id card",
+                    "lost my id card",
+                    "id card lost",
+                    "missing id card",
+                    "lost identity card",
+                ],
+                "Security Incident Management",
+                "Lost ID Card Reporting",
+            ),
+        ],
+        "Branding": [
+            (
+                ["board presentation", "board presentations", "board meeting"],
+                "Corporate Communication",
+                "Board Presentations",
+            ),
+            (
+                ["exhibition stall", "exhibition booth", "stall branding", "booth branding"],
+                "Events & Exhibitions",
+                "Stall/Booth Branding",
+            ),
+        ],
+        }
+
+        for keywords, category, subcategory in deterministic_rules.get(
+            department,
+            []
+        ):
+            if any(
+                keyword in description_lower
+                for keyword in keywords
+            ):
+                # Still validate against the request-type-filtered
+                # allowed catalog before accepting the rule.
+                if (
+                    category in allowed_categories
+                    and subcategory
+                    in allowed_categories.get(category, [])
+                ):
+                    return {
+                        "category": category,
+                        "subcategory": subcategory,
+                    }
+
+        allowed_lines = []
+
+        for category, subcategories in allowed_categories.items():
+            for subcategory in subcategories:
+                allowed_lines.append(
+                    f"- {category} -> {subcategory}"
+                )
+
+        allowed_text = "\n".join(allowed_lines)
+
+        system_prompt = f"""
+You are a strict ticket category classifier for Darpan.
+
+Classify the employee's requirement using ONLY the allowed
+Category -> Subcategory combinations below.
+
+Department:
+{department}
+
+Request Type selected by the employee:
+{request_type}
+
+Allowed combinations:
+
+{allowed_text}
+
+Return ONLY valid JSON in exactly this format:
+
+{{
+    "category": null,
+    "subcategory": null
+}}
+
+RULES:
+
+1. Select a category and subcategory ONLY from the allowed combinations.
+
+2. Never create, rename, shorten, translate or invent a category
+   or subcategory.
+
+3. Understand normal employee language and map its business meaning
+   to the closest valid combination when the meaning is clear.
+
+4. The category and subcategory must belong to the SAME allowed
+   combination.
+
+5. If the requirement does not clearly match an allowed combination,
+   return:
+
+{{
+    "category": null,
+    "subcategory": null
+}}
+
+Examples of semantic understanding:
+
+An employee asking for pens, pencils or similar writing supplies
+can match a writing-instrument subcategory if such a combination
+exists in the allowed list.
+
+An employee reporting an AC problem can match an AC repair
+subcategory if such a combination exists in the allowed list.
+
+Do not use these examples unless the corresponding values actually
+exist in the allowed combinations supplied above.
+
+Return ONLY JSON.
+"""
+
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": description,
+            },
+        ]
+
+        response = self.llm.chat(messages)
+
+        print("\nCATEGORY CLASSIFIER RAW RESPONSE:")
+        print(response)
+
+        result = self._parse_json(response)
+
+        category = result.get("category")
+        subcategory = result.get("subcategory")
+
+        # -------------------------------------------------
+        # Deterministic validation
+        # Never trust an LLM category without validation.
+        # -------------------------------------------------
+
+        if not category or not subcategory:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        if category not in allowed_categories:
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        if subcategory not in allowed_categories.get(category, []):
+            return {
+                "category": None,
+                "subcategory": None,
+            }
+
+        return {
+            "category": category,
+            "subcategory": subcategory,
+    }
 
     def _detect_search_scope(self, user_message):
         """
@@ -1001,35 +1126,102 @@ explicitly provides a different ticket number.
         return None
 
     def _parse_json(self, response):
+        """
+        Parse JSON returned by the LLM.
 
-        response = response.strip()
+        Handles:
+        - Markdown code fences
+        - Extra text before/after JSON
+        - Common truncated JSON at the end of a response
+        """
 
-        # Remove markdown code fences
-        response = re.sub(
-            r"```json",
-            "",
-            response,
-            flags=re.IGNORECASE
-        )
+        if not response:
+            raise ValueError("LLM returned an empty response.")
 
-        response = response.replace("```", "").strip()
+        text = response.strip()
 
-        # Try direct JSON parsing
+        # ---------------------------------------------------------
+        # 1. Remove markdown code fences
+        # ---------------------------------------------------------
+        if text.startswith("```"):
+            lines = text.splitlines()
+
+            # Remove first line: ```json / ```
+            if lines:
+                lines = lines[1:]
+
+            # Remove final ```
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+
+            text = "\n".join(lines).strip()
+
+        # ---------------------------------------------------------
+        # 2. Try normal JSON parsing first
+        # ---------------------------------------------------------
         try:
-            return json.loads(response)
+            return json.loads(text)
         except json.JSONDecodeError:
             pass
 
-        # Try extracting JSON object from surrounding text
-        match = re.search(
-            r"\{.*\}",
-            response,
-            re.DOTALL
-        )
+        # ---------------------------------------------------------
+        # 3. Extract JSON object if LLM added extra text
+        # ---------------------------------------------------------
+        start = text.find("{")
+        end = text.rfind("}")
 
-        if match:
-            return json.loads(match.group(0))
+        if start != -1 and end != -1 and end > start:
+            candidate = text[start:end + 1]
 
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        # ---------------------------------------------------------
+        # 4. Try repairing a truncated JSON response
+        # ---------------------------------------------------------
+        repaired = text
+
+        # The most common case we are seeing:
+        #
+        # "priority": "High
+        #
+        # Add the missing quote.
+        #
+        if repaired.count('"') % 2 != 0:
+            repaired += '"'
+
+        # If the JSON object itself is incomplete,
+        # close it.
+        if repaired.count("{") > repaired.count("}"):
+            repaired += "}"
+
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError:
+            pass
+
+        # ---------------------------------------------------------
+        # 5. Last attempt: extract the JSON object and repair it
+        # ---------------------------------------------------------
+        start = repaired.find("{")
+
+        if start != -1:
+            candidate = repaired[start:].strip()
+
+            if candidate.count("{") > candidate.count("}"):
+                candidate += "}"
+
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        # ---------------------------------------------------------
+        # 6. Nothing worked
+        # ---------------------------------------------------------
         raise ValueError(
-            f"LLM did not return valid JSON:\n{response}"
+            "LLM did not return valid JSON:\n"
+            f"{response}"
         )

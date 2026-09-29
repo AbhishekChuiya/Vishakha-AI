@@ -52,6 +52,219 @@ function addAIMessage(message) {
     scrollToBottom();
 }
 
+function addTextInput(placeholder, field) {
+
+    const container = document.createElement("div");
+    container.className = "ai-options";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = placeholder;
+    input.className = "chat-text-question-input";
+
+    const submitButton = document.createElement("button");
+    submitButton.textContent = "Submit";
+    submitButton.className = "chat-text-question-submit";
+
+    async function submitAnswer() {
+
+        const answer = input.value.trim();
+
+        if (!answer) {
+            input.focus();
+            return;
+        }
+
+        // Prevent duplicate submissions
+        submitButton.disabled = true;
+        input.disabled = true;
+
+        // Display user's answer in chat
+        addUserMessage(answer);
+
+        // Remove the temporary input
+        container.remove();
+
+        // Send answer using existing backend function
+        await sendToBackend(answer, "text");
+    }
+
+    submitButton.addEventListener("click", submitAnswer);
+
+    input.addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitAnswer();
+        }
+
+    });
+
+    container.appendChild(input);
+    container.appendChild(submitButton);
+
+    chatMessages.appendChild(container);
+
+    saveChatHistory();
+    scrollToBottom();
+
+    input.focus();
+}
+
+
+/* =========================================================
+   DATE AND DATE-TIME INPUTS
+========================================================= */
+
+function addDateInput(field, inputType, placeholder) {
+
+    const container = document.createElement("div");
+    container.className = "ai-options";
+
+    const input = document.createElement("input");
+    input.type = inputType; // "date" or "datetime-local"
+    input.className = "chat-text-question-input";
+    input.required = true;
+
+    // Target date: allow today and all future dates
+    if (field === "target_date") {
+        const today = new Date();
+
+        const minDate = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, "0"),
+            String(today.getDate()).padStart(2, "0")
+        ].join("-");
+
+        input.min = minDate;
+
+        // Request Indian/UK date display format
+        input.lang = "en-GB";
+    }
+
+    // Incident start time:
+    // do not allow the user to select a future date/time.
+    if (field === "start_time") {
+
+        function getLocalDateTimeValue(date) {
+            const year = date.getFullYear();
+
+            const month = String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+            const day = String(
+                date.getDate()
+            ).padStart(2, "0");
+
+            const hours = String(
+                date.getHours()
+            ).padStart(2, "0");
+
+            const minutes = String(
+                date.getMinutes()
+            ).padStart(2, "0");
+
+            return (
+                `${year}-${month}-${day}` +
+                `T${hours}:${minutes}`
+            );
+        }
+
+        input.max = getLocalDateTimeValue(
+            new Date()
+        );
+
+        input.addEventListener(
+            "focus",
+            function () {
+
+                this.max = getLocalDateTimeValue(
+                    new Date()
+                );
+            }
+        );
+    }
+
+        // Validate manually entered target dates
+    if (field === "target_date") {
+        input.addEventListener("change", function () {
+            if (this.value && this.value < this.min) {
+                alert("Please select today or a future date.");
+                this.value = "";
+            }
+        });
+    }
+
+    if (field === "start_time") {
+
+        input.addEventListener(
+            "change",
+            function () {
+
+                const selectedTime =
+                    new Date(this.value);
+
+                const now =
+                    new Date();
+
+                if (selectedTime > now) {
+
+                    alert(
+                        "Incident start time cannot be in the future."
+                    );
+
+                    this.value = "";
+                }
+            }
+        );
+    }
+
+    if (placeholder) {
+        input.setAttribute("aria-label", placeholder);
+    }
+
+    const submitButton = document.createElement("button");
+    submitButton.textContent = "Submit";
+    submitButton.className = "chat-text-question-submit";
+
+    async function submitAnswer() {
+
+        const answer = input.value;
+
+        if (!answer) {
+            input.focus();
+            return;
+        }
+
+        submitButton.disabled = true;
+        input.disabled = true;
+
+        addUserMessage(answer);
+        container.remove();
+
+        await sendToBackend(answer, "text");
+    }
+
+    submitButton.addEventListener("click", submitAnswer);
+
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitAnswer();
+        }
+    });
+
+    container.appendChild(input);
+    container.appendChild(submitButton);
+
+    chatMessages.appendChild(container);
+
+    saveChatHistory();
+    scrollToBottom();
+
+    input.focus();
+}
 
 /* =========================================================
    OPTION BUTTONS
@@ -96,36 +309,105 @@ function addOptionButtons(options) {
    CONFIRMATION CARD
 ========================================================= */
 
+
 function addConfirmation(ticket) {
 
     const container = document.createElement("div");
-
     container.className = "ticket-confirmation";
 
-    container.innerHTML = `
+    // Helper to safely display each field
+    function detailRow(label, value) {
+        if (value === null || value === undefined || value === "") {
+            return "";
+        }
 
+        return `
+            <div class="ticket-detail">
+                <strong>${escapeHtml(label)}:</strong>
+                <span>${escapeHtml(value)}</span>
+            </div>
+        `;
+    }
+
+    // Common ticket details
+    let detailsHTML = `
+        ${detailRow("Department", ticket.department)}
+        ${detailRow("Request Type", ticket.request_type)}
+        ${detailRow("Category", ticket.category)}
+        ${detailRow("Subcategory", ticket.subcategory)}
+        ${detailRow("Description", ticket.description)}
+        ${detailRow("Location", ticket.location)}
+        ${detailRow("Priority", ticket.priority)}
+    `;
+
+
+    function formatDateTime(value) {
+
+        if (!value) {
+            return "";
+        }
+
+        const date = new Date(value);
+
+        if (isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+            }
+        );
+    }
+
+    // Incident-specific details
+    if (ticket.request_type === "Incident Request") {
+        detailsHTML += `
+            ${detailRow("Impact", ticket.impact)}
+            ${detailRow(
+                "Incident Start Time",
+                formatDateTime(ticket.start_time)
+            )}
+        `;
+    }
+
+    // Service Request-specific details
+    if (ticket.request_type === "Service Request") {
+        detailsHTML += `
+            ${detailRow("Target Date", ticket.target_date)}
+            ${detailRow(
+                "Business Justification",
+                ticket.business_justification
+            )}
+        `;
+    }
+
+    // IT contact details
+    if (ticket.department === "IT") {
+        detailsHTML += `
+            ${detailRow("Email", ticket.email)}
+            ${detailRow("Phone", ticket.phone)}
+        `;
+    }
+
+    container.innerHTML = `
         <div class="confirmation-card">
 
-            <h3>Ticket Details</h3>
+            <h3>Review Ticket Details</h3>
 
-            <div class="ticket-detail">
-                <strong>Category:</strong>
-                ${escapeHtml(ticket.category)}
-            </div>
+            <p>
+                Please review the information below
+                before creating your ticket.
+            </p>
 
-            <div class="ticket-detail">
-                <strong>Issue:</strong>
-                ${escapeHtml(ticket.description)}
-            </div>
-
-            <div class="ticket-detail">
-                <strong>Location:</strong>
-                ${escapeHtml(ticket.location)}
-            </div>
-
-            <div class="ticket-detail">
-                <strong>Priority:</strong>
-                ${escapeHtml(ticket.priority)}
+            <div class="confirmation-details">
+                ${detailsHTML}
             </div>
 
             <div class="confirmation-buttons">
@@ -143,49 +425,29 @@ function addConfirmation(ticket) {
         </div>
     `;
 
-
     const confirmButton =
         container.querySelector(".confirm-button");
 
     const cancelButton =
         container.querySelector(".cancel-button");
 
+    // CONFIRM
+    confirmButton.addEventListener("click", function() {
+        disableButtons(container);
+        sendOption("Confirm & Create Ticket");
+    });
 
-    /* CONFIRM */
-
-    confirmButton.addEventListener(
-        "click",
-        function() {
-
-            disableButtons(container);
-
-            sendOption("Confirm & Create Ticket");
-
-        }
-    );
-
-
-    /* CANCEL */
-
-    cancelButton.addEventListener(
-        "click",
-        function() {
-
-            disableButtons(container);
-
-            sendOption("Cancel");
-
-        }
-    );
-
+    // CANCEL
+    cancelButton.addEventListener("click", function() {
+        disableButtons(container);
+        sendOption("Cancel");
+    });
 
     chatMessages.appendChild(container);
 
     saveChatHistory();
-
     scrollToBottom();
 }
-
 
 /* =========================================================
    DISABLE BUTTONS
@@ -420,25 +682,18 @@ function clearChatHistory() {
 
 async function sendMessage() {
 
-    const message =
-        chatInput.value.trim();
+    const message = chatInput.value.trim();
 
     if (!message) {
-
         return;
-
     }
 
     addUserMessage(message);
 
     chatInput.value = "";
 
-    await sendToBackend(
-        message,
-        "text"
-    );
+    await sendToBackend(message, "text");
 }
-
 
 /* =========================================================
    SEND OPTION
@@ -558,17 +813,40 @@ function handleAIResponse(result) {
 
     if (result.type === "question") {
 
-        addAIMessage(
-            result.message
-        );
+        addAIMessage(result.message);
 
-        addOptionButtons(
-            result.options
-        );
+
+        if (result.input_type === "date") {
+
+            addDateInput(
+                result.field,
+                "date",
+                result.placeholder || "Select a date"
+            );
+
+        } else if (result.input_type === "datetime-local") {
+
+            addDateInput(
+                result.field,
+                "datetime-local",
+                result.placeholder || "Select date and time"
+            );
+
+        } else if (result.input_type === "text") {
+
+            addTextInput(
+                result.placeholder || "Type your answer here...",
+                result.field
+            );
+
+        } else {
+
+            addOptionButtons(result.options || []);
+
+        }
 
         return;
     }
-
 
     /* CONFIRMATION */
 
