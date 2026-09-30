@@ -846,6 +846,29 @@ class AgentOrchestrator:
             result["department"] = None
 
         # ---------------------------------------------------------
+        # Validate department returned by the LLM.
+        # Never allow invented department names into the workflow.
+        # ---------------------------------------------------------
+
+        allowed_departments = [
+            "Branding",
+            "Admin",
+            "Safety",
+            "Security",
+            "Insurance",
+            "Compliance & Risk",
+            "HR Department",
+            "Projects",
+            "Finance",
+            "IT Department",
+            "Quality management",
+            "Strategy",
+        ]
+
+        if result.get("department") not in allowed_departments:
+            result["department"] = None
+
+        # ---------------------------------------------------------
         # Request Type must ALWAYS be selected by the employee.
         # Never allow the initial LLM extraction to preselect it.
         # ---------------------------------------------------------
@@ -854,6 +877,10 @@ class AgentOrchestrator:
 
             # Request Type must always be selected by the employee.
             result["request_type"] = None
+            # Location must always be explicitly selected by the employee.
+            # A plant/site mentioned inside the problem description does
+            # not necessarily represent the employee's ticket location.
+            result["location"] = None
 
             # Preserve the employee's original requirement as the
             # ticket description instead of allowing the LLM to
@@ -993,6 +1020,153 @@ class AgentOrchestrator:
             result["request_type"] = None
 
         return result
+
+    def classify_request_type(
+        self,
+        description,
+        department,
+        allowed_request_types,
+    ):
+        """
+        Recommend the most appropriate request type from the
+        request types actually available for the department.
+
+        This is advisory only. The employee's explicit selection
+        must never be silently overridden.
+        """
+
+        if not description:
+            return None
+
+        if not department:
+            return None
+
+        if not allowed_request_types:
+            return None
+
+        # If the department has only one possible request type,
+        # there is no meaningful mismatch to detect.
+        if len(allowed_request_types) <= 1:
+            return None
+
+        allowed_text = "\n".join(
+            f"- {request_type}"
+            for request_type in allowed_request_types
+        )
+
+        system_prompt = f"""
+    You are a strict ticket request-type classifier for Darpan.
+
+    Your task is to determine which request type BEST matches
+    the employee's requirement.
+
+    Department:
+    {department}
+
+    ALLOWED REQUEST TYPES:
+
+    {allowed_text}
+
+    You MUST choose ONLY from the allowed request types above.
+
+    GENERAL MEANING:
+
+    Incident Request:
+    Use when the employee is reporting that something existing
+    is broken, unavailable, failing, malfunctioning, interrupted,
+    or not working as expected.
+
+    Examples:
+    - laptop is not starting
+    - mouse stopped working
+    - network is down
+    - AC is not working
+    - system is giving an error
+
+    Service Request:
+    Use when the employee is asking for something to be provided,
+    issued, arranged, created, installed, enabled, booked,
+    replaced as a normal requirement, or otherwise fulfilled.
+
+    Examples:
+    - I need a new mouse
+    - I need pens
+    - I need a business card
+    - install software for me
+    - provide access
+    - book a conference room
+
+    IMPORTANT:
+
+    "I need a mouse" is normally a Service Request.
+
+    "My mouse is not working" is normally an Incident Request.
+
+    A request for a NEW item/service is different from reporting
+    that an EXISTING item/service has failed.
+
+    For other request types such as Change Management or
+    Request For Information, use their normal business meaning
+    only when those exact values are present in ALLOWED REQUEST TYPES.
+
+    If the description is too ambiguous to confidently distinguish
+    between the allowed request types, return null.
+
+    Return ONLY valid JSON:
+
+    {{
+        "request_type": "<exact allowed request type or null>"
+    }}
+
+    RULES:
+
+    1. Never invent a request type.
+
+    2. The returned value must exactly match one value from
+    ALLOWED REQUEST TYPES.
+
+    3. Do not decide based only on a single keyword. Understand
+    whether the employee is reporting a problem or requesting
+    something to be provided.
+
+    4. If uncertain, return null.
+
+    5. Do not include explanations, markdown or additional text.
+
+    Return JSON only.
+    """
+
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": description,
+            },
+        ]
+
+        response = self.llm.chat(messages)
+
+        print("\nREQUEST TYPE CLASSIFIER RAW RESPONSE:")
+        print(response)
+
+        result = self._parse_json(response)
+
+        recommended_request_type = result.get(
+            "request_type"
+        )
+
+        # Never trust an LLM value without validating it.
+        if (
+            not recommended_request_type
+            or recommended_request_type
+            not in allowed_request_types
+        ):
+            return None
+
+        return recommended_request_type
 
     def classify_category(
         self,

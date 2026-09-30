@@ -329,6 +329,7 @@ input {
 }
 
 .confirm-button,
+.change-details-button,
 .cancel-button {
     border: none;
     padding: 10px 14px;
@@ -341,6 +342,12 @@ input {
     color: white;
 }
 
+.change-details-button {
+    background: #ffffff;
+    color: #2563eb;
+    border: 1px solid #2563eb;
+}
+
 .cancel-button {
     background: #e5e7eb;
     color: #111827;
@@ -348,6 +355,10 @@ input {
 
 .confirm-button:hover {
     background: #1d4ed8;
+}
+
+.change-details-button:hover {
+    background: #eef2ff;
 }
 
 .cancel-button:hover {
@@ -439,6 +450,7 @@ input {
 
 .ai-option-button:disabled,
 .confirm-button:disabled,
+.change-details-button:disabled,
 .cancel-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -718,4 +730,240 @@ input {
 
 .chat-text-question-submit:hover {
     background: #4338ca;
+}
+
+.department-change-button {
+    display: inline-flex;
+    align-items: center;
+
+    margin-left: 8px;
+    padding: 3px 8px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+
+    background: transparent;
+
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+
+    color: #475569;
+
+    cursor: pointer;
+    vertical-align: middle;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.department-change-button:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #1e293b;
+}
+
+.department-change-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =========================
+   RECENT CHATS
+========================= */
+
+.chat-history-section {
+    margin-bottom: 22px;
+}
+
+.recent-chats {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    /*
+     * Give chat history much more vertical space.
+     * It will only scroll when there are many chats.
+     */
+    max-height: 420px;
+
+    overflow-y: auto;
+    overflow-x: visible;
+
+    padding: 0 4px 70px 4px;
+}
+
+
+/* Individual chat row */
+
+.recent-chat-row {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+
+    border-radius: 8px;
+
+    transition: background-color 0.15s ease;
+}
+
+.recent-chat-row:hover {
+    background: #f3f4f6;
+}
+
+
+/* Currently selected chat */
+
+.recent-chat-row.active {
+    background: #eef2ff;
+}
+
+
+/* Chat title */
+
+.recent-chat-item {
+    flex: 1;
+    min-width: 0;
+
+    border: none;
+    background: transparent;
+
+    padding: 9px 8px;
+
+    text-align: left;
+
+    font-size: 13px;
+    color: #374151;
+
+    cursor: pointer;
+
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.recent-chat-row.active .recent-chat-item {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+
+/* =========================
+   THREE DOT BUTTON
+========================= */
+
+.chat-menu-button {
+    flex-shrink: 0;
+
+    width: 30px;
+    height: 30px;
+
+    border: none;
+    border-radius: 6px;
+
+    background: transparent;
+
+    color: #6b7280;
+
+    font-size: 19px;
+    line-height: 1;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-menu-button:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+
+/* =========================
+   CHAT OPTIONS POPUP
+========================= */
+
+.chat-options-menu {
+    position: absolute;
+
+    top: 30px;
+    right: 4px;
+
+    width: 120px;
+
+    padding: 5px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.12);
+
+    z-index: 100;
+}
+
+
+/* Rename / Delete */
+
+.chat-options-menu button {
+    width: 100%;
+
+    border: none;
+    background: transparent;
+
+    padding: 9px 10px;
+
+    border-radius: 6px;
+
+    text-align: left;
+
+    font-size: 13px;
+    color: #374151;
+
+    cursor: pointer;
+}
+
+.chat-options-menu button:hover {
+    background: #f3f4f6;
+}
+
+
+/* Delete should visually indicate destructive action */
+
+.chat-options-menu .delete-chat-button {
+    color: #dc2626;
+}
+
+.chat-options-menu .delete-chat-button:hover {
+    background: #fef2f2;
+}
+
+
+/* =========================
+   RECENT CHAT SCROLLBAR
+========================= */
+
+.recent-chats::-webkit-scrollbar {
+    width: 5px;
+}
+
+.recent-chats::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.recent-chats::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+.recent-chats::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
 }

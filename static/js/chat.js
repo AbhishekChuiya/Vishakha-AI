@@ -3,6 +3,25 @@ const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-area");
 const CHAT_HISTORY_KEY = "darpan_chat_history";
 
+// Multiple-conversation storage
+const CHAT_LIST_KEY = "darpan_chat_list";
+const ACTIVE_CHAT_KEY = "darpan_active_chat_id";
+
+let activeChatId =
+    localStorage.getItem(ACTIVE_CHAT_KEY);
+
+if (!activeChatId) {
+
+    activeChatId =
+        "chat_" +
+        Date.now().toString();
+
+    localStorage.setItem(
+        ACTIVE_CHAT_KEY,
+        activeChatId
+    );
+}
+
 /* =========================================================
    USER MESSAGE
 ========================================================= */
@@ -49,6 +68,51 @@ function addAIMessage(message) {
     chatMessages.appendChild(messageDiv);
     saveChatHistory();
 
+    scrollToBottom();
+}
+
+function addDepartmentDetectionMessage(message) {
+
+    const messageDiv = document.createElement("div");
+
+    messageDiv.className = "message ai-message";
+
+    messageDiv.innerHTML = `
+        <div class="avatar">
+            AI
+        </div>
+
+        <div class="message-bubble">
+            <p>${escapeHtml(message)}</p>
+
+            <button
+                type="button"
+                class="department-change-button"
+                title="Change department"
+            >
+                Change
+            </button>
+        </div>
+    `;
+
+    const changeButton =
+        messageDiv.querySelector(
+            ".department-change-button"
+        );
+
+    changeButton.addEventListener(
+        "click",
+        function() {
+
+            changeButton.disabled = true;
+
+            sendOption("Change Department");
+        }
+    );
+
+    chatMessages.appendChild(messageDiv);
+
+    saveChatHistory();
     scrollToBottom();
 }
 
@@ -367,7 +431,10 @@ function addConfirmation(ticket) {
     }
 
     // Incident-specific details
-    if (ticket.request_type === "Incident Request") {
+    if (
+        ticket.request_type === "Incident Request" &&
+        ticket.department !== "IT Department"
+    ) {
         detailsHTML += `
             ${detailRow("Impact", ticket.impact)}
             ${detailRow(
@@ -386,13 +453,23 @@ function addConfirmation(ticket) {
                 ticket.business_justification
             )}
         `;
+
+        // HR Service Request-specific details
+        if (ticket.department === "HR Department") {
+            detailsHTML += `
+                ${detailRow("Urgency", ticket.urgency)}
+            `;
+        }
     }
 
-    // IT contact details
-    if (ticket.department === "IT") {
+    // IT Service Request / Incident Request contact details
+    if (
+        ticket.department === "IT Department" &&
+        ["Service Request", "Incident Request"].includes(ticket.request_type)
+    ) {
         detailsHTML += `
-            ${detailRow("Email", ticket.email)}
-            ${detailRow("Phone", ticket.phone)}
+            ${detailRow("Vishakha Email", ticket.email)}
+            ${detailRow("Phone Number", ticket.phone)}
         `;
     }
 
@@ -416,6 +493,10 @@ function addConfirmation(ticket) {
                     Confirm & Create Ticket
                 </button>
 
+                <button class="change-details-button">
+                    Change Details
+                </button>
+
                 <button class="cancel-button">
                     Cancel
                 </button>
@@ -428,6 +509,9 @@ function addConfirmation(ticket) {
     const confirmButton =
         container.querySelector(".confirm-button");
 
+    const changeDetailsButton =
+        container.querySelector(".change-details-button");
+
     const cancelButton =
         container.querySelector(".cancel-button");
 
@@ -435,6 +519,12 @@ function addConfirmation(ticket) {
     confirmButton.addEventListener("click", function() {
         disableButtons(container);
         sendOption("Confirm & Create Ticket");
+    });
+
+    // CHANGE DETAILS
+    changeDetailsButton.addEventListener("click", function() {
+        disableButtons(container);
+        sendOption("Change Details");
     });
 
     // CANCEL
@@ -544,10 +634,519 @@ function escapeHtml(text) {
 
 function saveChatHistory() {
 
+    // Keep the old key temporarily for backward compatibility.
     localStorage.setItem(
         CHAT_HISTORY_KEY,
         chatMessages.innerHTML
     );
+
+    let chats = [];
+
+    try {
+
+        chats = JSON.parse(
+            localStorage.getItem(CHAT_LIST_KEY)
+            || "[]"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not read chat list:",
+            error
+        );
+
+        chats = [];
+    }
+
+
+    const now =
+        new Date().toISOString();
+
+
+    const existingChat =
+        chats.find(function(chat) {
+
+            return chat.id === activeChatId;
+
+        });
+
+
+    if (existingChat) {
+
+        existingChat.html =
+            chatMessages.innerHTML;
+
+        existingChat.updatedAt =
+            now;
+
+    } else {
+
+        chats.unshift({
+            id: activeChatId,
+            title: "New Chat",
+            html: chatMessages.innerHTML,
+            createdAt: now,
+            updatedAt: now
+        });
+    }
+
+
+    localStorage.setItem(
+        CHAT_LIST_KEY,
+        JSON.stringify(chats)
+    );
+
+
+    localStorage.setItem(
+        ACTIVE_CHAT_KEY,
+        activeChatId
+    );
+}
+
+function openSavedChat(chatId) {
+
+    let chats = [];
+
+    try {
+
+        chats = JSON.parse(
+            localStorage.getItem(CHAT_LIST_KEY)
+            || "[]"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not open saved chat:",
+            error
+        );
+
+        return;
+    }
+
+
+    const selectedChat =
+        chats.find(function(chat) {
+
+            return chat.id === chatId;
+
+        });
+
+
+    if (!selectedChat) {
+
+        return;
+    }
+
+
+    /*
+     * Change active conversation.
+     */
+    activeChatId =
+        selectedChat.id;
+
+    localStorage.setItem(
+        ACTIVE_CHAT_KEY,
+        activeChatId
+    );
+
+
+    /*
+     * Display selected conversation.
+     */
+    chatMessages.innerHTML =
+        selectedChat.html || "";
+
+
+    /*
+     * Restore buttons contained inside
+     * the saved HTML.
+     */
+    restoreButtonEvents();
+
+
+    /*
+     * Refresh sidebar highlight.
+     */
+    renderRecentChats();
+
+
+    scrollToBottom();
+}
+
+function renderRecentChats() {
+
+    const recentChatsContainer =
+        document.getElementById(
+            "recent-chats"
+        );
+
+    if (!recentChatsContainer) {
+        return;
+    }
+
+
+    let chats = [];
+
+    try {
+
+        chats = JSON.parse(
+            localStorage.getItem(CHAT_LIST_KEY)
+            || "[]"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not read recent chats:",
+            error
+        );
+
+        chats = [];
+    }
+
+
+    recentChatsContainer.innerHTML = "";
+
+
+    /*
+     * Show most recently updated chats first.
+     */
+    chats.sort(function(a, b) {
+
+        return new Date(b.updatedAt) -
+               new Date(a.updatedAt);
+
+    });
+
+
+chats.forEach(function(chat) {
+
+    const row =
+        document.createElement("div");
+
+    row.className =
+        "recent-chat-row";
+
+
+    if (chat.id === activeChatId) {
+
+        row.classList.add(
+            "active"
+        );
+    }
+
+
+    /* =========================
+       CHAT TITLE
+    ========================= */
+
+    const button =
+        document.createElement("button");
+
+    button.type = "button";
+
+    button.className =
+        "recent-chat-item";
+
+    button.textContent =
+        chat.title || "New Chat";
+
+
+    button.addEventListener(
+        "click",
+        function() {
+
+            openSavedChat(
+                chat.id
+            );
+
+        }
+    );
+
+
+    /* =========================
+       THREE DOT MENU BUTTON
+    ========================= */
+
+    const menuButton =
+        document.createElement("button");
+
+    menuButton.type = "button";
+
+    menuButton.className =
+        "chat-menu-button";
+
+    menuButton.textContent = "⋮";
+
+    menuButton.title =
+        "Chat options";
+
+
+    /* =========================
+       POPUP MENU
+    ========================= */
+
+    const menu =
+        document.createElement("div");
+
+    menu.className =
+        "chat-options-menu";
+
+    menu.innerHTML = `
+        <button
+            type="button"
+            class="rename-chat-button">
+            Rename
+        </button>
+
+        <button
+            type="button"
+            class="delete-chat-button">
+            Delete
+        </button>
+    `;
+
+
+    /* Initially hide menu */
+
+    menu.style.display =
+        "none";
+
+
+    /* =========================
+       OPEN / CLOSE MENU
+    ========================= */
+
+    menuButton.addEventListener(
+        "click",
+        function(event) {
+
+            event.stopPropagation();
+
+            const isOpen =
+                menu.style.display ===
+                "block";
+
+
+            /*
+             * Close any other open
+             * chat menus first.
+             */
+
+            document
+                .querySelectorAll(
+                    ".chat-options-menu"
+                )
+                .forEach(function(otherMenu) {
+
+                    otherMenu.style.display =
+                        "none";
+
+                });
+
+
+            menu.style.display =
+                isOpen
+                    ? "none"
+                    : "block";
+
+        }
+    );
+
+
+    /* =========================
+       RENAME
+    ========================= */
+
+    const renameButton =
+        menu.querySelector(
+            ".rename-chat-button"
+        );
+
+
+    renameButton.addEventListener(
+        "click",
+        function(event) {
+
+            event.stopPropagation();
+
+            const currentTitle =
+                chat.title ||
+                "New Chat";
+
+
+            const newTitle =
+                prompt(
+                    "Rename chat:",
+                    currentTitle
+                );
+
+
+            if (
+                newTitle === null ||
+                !newTitle.trim()
+            ) {
+
+                return;
+            }
+
+
+            chat.title =
+                newTitle.trim();
+
+            chat.updatedAt =
+                new Date().toISOString();
+
+
+            localStorage.setItem(
+                CHAT_LIST_KEY,
+                JSON.stringify(chats)
+            );
+
+
+            renderRecentChats();
+
+        }
+    );
+
+
+    /* =========================
+       DELETE
+    ========================= */
+
+    const deleteButton =
+        menu.querySelector(
+            ".delete-chat-button"
+        );
+
+
+    deleteButton.addEventListener(
+        "click",
+        function(event) {
+
+            event.stopPropagation();
+
+
+            const confirmed =
+                confirm(
+                    "Delete this chat?"
+                );
+
+
+            if (!confirmed) {
+
+                return;
+            }
+
+
+            const updatedChats =
+                chats.filter(
+                    function(savedChat) {
+
+                        return (
+                            savedChat.id !==
+                            chat.id
+                        );
+
+                    }
+                );
+
+
+            localStorage.setItem(
+                CHAT_LIST_KEY,
+                JSON.stringify(
+                    updatedChats
+                )
+            );
+
+
+            /*
+             * If the currently open chat
+             * was deleted, open another
+             * available conversation.
+             */
+
+            if (
+                chat.id ===
+                activeChatId
+            ) {
+
+                if (
+                    updatedChats.length > 0
+                ) {
+
+                    activeChatId =
+                        updatedChats[0].id;
+
+                    localStorage.setItem(
+                        ACTIVE_CHAT_KEY,
+                        activeChatId
+                    );
+
+                    chatMessages.innerHTML =
+                        updatedChats[0].html ||
+                        "";
+
+                    restoreButtonEvents();
+
+                } else {
+
+                    /*
+                     * No conversations remain.
+                     */
+
+                    activeChatId =
+                        "chat_" +
+                        Date.now().toString();
+
+                    localStorage.setItem(
+                        ACTIVE_CHAT_KEY,
+                        activeChatId
+                    );
+
+                    localStorage.removeItem(
+                        CHAT_HISTORY_KEY
+                    );
+
+                    chatMessages.innerHTML =
+                        "";
+
+                }
+            }
+
+
+            renderRecentChats();
+
+            scrollToBottom();
+
+        }
+    );
+
+
+    /* =========================
+       BUILD ROW
+    ========================= */
+
+    row.appendChild(
+        button
+    );
+
+    row.appendChild(
+        menuButton
+    );
+
+    row.appendChild(
+        menu
+    );
+
+
+    recentChatsContainer.appendChild(
+        row
+    );
+
+});
 }
 
 function restoreButtonEvents() {
@@ -611,6 +1210,35 @@ function restoreButtonEvents() {
     });
 
 
+    const changeDetailsButtons =
+        document.querySelectorAll(
+            ".change-details-button"
+        );
+
+    changeDetailsButtons.forEach(function(button) {
+
+        button.addEventListener(
+            "click",
+            function() {
+
+                const container =
+                    button.closest(
+                        ".ticket-confirmation"
+                    );
+
+                disableButtons(
+                    container
+                );
+
+                sendOption(
+                    "Change Details"
+                );
+
+            }
+        );
+
+    });
+
     const cancelButtons =
         document.querySelectorAll(
             ".cancel-button"
@@ -644,25 +1272,79 @@ function restoreButtonEvents() {
 
 function restoreChatHistory() {
 
-    const history =
+    let chats = [];
+
+    try {
+
+        chats = JSON.parse(
+            localStorage.getItem(CHAT_LIST_KEY)
+            || "[]"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not restore chat list:",
+            error
+        );
+
+        chats = [];
+    }
+
+
+    const activeChat =
+        chats.find(function(chat) {
+
+            return chat.id === activeChatId;
+
+        });
+
+
+    /*
+     * Restore the active conversation from
+     * the new multi-chat storage.
+     */
+    if (activeChat && activeChat.html) {
+
+        chatMessages.innerHTML =
+            activeChat.html;
+
+        restoreButtonEvents();
+
+        scrollToBottom();
+
+        return true;
+    }
+
+
+    /*
+     * Backward compatibility:
+     * restore an old conversation saved before
+     * multi-chat history was introduced.
+     */
+    const legacyHistory =
         localStorage.getItem(
             CHAT_HISTORY_KEY
         );
 
-    if (!history) {
 
-        return false;
+    if (legacyHistory) {
 
+        chatMessages.innerHTML =
+            legacyHistory;
+
+        restoreButtonEvents();
+
+        scrollToBottom();
+
+        // Migrate it into the new storage.
+        saveChatHistory();
+
+        return true;
     }
 
-    chatMessages.innerHTML =
-        history;
 
-    restoreButtonEvents();
-
-    scrollToBottom();
-
-    return true;
+    return false;
 }
 
 
@@ -676,23 +1358,127 @@ function clearChatHistory() {
 
 }
 
+
+function setAutomaticChatTitle(message) {
+
+    let chats = [];
+
+    try {
+
+        chats = JSON.parse(
+            localStorage.getItem(CHAT_LIST_KEY)
+            || "[]"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not update chat title:",
+            error
+        );
+
+        return;
+    }
+
+
+    const activeChat =
+        chats.find(function(chat) {
+
+            return chat.id === activeChatId;
+
+        });
+
+
+    if (!activeChat) {
+        return;
+    }
+
+
+    /*
+     * Only automatically rename chats that
+     * still have the default title.
+     *
+     * This prevents manually renamed chats
+     * from being overwritten.
+     */
+    if (
+        activeChat.title !== "New Chat"
+    ) {
+        return;
+    }
+
+
+    let title =
+        message.trim();
+
+
+    /*
+     * Keep stored titles reasonably short.
+     */
+    if (title.length > 45) {
+
+        title =
+            title.substring(0, 45)
+                .trim() + "...";
+    }
+
+
+    if (!title) {
+        return;
+    }
+
+
+    activeChat.title =
+        title;
+
+    activeChat.updatedAt =
+        new Date().toISOString();
+
+
+    localStorage.setItem(
+        CHAT_LIST_KEY,
+        JSON.stringify(chats)
+    );
+
+
+    renderRecentChats();
+}
+
 /* =========================================================
    SEND NORMAL MESSAGE
 ========================================================= */
 
 async function sendMessage() {
 
-    const message = chatInput.value.trim();
+    const message =
+        chatInput.value.trim();
 
     if (!message) {
         return;
     }
 
-    addUserMessage(message);
+
+    addUserMessage(
+        message
+    );
+
+
+    /*
+     * Use the employee's first message
+     * as the automatic conversation title.
+     */
+    setAutomaticChatTitle(
+        message
+    );
+
 
     chatInput.value = "";
 
-    await sendToBackend(message, "text");
+
+    await sendToBackend(
+        message,
+        "text"
+    );
 }
 
 /* =========================================================
@@ -813,7 +1599,21 @@ function handleAIResponse(result) {
 
     if (result.type === "question") {
 
-        addAIMessage(result.message);
+        if (
+            result.field === "request_type" &&
+            result.department
+        ) {
+
+            addDepartmentDetectionMessage(
+                result.message
+            );
+
+        } else {
+
+            addAIMessage(
+                result.message
+            );
+        }
 
 
         if (result.input_type === "date") {
@@ -1290,10 +2090,23 @@ async function startNewChat() {
         }
 
 
-        /* Clear browser chat */
+        /* -------------------------------------------------
+        Start a completely new conversation
+        ------------------------------------------------- */
 
+        // Remove the legacy single-chat copy.
         localStorage.removeItem(
             CHAT_HISTORY_KEY
+        );
+
+        // Create a new unique conversation ID.
+        activeChatId =
+            "chat_" +
+            Date.now().toString();
+
+        localStorage.setItem(
+            ACTIVE_CHAT_KEY,
+            activeChatId
         );
 
 
@@ -1342,7 +2155,19 @@ async function startNewChat() {
             suggestions
         );
 
+
+        /*
+        * Save the newly created conversation.
+        */
         saveChatHistory();
+
+
+        /*
+        * Immediately show the new conversation
+        * in the Recent Chats sidebar.
+        */
+        renderRecentChats();
+
 
         scrollToBottom();
 
@@ -1368,6 +2193,8 @@ async function startNewChat() {
 setupSuggestions();
 
 restoreChatHistory();
+
+renderRecentChats();
 
 restoreConversationState();
 

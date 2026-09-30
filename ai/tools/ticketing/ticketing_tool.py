@@ -22,6 +22,8 @@ class TicketingTool:
         target_date=None,
         business_justification=None,
         urgency=None,
+        email=None,
+        phone=None,
         request_type=None,
         department=None,
     ):
@@ -43,11 +45,42 @@ class TicketingTool:
             else:
                 group_hint = subcategory or category
 
-        elif department in ["Admin", "Safety", "Security", "Branding", "HR Department", "Insurance", "Finance", "Compliance & Risk", "Projects", "Quality management", "Strategy"]:
+        elif department == "Admin" and request_type == "Service Request":
+
+            # Admin HO has two different Service Request resolver groups.
+            # Route based on the selected category.
+            admin_ho_group_mapping = {
+                "Business Card": "Admin - HO - SR",
+                "Stationery": "Admin - HO - SR",
+                "Stationery Request": "Admin - HO - SR",
+
+                "Courier Facility": "Admin_HO_SR",
+                "Fleet Management": "Admin_HO_SR",
+                "Conference Room Booking": "Admin_HO_SR",
+                "Canteen Management": "Admin_HO_SR",
+            }
+
+            group_hint = admin_ho_group_mapping.get(category)
+
+        elif department in [
+            "Admin",
+            "Safety",
+            "Security",
+            "Branding",
+            "HR Department",
+            "Insurance",
+            "Finance",
+            "Compliance & Risk",
+            "Projects",
+            "Quality management",
+            "Strategy",
+        ]:
             group_hint = None
 
         else:
             group_hint = subcategory or category
+
+
 
         # Look up the exact route in the Excel mapping
         route = find_route(
@@ -60,11 +93,12 @@ class TicketingTool:
         ticket_type_id = int(route["ticket id"])
         group_id = int(route["group id"])
 
-        # Build Service Request custom fields based on the actual ticket type
+        # Build custom fields
         service_custom_fields = {}
+        incident_custom_fields = {}
 
         if request_type == "Service Request":
-
+                    
             target_date_field_keys = {
                 11: "neede_by",   # Admin
                 16: "needed_by",  # Safety
@@ -73,6 +107,7 @@ class TicketingTool:
                 51: "needed_by",  # Finance
                 54: "needed_by",  # Insurance
                 50: "needed_by",  # Compliance & Risk
+                55: "needed_by",  # IT Department
             }
 
             target_date_key = target_date_field_keys.get(ticket_type_id)
@@ -86,6 +121,26 @@ class TicketingTool:
             # HR Service Request has an additional required Urgency field
             if ticket_type_id == 52 and urgency:
                 service_custom_fields["urgency"] = urgency
+
+            # IT Service Request has additional required contact fields
+            if ticket_type_id == 55:
+
+                if email:
+                    service_custom_fields["Mail_Id"] = email
+
+                if phone:
+                    service_custom_fields["Phone_Number"] = phone
+
+                    # Build Incident Request custom fields
+
+        # IT Incident Request (ticket type 56)
+        if request_type == "Incident Request" and ticket_type_id == 56:
+
+            if email:
+                incident_custom_fields["Mail_Id"] = email
+
+            if phone:
+                incident_custom_fields["phone"] = phone
 
         print("\n========== EXCEL ROUTING ==========")
         print("Department:", department)
@@ -137,7 +192,14 @@ class TicketingTool:
             custom_fields=(
                 service_custom_fields
                 if request_type == "Service Request"
-                else None
+                else (
+                    incident_custom_fields
+                    if (
+                        request_type == "Incident Request"
+                        and ticket_type_id == 56
+                    )
+                    else None
+                )
             ),
             group_id=group_id,
             category=category,

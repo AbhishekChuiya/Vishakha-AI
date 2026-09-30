@@ -367,6 +367,19 @@ CATEGORIES = {
 
 
 SUBCATEGORY_REQUEST_TYPES = {
+
+    "IT Department": {
+        category: {
+            subcategory: [
+                "Incident Request",
+                "Service Request",
+            ]
+            for subcategory in subcategories
+        }
+        for category, subcategories in CATEGORIES[
+            "IT Department"
+        ].items()
+    },
     
     "Admin": {
         "Canteen Management": {

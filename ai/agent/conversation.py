@@ -91,11 +91,16 @@ class ConversationState:
 
         # Incident Request fields
         if self.request_type == "Incident Request":
-            if not self.impact:
-                missing.append("impact")
 
-            if not self.start_time:
-                missing.append("start_time")
+            # IT Incident Request (ticket type 56) does not use
+            # Impact or Incident Start Time.
+            if self.department != "IT Department":
+
+                if not self.impact:
+                    missing.append("impact")
+
+                if not self.start_time:
+                    missing.append("start_time")
 
         # Service Request fields
         elif self.request_type == "Service Request":
@@ -115,8 +120,11 @@ class ConversationState:
                 if not self.urgency:
                     missing.append("urgency")
 
-        # IT requests require contact details
-        if self.department == "IT":
+        # IT Service Request and Incident Request require contact details
+        if (
+            self.department == "IT Department"
+            and self.request_type in ["Service Request", "Incident Request"]
+        ):
             if not self.email:
                 missing.append("email")
 
@@ -165,8 +173,29 @@ class ConversationState:
                 )
                 else None
             ),
-            "email": self.email if self.department == "IT" else None,
-            "phone": self.phone if self.department == "IT" else None,
+            "email": (
+                self.email
+                if (
+                    self.department == "IT Department"
+                    and self.request_type in [
+                        "Service Request",
+                        "Incident Request",
+                    ]
+                )
+                else None
+            ),
+
+            "phone": (
+                self.phone
+                if (
+                    self.department == "IT Department"
+                    and self.request_type in [
+                        "Service Request",
+                        "Incident Request",
+                    ]
+                )
+                else None
+            ),
         }
 
     # SESSION SERIALIZATION

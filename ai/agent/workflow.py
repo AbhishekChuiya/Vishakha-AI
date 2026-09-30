@@ -270,7 +270,11 @@ class AgentWorkflow:
             return {
                 "type": "question",
                 "field": "department",
-                "message": "Which department is this request for?",
+                "message": (
+                    "I couldn't confidently determine the department "
+                    "from your request. Please select the appropriate "
+                    "department below."
+                ),
                 "options": departments,
             }
 
@@ -304,7 +308,12 @@ class AgentWorkflow:
             return {
                 "type": "question",
                 "field": "request_type",
-                "message": "What type of request would you like to create?",
+                "message": (
+                    f"I understand this is a "
+                    f"{self.state.department} request.\n\n"
+                    f"What type of request would you like to create?"
+                ),
+                "department": self.state.department,
                 "options": valid_request_types,
             }
 
@@ -408,6 +417,41 @@ class AgentWorkflow:
 
         if not self.state.selected_category:
 
+            request_type_mapping = SUBCATEGORY_REQUEST_TYPES.get(
+                department,
+                {}
+            )
+
+            filtered_categories = {}
+
+            for category, subcategories in department_categories.items():
+
+                valid_subcategories = []
+
+                for subcategory in subcategories:
+
+                    allowed_request_types = (
+                        request_type_mapping
+                        .get(category, {})
+                        .get(subcategory, [])
+                    )
+
+                    if self.state.request_type in allowed_request_types:
+                        valid_subcategories.append(subcategory)
+
+                if valid_subcategories:
+                    filtered_categories[category] = valid_subcategories
+
+            if not filtered_categories:
+                return {
+                    "type": "message",
+                    "message": (
+                        f"No categories are configured for "
+                        f"{self.state.request_type} under "
+                        f"{department}."
+                    ),
+                }
+
             self.state.current_question = "category"
 
             return {
@@ -416,7 +460,7 @@ class AgentWorkflow:
                 "message": (
                     "Which category is this request related to?"
                 ),
-                "options": list(department_categories.keys()),
+                "options": list(filtered_categories.keys()),
             }
 
         # ----------------------------------------------
@@ -433,15 +477,36 @@ class AgentWorkflow:
             []
         )
 
+        # Only keep subcategories valid for the selected request type
+        request_type_mapping = SUBCATEGORY_REQUEST_TYPES.get(
+            department,
+            {}
+        )
+
+        valid_subcategories = []
+
+        for subcategory in category_subcategories:
+
+            allowed_request_types = (
+                request_type_mapping
+                .get(selected_category, {})
+                .get(subcategory, [])
+            )
+
+            if self.state.request_type in allowed_request_types:
+                valid_subcategories.append(subcategory)
+
+
         if not self.state.subcategory:
 
-            if not category_subcategories:
+            if not valid_subcategories:
 
                 return {
                     "type": "message",
                     "message": (
                         f"No subcategories are configured for "
-                        f"{selected_category}."
+                        f"{selected_category} under "
+                        f"{self.state.request_type}."
                     ),
                 }
 
@@ -454,9 +519,8 @@ class AgentWorkflow:
                     f"Which subcategory under {selected_category} "
                     "is this request related to?"
                 ),
-                "options": category_subcategories,
+                "options": valid_subcategories,
             }
-
         # ----------------------------------------------
         # STEP 5: Description
         # ----------------------------------------------
@@ -570,11 +634,52 @@ class AgentWorkflow:
                 }
 
         # ----------------------------------------------
+        # IT Service Request / Incident Request: Contact Details
+        # ----------------------------------------------
+
+        if (
+            self.state.department == "IT Department"
+            and self.state.request_type in [
+                "Service Request",
+                "Incident Request",
+            ]
+        ):
+
+            # Vishakha Email
+            if not getattr(self.state, "email", None):
+
+                self.state.current_question = "email"
+
+                return {
+                    "type": "question",
+                    "field": "email",
+                    "message": "Please enter your Vishakha email address.",
+                    "input_type": "text",
+                    "placeholder": "name@vishakha.com",
+                }
+
+            # Phone Number
+            if not getattr(self.state, "phone", None):
+
+                self.state.current_question = "phone"
+
+                return {
+                    "type": "question",
+                    "field": "phone",
+                    "message": "Please enter your contact number.",
+                    "input_type": "text",
+                    "placeholder": "Enter phone number",
+                }
+
+        # ----------------------------------------------
         # STEP 7: Impact (Incident Requests only)
         # ----------------------------------------------
 
-        if self.state.request_type == "Incident Request":
-
+        if (
+            self.state.request_type == "Incident Request"
+            and self.state.department != "IT Department"
+            and not self.state.start_time
+        ):
             valid_impacts = [
                 "High",
                 "Medium",
@@ -604,9 +709,9 @@ class AgentWorkflow:
 
         if (
             self.state.request_type == "Incident Request"
+            and self.state.department != "IT Department"
             and not self.state.start_time
         ):
-
             self.state.current_question = "start_time"
 
             return {
@@ -629,7 +734,9 @@ class AgentWorkflow:
             "ticket": self.state.get_summary(),
             "options": [
                 "Confirm & Create Ticket",
+                "Change Details",
                 "Cancel",
+
             ],
         }
 
@@ -674,20 +781,350 @@ class AgentWorkflow:
             if option == "Confirm & Create Ticket":
                 return self.confirm_ticket()
 
+            if option == "Change Details":
+
+                self.state.current_question = "change_field"
+
+                change_options = [
+                    "Department",
+                    "Request Type",
+                    "Category",
+                    "Subcategory",
+                    "Description",
+                    "Location",
+                    "Priority",
+                ]
+
+                # Service Request specific fields
+                if self.state.request_type == "Service Request":
+
+                    if getattr(self.state, "target_date", None):
+                        change_options.append("Target Date")
+
+                    if getattr(self.state, "business_justification", None):
+                        change_options.append("Business Justification")
+
+                # IT specific fields
+                if self.state.department == "IT Department":
+
+                    if getattr(self.state, "email", None):
+                        change_options.append("Vishakha Email")
+
+                    if getattr(self.state, "phone", None):
+                        change_options.append("Phone Number")
+
+                # Incident specific fields
+                if self.state.request_type == "Incident Request":
+
+                    if getattr(self.state, "impact", None):
+                        change_options.append("Impact")
+
+                    if getattr(self.state, "start_time", None):
+                        change_options.append("Incident Start Time")
+
+                # HR Service Request specific field
+                if (
+                    self.state.department == "HR Department"
+                    and self.state.request_type == "Service Request"
+                    and getattr(self.state, "urgency", None)
+                ):
+                    change_options.append("Urgency")
+
+                self.state.current_question = "change_field"
+
+                return {
+                    "type": "question",
+                    "field": "change_field",
+                    "message": "Which ticket detail would you like to change?",
+                    "options": change_options,
+                }
+
             if option == "Cancel":
                 return self.cancel()
 
             return {
-                "type": "message",
-                "message": (
-                    "Please select either "
-                    "'Confirm & Create Ticket' or 'Cancel'."
-                ),
+                "type": "question",
+                "field": "confirmation",
+                "message": "Please select one of the available options.",
                 "options": [
                     "Confirm & Create Ticket",
+                    "Change Details",
                     "Cancel",
                 ],
             }
+
+        # ----------------------------------------------
+        # Change Ticket Detail
+        # ----------------------------------------------
+
+        if field == "change_field":
+
+            field_mapping = {
+                "Department": "department",
+                "Request Type": "request_type",
+                "Category": "category",
+                "Subcategory": "subcategory",
+                "Description": "description",
+                "Location": "location",
+                "Priority": "priority",
+                "Target Date": "target_date",
+                "Business Justification": "business_justification",
+                "Vishakha Email": "email",
+                "Phone Number": "phone",
+                "Impact": "impact",
+                "Incident Start Time": "start_time",
+                "Urgency": "urgency",
+            }
+
+
+
+            selected_field = field_mapping.get(option)
+
+            if not selected_field:
+                return {
+                    "type": "question",
+                    "field": "change_field",
+                    "message": "Please select the ticket detail you want to change.",
+                    "options": list(field_mapping.keys()),
+                }
+
+            # Clear the selected value so the normal workflow
+            # can ask for it again.
+            if selected_field == "department":
+                self.state.department = None
+                self.state.request_type = None
+
+                # Department/request-type dependent fields
+                self.state.selected_category = None
+                self.state.category = None
+                self.state.subcategory = None
+
+                # Service Request specific fields
+                self.state.target_date = None
+                self.state.business_justification = None
+                self.state.urgency = None
+
+                # Incident specific fields
+                self.state.impact = None
+                self.state.start_time = None
+
+                # IT specific fields
+                self.state.email = None
+                self.state.phone = None
+
+                self.state.current_question = "department"
+
+                return {
+                    "type": "question",
+                    "field": "department",
+                    "message": "Please select the new department.",
+                    "options": get_departments(),
+                }
+
+            elif selected_field == "request_type":
+                self.state.request_type = None
+
+                # Category depends on request type
+                self.state.selected_category = None
+                self.state.category = None
+                self.state.subcategory = None
+
+                # Clear Service Request specific fields
+                self.state.target_date = None
+                self.state.business_justification = None
+                self.state.urgency = None
+
+                # Clear Incident specific fields
+                self.state.impact = None
+                self.state.start_time = None
+
+                # IT fields may differ between IT Incident and IT Service Request
+                self.state.email = None
+                self.state.phone = None
+
+                self.state.current_question = "request_type"
+
+                return {
+                    "type": "question",
+                    "field": "request_type",
+                    "message": "Please select the new request type.",
+                    "options": REQUEST_TYPES.get(
+                        self.state.department,
+                        []
+                    ),
+                }
+
+            elif selected_field == "category":
+                self.state.selected_category = None
+                self.state.category = None
+                self.state.subcategory = None
+
+                department_categories = CATEGORIES.get(
+                    self.state.department,
+                    {}
+                )
+
+                request_type_mapping = SUBCATEGORY_REQUEST_TYPES.get(
+                    self.state.department,
+                    {}
+                )
+
+                # Only show categories that contain at least one
+                # subcategory valid for the selected request type.
+                filtered_categories = {}
+
+                for category, subcategories in department_categories.items():
+
+                    valid_subcategories = []
+
+                    for subcategory in subcategories:
+
+                        allowed_request_types = (
+                            request_type_mapping
+                            .get(category, {})
+                            .get(subcategory, [])
+                        )
+
+                        if self.state.request_type in allowed_request_types:
+                            valid_subcategories.append(subcategory)
+
+                    if valid_subcategories:
+                        filtered_categories[category] = valid_subcategories
+
+                self.state.current_question = "category"
+
+                return {
+                    "type": "question",
+                    "field": "category",
+                    "message": "Please select the new category.",
+                    "options": list(filtered_categories.keys()),
+                }
+
+            elif selected_field == "email":
+                self.state.email = None
+                self.state.current_question = "email"
+
+                return {
+                    "type": "question",
+                    "field": "email",
+                    "message": "Please enter the new Vishakha Email.",
+                    "input_type": "text",
+                    "placeholder": "Enter Vishakha Email...",
+                }
+
+            elif selected_field == "phone":
+                self.state.phone = None
+                self.state.current_question = "phone"
+
+                return {
+                    "type": "question",
+                    "field": "phone",
+                    "message": "Please enter the new Phone Number.",
+                    "input_type": "text",
+                    "placeholder": "Enter Phone Number...",
+                }
+
+            elif selected_field == "impact":
+                self.state.impact = None
+                self.state.current_question = "impact"
+
+                return {
+                    "type": "question",
+                    "field": "impact",
+                    "message": "Please select the new impact.",
+                    "options": [
+                        "High - Service is completely unavailable",
+                        "Medium - Service is significantly degraded",
+                        "Low - Minor functionality is affected",
+                    ],
+                }
+
+            elif selected_field == "start_time":
+                self.state.start_time = None
+                self.state.current_question = "start_time"
+
+                return {
+                    "type": "question",
+                    "field": "start_time",
+                    "message": "Please select the new incident start date and time.",
+                    "input_type": "datetime-local",
+                    "placeholder": "Select incident start date and time",
+                }
+
+            elif selected_field == "urgency":
+                self.state.urgency = None
+                self.state.current_question = "urgency"
+
+                return {
+                    "type": "question",
+                    "field": "urgency",
+                    "message": "Please select the new urgency.",
+                    "options": [
+                        "High - Work is completely blocked",
+                        "Medium - Work is significantly hindered",
+                        "Low - Work can continue with limitations",
+                    ],
+                }
+
+            elif selected_field == "subcategory":
+                self.state.subcategory = None
+
+                category_subcategories = CATEGORIES.get(
+                    self.state.department,
+                    {}
+                ).get(
+                    self.state.selected_category,
+                    []
+                )
+
+                request_type_mapping = SUBCATEGORY_REQUEST_TYPES.get(
+                    self.state.department,
+                    {}
+                )
+
+                valid_subcategories = []
+
+                for subcategory in category_subcategories:
+
+                    allowed_request_types = (
+                        request_type_mapping
+                        .get(self.state.selected_category, {})
+                        .get(subcategory, [])
+                    )
+
+                    if self.state.request_type in allowed_request_types:
+                        valid_subcategories.append(subcategory)
+
+                self.state.current_question = "subcategory"
+
+                return {
+                    "type": "question",
+                    "field": "subcategory",
+                    "message": (
+                        f"Please select the new subcategory under "
+                        f"{self.state.selected_category}."
+                    ),
+                    "options": valid_subcategories,
+                }
+
+            elif selected_field == "description":
+                self.state.description = None
+
+            elif selected_field == "location":
+                self.state.location = None
+
+            elif selected_field == "priority":
+                self.state.priority = None
+
+            elif selected_field == "target_date":
+                self.state.target_date = None
+
+            elif selected_field == "business_justification":
+                self.state.business_justification = None
+
+            self.state.current_question = None
+
+            return self.handle_create_ticket()
 
         # ----------------------------------------------
         # Department
@@ -724,6 +1161,25 @@ class AgentWorkflow:
 
         if field == "request_type":
 
+            # User wants to override the department inferred by AI
+            if option == "Change Department":
+
+                self.state.department = None
+                self.state.request_type = None
+
+                self.state.selected_category = None
+                self.state.category = None
+                self.state.subcategory = None
+
+                self.state.current_question = "department"
+
+                return {
+                    "type": "question",
+                    "field": "department",
+                    "message": "Please select the correct department.",
+                    "options": get_departments(),
+                }
+
             valid_request_types = REQUEST_TYPES.get(
                 self.state.department,
                 []
@@ -740,10 +1196,132 @@ class AgentWorkflow:
                     "options": valid_request_types,
                 }
 
+            recommended_request_type = (
+                self.orchestrator.classify_request_type(
+                    description=self.state.description,
+                    department=self.state.department,
+                    allowed_request_types=valid_request_types,
+                )
+            )
+
+            print(
+                "\nREQUEST TYPE CHECK:",
+                {
+                    "selected": option,
+                    "recommended": recommended_request_type,
+                }
+            )
+
+            # Store the employee's selected request type first.
             self.state.request_type = option
+
+            # If AI believes another allowed request type is a better
+            # match, warn the employee instead of silently changing it.
+            if (
+                recommended_request_type
+                and recommended_request_type != option
+            ):
+                self.state.current_question = (
+                    "request_type_mismatch"
+                )
+
+                return {
+                    "type": "question",
+                    "field": "request_type_mismatch",
+                    "message": (
+                        f"Your description appears to be a "
+                        f"{recommended_request_type}, but you selected "
+                        f"{option}.\n\n"
+                        f"Would you like to switch to "
+                        f"{recommended_request_type} or continue with "
+                        f"{option}?"
+                    ),
+                    "options": [
+                        f"Switch to {recommended_request_type}",
+                        f"Continue with {option}",
+                    ],
+                }
+
             self.state.current_question = None
 
             return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # Request Type Mismatch Confirmation
+        # ----------------------------------------------
+
+        if field == "request_type_mismatch":
+
+            current_request_type = self.state.request_type
+
+            # ------------------------------------------
+            # Switch to AI-recommended request type
+            # ------------------------------------------
+
+            if option.startswith("Switch to "):
+
+                new_request_type = option.replace(
+                    "Switch to ",
+                    "",
+                    1,
+                ).strip()
+
+                valid_request_types = REQUEST_TYPES.get(
+                    self.state.department,
+                    [],
+                )
+
+                # Security check:
+                # Never accept a request type outside the
+                # department's configured request types.
+                if new_request_type not in valid_request_types:
+
+                    return {
+                        "type": "message",
+                        "message": (
+                            "The selected request type is not valid "
+                            "for this department."
+                        ),
+                    }
+
+                self.state.request_type = new_request_type
+
+                # Request type changed, so previously determined
+                # category/subcategory can no longer be trusted.
+                self.state.selected_category = None
+                self.state.category = None
+                self.state.subcategory = None
+
+                self.state.current_question = None
+
+                return self.handle_create_ticket()
+
+            # ------------------------------------------
+            # Keep employee's original selection
+            # ------------------------------------------
+
+            if option == f"Continue with {current_request_type}":
+
+                self.state.current_question = None
+
+                return self.handle_create_ticket()
+
+            # ------------------------------------------
+            # Invalid response
+            # ------------------------------------------
+
+            return {
+                "type": "question",
+                "field": "request_type_mismatch",
+                "message": (
+                    "Please choose whether you want to switch "
+                    "the request type or continue with your "
+                    "original selection."
+                ),
+                "options": [
+                    f"Continue with {current_request_type}",
+                ],
+            }
 
         # ----------------------------------------------
         # Target Date
@@ -804,6 +1382,50 @@ class AgentWorkflow:
                 }
 
             self.state.business_justification = option.strip()
+            self.state.current_question = None
+
+            return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # IT Service Request: Email
+        # ----------------------------------------------
+
+        if field == "email":
+
+            email = option.strip()
+
+            if not email:
+                return {
+                    "type": "question",
+                    "field": "email",
+                    "message": "Please enter your Vishakha email address.",
+                    "input_type": "text",
+                    "placeholder": "name@vishakha.com",
+                }
+
+            self.state.email = email
+            self.state.current_question = None
+
+            return self.handle_create_ticket()
+
+        # ----------------------------------------------
+        # IT Service Request: Phone Number
+        # ----------------------------------------------
+
+        if field == "phone":
+
+            phone = option.strip()
+
+            if not phone:
+                return {
+                    "type": "question",
+                    "field": "phone",
+                    "message": "Please enter your contact number.",
+                    "input_type": "text",
+                    "placeholder": "Enter phone number",
+                }
+
+            self.state.phone = phone
             self.state.current_question = None
 
             return self.handle_create_ticket()
@@ -1216,6 +1838,30 @@ class AgentWorkflow:
                     if (
                         self.state.department == "HR Department"
                         and self.state.request_type == "Service Request"
+                    )
+                    else None
+                ),
+
+                email=(
+                    self.state.email
+                    if (
+                        self.state.department == "IT Department"
+                        and self.state.request_type in [
+                            "Service Request",
+                            "Incident Request",
+                        ]
+                    )
+                    else None
+                ),
+
+                phone=(
+                    self.state.phone
+                    if (
+                        self.state.department == "IT Department"
+                        and self.state.request_type in [
+                            "Service Request",
+                            "Incident Request",
+                        ]
                     )
                     else None
                 ),
