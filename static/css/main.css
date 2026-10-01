@@ -71,7 +71,34 @@ input {
     display: flex;
     flex-direction: column;
     gap: 6px;
+
+    /* Allow Applications section to scroll independently */
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding-right: 4px;
 }
+
+/* Applications scrollbar */
+
+.applications::-webkit-scrollbar {
+    width: 5px;
+}
+
+.applications::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.applications::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+.applications::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
 
 .application {
     width: 100%;
@@ -775,19 +802,22 @@ input {
 ========================= */
 
 .chat-history-section {
-    margin-bottom: 22px;
+    flex: 1;
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    margin-bottom: 0;
 }
 
 .recent-chats {
+    flex: 1;
+    min-height: 0;
+
     display: flex;
     flex-direction: column;
     gap: 3px;
-
-    /*
-     * Give chat history much more vertical space.
-     * It will only scroll when there are many chats.
-     */
-    max-height: 420px;
 
     overflow-y: auto;
     overflow-x: visible;
@@ -966,4 +996,801 @@ input {
 
 .recent-chats::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
+}
+
+/* =========================
+   HEADER ACTIONS
+========================= */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+
+/* =========================
+   APPLICATION SELECTOR
+========================= */
+
+.application-selector {
+    position: relative;
+}
+
+.application-selector-button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    min-width: 250px;
+
+    padding: 10px 13px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+
+    background: #ffffff;
+    color: #374151;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.application-selector-button:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.application-selector-button:focus {
+    outline: none;
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+.selected-app-icon {
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.selected-app-name {
+    flex: 1;
+    text-align: left;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.application-selector-arrow {
+    margin-left: auto;
+
+    font-size: 9px;
+    color: #6b7280;
+
+    transition: transform 0.2s ease;
+}
+
+
+/* =========================
+   APPLICATION DROPDOWN
+========================= */
+
+.application-dropdown {
+    display: none;
+
+    position: absolute;
+
+    top: calc(100% + 8px);
+    right: 0;
+
+    width: 330px;
+
+    padding: 7px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.12);
+
+    z-index: 1000;
+}
+
+
+/* Shown later by JavaScript */
+
+.application-dropdown.open {
+    display: block;
+}
+
+
+/* =========================
+   APPLICATION DROPDOWN ITEM
+========================= */
+
+.application-dropdown-item {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 11px 12px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #374151;
+
+    text-align: left;
+    font-size: 13px;
+
+    cursor: pointer;
+}
+
+.application-dropdown-item:hover {
+    background: #f3f4f6;
+}
+
+.application-dropdown-item.active {
+    background: #eef2ff;
+    color: #2563eb;
+}
+
+.application-dropdown-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.application-active-mark {
+    color: #2563eb;
+    font-weight: 700;
+}
+
+
+/* =========================
+   COMING SOON APPLICATIONS
+========================= */
+
+.application-dropdown-item.disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.application-dropdown-item.disabled:hover {
+    background: transparent;
+}
+
+.application-coming-soon {
+    font-size: 10px;
+    color: #9ca3af;
+
+    white-space: nowrap;
+}
+
+/* =========================
+   SIDEBAR TOGGLE
+========================= */
+
+.sidebar {
+    position: relative;
+
+    transition:
+        width 0.25s ease,
+        padding 0.25s ease;
+}
+
+.sidebar-toggle {
+    position: absolute;
+
+    top: 22px;
+    right: -14px;
+
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #d1d5db;
+    border-radius: 50%;
+
+    background: #ffffff;
+    color: #6b7280;
+
+    font-size: 20px;
+    line-height: 1;
+
+    cursor: pointer;
+
+    z-index: 200;
+
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.08);
+
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.25s ease;
+}
+
+.sidebar-toggle:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+/* =========================
+   COLLAPSED SIDEBAR
+========================= */
+
+.sidebar.collapsed {
+    width: 72px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+
+/* Hide sidebar text/content when collapsed */
+
+.sidebar.collapsed .brand-title,
+.sidebar.collapsed .brand-subtitle,
+.sidebar.collapsed .new-chat-button,
+.sidebar.collapsed .chat-history-section {
+    display: none;
+}
+
+
+/* Keep the sidebar clean while collapsed */
+
+.sidebar.collapsed .brand {
+    padding: 0;
+}
+
+
+/* Rotate toggle arrow */
+
+.sidebar.collapsed .sidebar-toggle {
+    transform: rotate(180deg);
+}
+
+/* =========================
+   COLLAPSED SIDEBAR NAV
+========================= */
+
+.collapsed-sidebar-nav {
+    display: none;
+}
+
+
+/* Show compact navigation only
+   when sidebar is collapsed */
+
+.sidebar.collapsed .collapsed-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    width: 100%;
+
+    margin-top: 42px;
+    gap: 12px;
+}
+
+
+/* Darpan AI compact logo */
+
+.collapsed-brand {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 8px;
+
+    border-radius: 10px;
+
+    background: #2563eb;
+    color: #ffffff;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: default;
+}
+
+
+/* Collapsed navigation buttons */
+
+.collapsed-nav-button {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 10px;
+
+    background: transparent;
+    color: #4b5563;
+
+    font-size: 19px;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+
+
+.collapsed-nav-button:hover {
+    background: #f3f4f6;
+    color: #2563eb;
+}
+/* =========================
+   THEME TOGGLE
+========================= */
+
+.theme-toggle {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+
+    background: #ffffff;
+    color: #4b5563;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.theme-toggle:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #111827;
+}
+
+.theme-toggle:active {
+    transform: scale(0.95);
+}
+
+.theme-toggle-icon {
+    font-size: 19px;
+    line-height: 1;
+}
+
+.theme-icon {
+    width: 19px;
+    height: 19px;
+    display: block;
+}
+
+.theme-sun-icon {
+    display: none;
+}
+
+/* =========================
+   DARK MODE
+========================= */
+
+body.dark-mode {
+    background: #0f172a;
+    color: #e5e7eb;
+}
+
+
+/* Main layout */
+
+body.dark-mode .sidebar {
+    background: #111827;
+    border-right-color: #273244;
+}
+
+body.dark-mode .main-content {
+    background: #0f172a;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+body.dark-mode .chat-header {
+    background: #111827;
+    border-bottom-color: #273244;
+}
+
+body.dark-mode .chat-header h1 {
+    color: #f9fafb;
+}
+
+body.dark-mode .chat-header p {
+    color: #94a3b8;
+}
+
+body.dark-mode .ai-status {
+    color: #cbd5e1;
+}
+
+
+/* =========================
+   SIDEBAR
+========================= */
+
+body.dark-mode .brand-title {
+    color: #f9fafb;
+}
+
+body.dark-mode .brand-subtitle {
+    color: #94a3b8;
+}
+
+body.dark-mode .menu-title {
+    color: #64748b;
+}
+
+body.dark-mode .recent-chat-item {
+    color: #cbd5e1;
+}
+
+body.dark-mode .recent-chat-row:hover {
+    background: #1e293b;
+}
+
+body.dark-mode .recent-chat-row.active {
+    background: #1e3a5f;
+}
+
+body.dark-mode
+.recent-chat-row.active
+.recent-chat-item {
+    color: #60a5fa;
+}
+
+
+/* Three-dot menu */
+
+body.dark-mode .chat-menu-button {
+    color: #94a3b8;
+}
+
+body.dark-mode .chat-menu-button:hover {
+    background: #273244;
+    color: #f9fafb;
+}
+
+body.dark-mode .chat-options-menu {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+body.dark-mode .chat-options-menu button {
+    color: #e2e8f0;
+}
+
+body.dark-mode
+.chat-options-menu button:hover {
+    background: #334155;
+}
+
+body.dark-mode
+.chat-options-menu
+.delete-chat-button {
+    color: #f87171;
+}
+
+body.dark-mode
+.chat-options-menu
+.delete-chat-button:hover {
+    background: #3f1d24;
+}
+
+
+/* =========================
+   SIDEBAR CONTROLS
+========================= */
+
+body.dark-mode .sidebar-toggle {
+    background: #1e293b;
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+body.dark-mode .sidebar-toggle:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+body.dark-mode .collapsed-nav-button {
+    color: #94a3b8;
+}
+
+body.dark-mode .collapsed-nav-button:hover {
+    background: #1e293b;
+    color: #60a5fa;
+}
+
+
+/* =========================
+   APPLICATION SELECTOR
+========================= */
+
+body.dark-mode .application-selector-button {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode
+.application-selector-button:hover {
+    background: #273449;
+    border-color: #475569;
+}
+
+body.dark-mode .application-selector-arrow {
+    color: #94a3b8;
+}
+
+body.dark-mode .application-dropdown {
+    background: #1e293b;
+    border-color: #334155;
+
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-mode .application-dropdown-item {
+    color: #e2e8f0;
+}
+
+body.dark-mode
+.application-dropdown-item:hover {
+    background: #334155;
+}
+
+body.dark-mode
+.application-dropdown-item.active {
+    background: #1e3a5f;
+    color: #60a5fa;
+}
+
+body.dark-mode .application-active-mark {
+    color: #60a5fa;
+}
+
+body.dark-mode .application-coming-soon {
+    color: #64748b;
+}
+
+
+/* =========================
+   THEME BUTTON
+========================= */
+
+body.dark-mode .theme-toggle {
+    background: #1e293b;
+    border-color: #334155;
+    color: #fbbf24;
+}
+
+body.dark-mode .theme-toggle:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #fcd34d;
+}
+
+
+/* =========================
+   CHAT AREA
+========================= */
+
+body.dark-mode .chat-area {
+    background: #0f172a;
+}
+
+body.dark-mode .message-bubble {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode
+.user-message
+.message-bubble {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+
+/* =========================
+   SUGGESTIONS / OPTIONS
+========================= */
+
+body.dark-mode .suggestions button,
+body.dark-mode .ai-option-button {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode .suggestions button:hover,
+body.dark-mode .ai-option-button:hover {
+    background: #334155;
+}
+
+
+/* =========================
+   QUESTION INPUTS
+========================= */
+
+body.dark-mode .chat-text-question-input {
+    background: #1e293b;
+    border-color: #475569;
+    color: #f1f5f9;
+}
+
+body.dark-mode
+.chat-text-question-input::placeholder {
+    color: #64748b;
+}
+
+body.dark-mode
+.chat-text-question-input:focus {
+    border-color: #60a5fa;
+}
+
+
+/* =========================
+   CONFIRMATION
+========================= */
+
+body.dark-mode .confirmation-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode .change-details-button {
+    background: transparent;
+    border-color: #60a5fa;
+    color: #60a5fa;
+}
+
+body.dark-mode
+.change-details-button:hover {
+    background: #1e3a5f;
+}
+
+body.dark-mode .cancel-button {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode .cancel-button:hover {
+    background: #475569;
+}
+
+
+/* =========================
+   TICKET CARDS
+========================= */
+
+body.dark-mode .ticket-status-card,
+body.dark-mode .ticket-detail-card,
+body.dark-mode .ticket-answer-card,
+body.dark-mode .ticket-search-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.20);
+}
+
+body.dark-mode .ticket-status-meta,
+body.dark-mode .ticket-search-meta,
+body.dark-mode .ticket-detail-row span,
+body.dark-mode
+.ticket-detail-description span,
+body.dark-mode .ticket-answer-row span {
+    color: #94a3b8;
+}
+
+body.dark-mode .ticket-detail-row,
+body.dark-mode .ticket-answer-row,
+body.dark-mode .ticket-detail-description,
+body.dark-mode .ticket-detail-footer,
+body.dark-mode .ticket-status-footer,
+body.dark-mode .ticket-answer-footer,
+body.dark-mode .ticket-search-footer {
+    border-color: #334155;
+}
+
+
+/* =========================
+   MAIN CHAT INPUT
+========================= */
+
+body.dark-mode .chat-input-container {
+    background: #111827;
+    border-top-color: #273244;
+}
+
+body.dark-mode .chat-input-wrapper {
+    background: #1e293b;
+    border-color: #475569;
+}
+
+body.dark-mode #message-input {
+    color: #f1f5f9;
+}
+
+body.dark-mode #message-input::placeholder {
+    color: #64748b;
+}
+
+body.dark-mode .input-help {
+    color: #64748b;
+}
+
+
+/* =========================
+   DEPARTMENT CHANGE
+========================= */
+
+body.dark-mode .department-change-button {
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+body.dark-mode
+.department-change-button:hover {
+    background: #1e293b;
+    border-color: #64748b;
+    color: #e2e8f0;
+}
+
+
+/* =========================
+   SCROLLBARS
+========================= */
+
+body.dark-mode
+.recent-chats::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+body.dark-mode
+.recent-chats::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }

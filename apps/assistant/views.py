@@ -8,6 +8,12 @@ from ai.agent.conversation import ConversationState
 from ai.agent.workflow import AgentWorkflow
 import time
 
+from ai.llm.cancellation import (
+    register_request,
+    cancel_request,
+    unregister_request,
+    LLMCancelled,
+)
 
 def home(request):
 
@@ -218,7 +224,13 @@ def chat(request):
         # print("LOCATION:", workflow.state.location)
         # print("============================================\n")
 
+        # ---------------------------------------------
+        # Register cancellable AI request
+        # ---------------------------------------------
 
+        cancel_event = register_request(
+            chat_id
+        )
         # ---------------------------------------------
         # Process request
         # ---------------------------------------------
@@ -242,9 +254,29 @@ def chat(request):
 
         else:
 
-            result = workflow.process_message(
-                user_message
-            )
+            try:
+                result = workflow.process_message(
+                    user_message,
+                    chat_id=chat_id
+                )
+
+            except LLMCancelled:
+                print(
+                    "CHAT REQUEST CANCELLED:",
+                    chat_id
+                )
+
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "cancelled": True,
+                        "message": "Generation stopped."
+                    },
+                    status=200
+                )
+
+            finally:
+                unregister_request(chat_id)
 
         request_end_time = time.perf_counter()
 
@@ -713,3 +745,71 @@ def delete_chat(request):
         "deleted": existed,
         "chat_id": chat_id,
     })
+
+# =========================================================
+# STOP ACTIVE AI RESPONSE
+# =========================================================
+
+@csrf_exempt
+@require_POST
+def stop_chat(request):
+
+    try:
+
+        data = json.loads(
+            request.body or "{}"
+        )
+
+    except json.JSONDecodeError:
+
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Invalid JSON."
+            },
+            status=400
+        )
+
+
+    chat_id = data.get(
+        "chat_id"
+    )
+
+
+    if not chat_id:
+
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "chat_id is required."
+            },
+            status=400
+        )
+
+
+    chat_id = str(
+        chat_id
+    ).strip()
+
+
+    print(
+        "STOP REQUEST RECEIVED FOR CHAT:",
+        chat_id
+    )
+
+    cancelled = cancel_request(
+        chat_id
+    )
+
+    print(
+        "ACTIVE AI REQUEST CANCELLED:",
+        cancelled
+    )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "stopped": cancelled,
+            "chat_id": chat_id
+        }
+    )

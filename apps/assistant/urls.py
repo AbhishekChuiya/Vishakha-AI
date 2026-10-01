@@ -10,5 +10,10 @@ urlpatterns = [
     "api/chat/delete/",
     views.delete_chat,
     name="delete_chat"
-),
+    ),
+    path(
+        "api/chat/stop/",
+        views.stop_chat,
+        name="stop_chat"
+    ),
 ]

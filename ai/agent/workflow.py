@@ -214,8 +214,8 @@ class AgentWorkflow:
                 "type": "error",
                 "message": "I couldn't retrieve your ticket status."
             }
-            
-    def process_message(self, user_message):
+                
+    def process_message(self, user_message, chat_id=None):
 
         # ----------------------------------------------
         # HANDLE ANSWER TO CURRENT QUESTION
@@ -226,7 +226,8 @@ class AgentWorkflow:
 
         agent_result = self.orchestrator.understand_request(
             user_message,
-            current_ticket_number=self.state.ticket_number
+            current_ticket_number=self.state.ticket_number,
+            chat_id=chat_id
         )
 
         self.state.update_from_agent(agent_result)

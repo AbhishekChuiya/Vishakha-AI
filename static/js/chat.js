@@ -2,6 +2,9 @@ const chatInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-area");
 const CHAT_HISTORY_KEY = "darpan_chat_history";
+let activeChatRequestController = null;
+let isAIResponding = false;
+
 
 // Multiple-conversation storage
 const CHAT_LIST_KEY = "darpan_chat_list";
@@ -1971,6 +1974,24 @@ async function sendToBackend(
 
     try {
 
+        // Cancel any previous unfinished request.
+        if (activeChatRequestController) {
+            activeChatRequestController.abort();
+        }
+
+        activeChatRequestController =
+            new AbortController();
+
+        isAIResponding = true;
+
+        sendButton.innerHTML = "■";
+        sendButton.title = "Stop response";
+        sendButton.setAttribute(
+            "aria-label",
+            "Stop response"
+        );
+        sendButton.classList.add("stop-response");
+
         const response =
             await fetch(
                 "/api/chat/",
@@ -1986,7 +2007,9 @@ async function sendToBackend(
                         message: message,
                         message_type: messageType,
                         chat_id: activeChatId
-                    })
+                    }),
+                    signal: activeChatRequestController.signal
+
                 }
             );
 
@@ -2019,13 +2042,39 @@ async function sendToBackend(
 
         removeLoadingMessage();
 
+        // User intentionally clicked Stop
+        if (error.name === "AbortError") {
+
+            console.log(
+                "AI response stopped by user."
+            );
+
+            return;
+        }
+
+        // Actual connection/server error
         addAIMessage(
             "Sorry, I could not connect to the AI service."
         );
 
         console.error(error);
-
     }
+    finally {
+
+    isAIResponding = false;
+    activeChatRequestController = null;
+
+    sendButton.innerHTML = "➤";
+    sendButton.title = "Send";
+    sendButton.setAttribute(
+        "aria-label",
+        "Send"
+    );
+
+    sendButton.classList.remove(
+        "stop-response"
+    );
+}
 }
 
 
@@ -2413,7 +2462,45 @@ function setupSuggestions() {
 
 sendButton.addEventListener(
     "click",
-    sendMessage
+    async function() {
+
+        if (
+            isAIResponding &&
+            activeChatRequestController
+        ) {
+
+            // Stop displaying/waiting for the current response
+            activeChatRequestController.abort();
+
+            // Tell Django which chat was stopped
+            try {
+
+                await fetch(
+                    "/api/chat/stop/",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            chat_id: activeChatId
+                        })
+                    }
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Could not notify backend about stop:",
+                    error
+                );
+            }
+
+            return;
+        }
+
+        sendMessage();
+    }
 );
 
 
@@ -2429,8 +2516,11 @@ chatInput.addEventListener(
 
             event.preventDefault();
 
-            sendMessage();
+            if (isAIResponding) {
+                return;
+            }
 
+            sendMessage();
         }
 
     }
@@ -3045,4 +3135,317 @@ function addTicketSearchCards(tickets) {
 
     scrollToBottom();
     saveChatHistory();
+}
+
+/* =========================
+   APPLICATION SELECTOR
+========================= */
+
+const applicationSelectorButton =
+    document.getElementById("application-selector-button");
+
+const applicationDropdown =
+    document.getElementById("application-dropdown");
+
+
+if (applicationSelectorButton && applicationDropdown) {
+
+    // Open / close when selector is clicked
+    applicationSelectorButton.addEventListener(
+        "click",
+        function(event) {
+
+            event.stopPropagation();
+
+            applicationDropdown.classList.toggle("open");
+
+            const arrow =
+                applicationSelectorButton.querySelector(
+                    ".application-selector-arrow"
+                );
+
+            if (arrow) {
+                arrow.style.transform =
+                    applicationDropdown.classList.contains("open")
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)";
+            }
+        }
+    );
+
+
+    // Do not close when clicking inside dropdown
+    applicationDropdown.addEventListener(
+        "click",
+        function(event) {
+            event.stopPropagation();
+        }
+    );
+
+
+    // Close when clicking anywhere outside
+    document.addEventListener(
+        "click",
+        function() {
+
+            applicationDropdown.classList.remove("open");
+
+            const arrow =
+                applicationSelectorButton.querySelector(
+                    ".application-selector-arrow"
+                );
+
+            if (arrow) {
+                arrow.style.transform = "rotate(0deg)";
+            }
+        }
+    );
+}
+
+/* =========================
+   SIDEBAR COLLAPSE / EXPAND
+========================= */
+
+const sidebar =
+    document.getElementById("sidebar");
+
+const sidebarToggle =
+    document.getElementById("sidebar-toggle");
+
+const SIDEBAR_STATE_KEY =
+    "darpan_sidebar_collapsed";
+
+
+if (sidebar && sidebarToggle) {
+
+    // Restore saved sidebar state
+    const sidebarCollapsed =
+        localStorage.getItem(SIDEBAR_STATE_KEY) === "true";
+
+    if (sidebarCollapsed) {
+
+        sidebar.classList.add("collapsed");
+
+        sidebarToggle.setAttribute(
+            "title",
+            "Expand sidebar"
+        );
+
+        sidebarToggle.setAttribute(
+            "aria-label",
+            "Expand sidebar"
+        );
+
+    }
+
+
+    // Collapse / expand
+    sidebarToggle.addEventListener(
+        "click",
+        function() {
+
+            const isCollapsed =
+                sidebar.classList.toggle("collapsed");
+
+
+            localStorage.setItem(
+                SIDEBAR_STATE_KEY,
+                isCollapsed ? "true" : "false"
+            );
+
+
+            if (isCollapsed) {
+
+                sidebarToggle.setAttribute(
+                    "title",
+                    "Expand sidebar"
+                );
+
+                sidebarToggle.setAttribute(
+                    "aria-label",
+                    "Expand sidebar"
+                );
+
+            } else {
+
+                sidebarToggle.setAttribute(
+                    "title",
+                    "Collapse sidebar"
+                );
+
+                sidebarToggle.setAttribute(
+                    "aria-label",
+                    "Collapse sidebar"
+                );
+
+            }
+
+        }
+    );
+}
+
+/* =========================
+   COLLAPSED SIDEBAR ACTIONS
+========================= */
+
+const collapsedNewChat =
+    document.getElementById("collapsed-new-chat");
+
+const collapsedRecentChats =
+    document.getElementById("collapsed-recent-chats");
+
+
+if (collapsedNewChat) {
+
+    collapsedNewChat.addEventListener(
+        "click",
+        function() {
+
+            // Use the existing working
+            // New Chat functionality
+            const normalNewChatButton =
+                document.getElementById(
+                    "new-chat-button"
+                );
+
+            if (normalNewChatButton) {
+                normalNewChatButton.click();
+            }
+
+        }
+    );
+}
+
+
+if (
+    collapsedRecentChats &&
+    sidebar &&
+    sidebarToggle
+) {
+
+    collapsedRecentChats.addEventListener(
+        "click",
+        function() {
+
+            // Expand sidebar so Recent Chats
+            // become visible
+            sidebar.classList.remove("collapsed");
+
+            localStorage.setItem(
+                SIDEBAR_STATE_KEY,
+                "false"
+            );
+
+            sidebarToggle.setAttribute(
+                "title",
+                "Collapse sidebar"
+            );
+
+            sidebarToggle.setAttribute(
+                "aria-label",
+                "Collapse sidebar"
+            );
+
+        }
+    );
+}
+
+/* =========================
+   LIGHT / DARK MODE
+========================= */
+
+const themeToggle =
+    document.getElementById("theme-toggle");
+
+const themeMoonIcon =
+    document.getElementById("theme-moon-icon");
+
+const themeSunIcon =
+    document.getElementById("theme-sun-icon");
+
+const THEME_STORAGE_KEY =
+    "darpan_theme";
+
+
+function applyTheme(theme) {
+
+    const isDark = theme === "dark";
+
+    document.body.classList.toggle(
+        "dark-mode",
+        isDark
+    );
+
+
+    if (themeMoonIcon) {
+        themeMoonIcon.style.display =
+            isDark ? "none" : "block";
+    }
+
+
+    if (themeSunIcon) {
+        themeSunIcon.style.display =
+            isDark ? "block" : "none";
+    }
+
+
+    if (themeToggle) {
+
+        const label =
+            isDark
+                ? "Switch to light mode"
+                : "Switch to dark mode";
+
+        themeToggle.setAttribute(
+            "title",
+            label
+        );
+
+        themeToggle.setAttribute(
+            "aria-label",
+            label
+        );
+    }
+}
+
+
+/* Restore saved theme */
+
+const savedTheme =
+    localStorage.getItem(THEME_STORAGE_KEY);
+
+applyTheme(
+    savedTheme === "dark"
+        ? "dark"
+        : "light"
+);
+
+
+/* Toggle theme */
+
+if (themeToggle) {
+
+    themeToggle.addEventListener(
+        "click",
+        function() {
+
+            const isCurrentlyDark =
+                document.body.classList.contains(
+                    "dark-mode"
+                );
+
+            const newTheme =
+                isCurrentlyDark
+                    ? "light"
+                    : "dark";
+
+
+            localStorage.setItem(
+                THEME_STORAGE_KEY,
+                newTheme
+            );
+
+            applyTheme(newTheme);
+        }
+    );
 }

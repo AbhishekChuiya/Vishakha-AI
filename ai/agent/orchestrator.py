@@ -9,8 +9,77 @@ class AgentOrchestrator:
     def __init__(self):
         self.llm = LocalLLM()
 
-    def understand_request(self, user_message, current_ticket_number=None):
+    def understand_request(
+        self,
+        user_message,
+        current_ticket_number=None,
+        chat_id=None,
+    ):
 
+        # -------------------------------------------------
+        # Deterministic protection for obvious NEW IT issues
+        # -------------------------------------------------
+
+        message_lower = user_message.lower().strip()
+
+        new_it_issue_keywords = [
+            "network issue",
+            "network issues",
+            "network problem",
+            "internet issue",
+            "internet problem",
+            "wifi issue",
+            "wi-fi issue",
+            "connectivity issue",
+            "laptop issue",
+            "laptop problem",
+            "laptop not working",
+            "desktop issue",
+            "desktop problem",
+            "computer issue",
+            "computer problem",
+        ]
+
+        ticket_search_words = [
+            "show my tickets",
+            "show tickets",
+            "recent tickets",
+            "list tickets",
+            "find tickets",
+            "search tickets",
+            "ticket status",
+            "status of",
+        ]
+
+        is_ticket_search = any(
+            phrase in message_lower
+            for phrase in ticket_search_words
+        )
+
+        is_obvious_new_it_issue = any(
+            phrase in message_lower
+            for phrase in new_it_issue_keywords
+        )
+
+
+        if (
+            is_obvious_new_it_issue
+            and not is_ticket_search
+        ):
+            return {
+                "intent": "CREATE_TICKET",
+                "department": "IT Department",
+                "request_type": None,
+                "category": None,
+                "description": user_message,
+                "location": None,
+                "ticket_number": None,
+                "ticket_query": None,
+                "search_query": None,
+                "search_scope": None,
+                "priority": None,
+                "missing_fields": [],
+            }
 
         system_prompt = """
         You are a JSON information extraction engine for Darpan, a company employee assistant.
@@ -775,7 +844,26 @@ class AgentOrchestrator:
         # Add current ticket context when available.
         context_message = ""
 
-        if current_ticket_number:
+        # Only reuse the previous ticket when the employee
+        # explicitly refers back to that ticket.
+        message_lower = user_message.lower()
+
+        ticket_context_reference = bool(
+            re.search(
+                r"\b("
+                r"this ticket|"
+                r"that ticket|"
+                r"my ticket|"
+                r"the ticket|"
+                r"its status|"
+                r"it"
+                r")\b",
+                message_lower,
+            )
+        )
+
+        if current_ticket_number and ticket_context_reference:
+            
             context_message = f"""
         CURRENT TICKET CONTEXT:
 
@@ -833,7 +921,10 @@ class AgentOrchestrator:
             }
         )
 
-        response = self.llm.chat(messages)
+        response = self.llm.chat(
+            messages,
+            chat_id=chat_id
+        )
 
         print("\nRAW LLM RESPONSE:")
         print(response)
