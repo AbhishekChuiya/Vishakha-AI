@@ -248,6 +248,7 @@ class TicketingClient:
         self,
         requester_email=None,
         include_closed=True,
+        status_ids=None,
         size=10,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -264,12 +265,55 @@ class TicketingClient:
             "sort": "createdAt,desc",
         }
 
+        if status_ids:
+            params["statusId"] = status_ids
+
         response = requests.get(
             url,
             headers=headers,
             params=params,
             timeout=30,
         )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def get_all_tickets(
+        self,
+        include_closed=True,
+        status_ids=None,
+        size=20,
+    ):
+        url = f"{self.base_url}/api/itsm/v1/tickets"
+
+        headers = {
+            "Authorization": f"Bearer {self.pat}",
+            "Accept": "application/json",
+        }
+
+        params = {
+            "includeClosed": str(include_closed).lower(),
+            "size": size,
+            "sort": "createdAt,desc",
+        }
+
+        if status_ids:
+            params["statusId"] = status_ids
+
+        print("Get All Tickets Include Closed:", include_closed)
+        print("Get All Tickets Status IDs:", status_ids)
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=30,
+        )
+
+        print("GET ALL TICKETS URL:", response.url)
+        print("GET ALL TICKETS STATUS:", response.status_code)
+        print("GET ALL TICKETS RESPONSE:", response.text[:2000])
 
         response.raise_for_status()
 
@@ -319,7 +363,13 @@ class TicketingClient:
 
         return response.json()
 
-    def search_tickets(self, search_query, size=20):
+    def search_tickets(
+        self,
+        search_query,
+        include_closed=True,
+        status_ids=None,
+        size=20,
+    ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
 
         headers = {
@@ -329,8 +379,23 @@ class TicketingClient:
 
         params = {
             "search": search_query,
+            "includeClosed": str(include_closed).lower(),
             "size": size,
+            "sort": "createdAt,desc",
         }
+
+        if status_ids:
+            params["statusId"] = status_ids
+
+        print("Search All Tickets Query:", search_query)
+        print(
+            "Search All Tickets Include Closed:",
+            include_closed,
+        )
+        print(
+            "Search All Tickets Status IDs:",
+            status_ids,
+        )
 
         response = requests.get(
             url,
@@ -348,8 +413,9 @@ class TicketingClient:
         search_query,
         requester_email=None,
         include_closed=True,
+        status_ids=None,
         size=20,
-        ):
+    ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
 
         headers = {
@@ -364,6 +430,9 @@ class TicketingClient:
             "size": size,
             "sort": "createdAt,desc",
         }
+
+        if status_ids:
+            params["statusId"] = status_ids
 
         print(
             "Search My Tickets Requester Email:",

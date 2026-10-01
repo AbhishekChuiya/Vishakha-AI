@@ -1719,6 +1719,8 @@ class AgentWorkflow:
                     include_closed=False,
                 )
 
+
+
                 tickets = result.get("content", [])
 
                 if not tickets:
@@ -1751,6 +1753,251 @@ class AgentWorkflow:
                 return {
                     "type": "ticket_status",
                     "message": f"You have {total} open ticket(s).",
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
+            # --------------------------------------------------
+            # MY RESOLVED / CLOSED / CANCELLED TICKETS
+            # --------------------------------------------------
+
+            if (
+                search_scope == "MY_TICKETS"
+                and status_filter in [
+                    "RESOLVED",
+                    "CLOSED",
+                    "CANCELLED",
+                ]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_id_map[status_filter],
+                )
+
+                tickets = result.get("content", [])
+
+                status_label = status_filter.lower()
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": (
+                            f"You don't have any "
+                            f"{status_label} tickets."
+                        ),
+                        "total": 0,
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get(
+                            "status",
+                            "Unknown"
+                        ),
+                        "priority": priority.get(
+                            "name",
+                            "Unknown"
+                        ),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list),
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": (
+                        f"You have {total} "
+                        f"{status_label} ticket(s)."
+                    ),
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
+            # --------------------------------------------------
+            # ALL OPEN TICKETS
+            # --------------------------------------------------
+
+            if (
+                search_scope == "ALL_TICKETS"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                )
+
+                tickets = result.get("content", [])
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": "I couldn't find any open tickets.",
+                        "total": 0,
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get("status", "Unknown"),
+                        "priority": priority.get("name", "Unknown"),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list),
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": f"I found {total} open ticket(s).",
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
+            # --------------------------------------------------
+            # ALL TICKETS BY EXACT CLOSED STATUS
+            # --------------------------------------------------
+
+            if (
+                search_scope == "ALL_TICKETS"
+                and status_filter in [
+                    "RESOLVED",
+                    "CLOSED",
+                    "CANCELLED",
+                ]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_id_map[status_filter],
+                )
+
+                tickets = result.get("content", [])
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": (
+                            f"I couldn't find any "
+                            f"{status_filter.lower()} tickets."
+                        ),
+                        "total": 0,
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get("status", "Unknown"),
+                        "priority": priority.get("name", "Unknown"),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list),
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": (
+                        f"I found {total} "
+                        f"{status_filter.lower()} ticket(s)."
+                    ),
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
+            # --------------------------------------------------
+            # PLAIN "ALL TICKETS" REQUEST
+            # --------------------------------------------------
+
+            if (
+                search_scope == "ALL_TICKETS"
+                and not search_query
+                and not status_filter
+            ):
+                result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                )
+
+                tickets = result.get("content", [])
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": "I couldn't find any tickets.",
+                        "total": 0,
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get(
+                            "status",
+                            "Unknown",
+                        ),
+                        "priority": priority.get(
+                            "name",
+                            "Unknown",
+                        ),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list),
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": f"I found {total} ticket(s).",
                     "total": total,
                     "tickets": ticket_list,
                 }
@@ -1815,6 +2062,18 @@ class AgentWorkflow:
             # SEARCH MY TICKETS
             # --------------------------------------------------
             if search_scope == "MY_TICKETS":
+
+                status_ids = None
+
+                if status_filter == "RESOLVED":
+                    status_ids = [42]
+
+                elif status_filter == "CLOSED":
+                    status_ids = [43]
+
+                elif status_filter == "CANCELLED":
+                    status_ids = [44]
+
                 result = self.ticketing.search_my_tickets(
                     search_query=search_query,
                     requester_email=self.requester_email,
@@ -1823,14 +2082,30 @@ class AgentWorkflow:
                         if status_filter == "OPEN"
                         else True
                     ),
+                    status_ids=status_ids,
                 )
 
             # --------------------------------------------------
             # SEARCH ALL TICKETS
             # --------------------------------------------------
             else:
+                status_ids = None
+
+                if status_filter == "RESOLVED":
+                    status_ids = [42]
+                elif status_filter == "CLOSED":
+                    status_ids = [43]
+                elif status_filter == "CANCELLED":
+                    status_ids = [44]
+
                 result = self.ticketing.search_tickets(
-                    search_query=search_query
+                    search_query=search_query,
+                    include_closed=(
+                        False
+                        if status_filter == "OPEN"
+                        else True
+                    ),
+                    status_ids=status_ids,
                 )
 
             tickets = result.get("content", [])
@@ -1872,14 +2147,27 @@ class AgentWorkflow:
                 len(ticket_list)
             )
 
+            status_label = ""
+
+            if status_filter == "OPEN":
+                status_label = "open "
+            elif status_filter == "RESOLVED":
+                status_label = "resolved "
+            elif status_filter == "CLOSED":
+                status_label = "closed "
+            elif status_filter == "CANCELLED":
+                status_label = "cancelled "
+
             if search_scope == "MY_TICKETS":
                 message = (
-                    f"I found {total} of your ticket(s) "
+                    f"I found {total} of your "
+                    f"{status_label}ticket(s) "
                     f"related to '{search_query}'."
                 )
             else:
                 message = (
-                    f"I found {total} ticket(s) "
+                    f"I found {total} "
+                    f"{status_label}ticket(s) "
                     f"related to '{search_query}'."
                 )
 

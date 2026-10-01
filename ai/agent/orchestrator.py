@@ -1131,69 +1131,109 @@ class AgentOrchestrator:
                     user_message
                 )
 
+            # "all" is a scope instruction, not a search keyword.
+            if result.get("search_scope") == "ALL_TICKETS":
+                search_query = str(
+                    result.get("search_query") or ""
+                ).strip().lower()
+
+                if search_query in [
+                    "all",
+                    "all ticket",
+                    "all tickets",
+                ]:
+                    result["search_query"] = None
+
             # -----------------------------------------------------
             # Ticket status filter
             # -----------------------------------------------------
 
             message_lower = user_message.lower().strip()
-
-            has_open_status = (
-                "open" in message_lower.split()
-                or "active" in message_lower.split()
-            )
+            message_words = message_lower.split()
 
             has_ticket_context = (
                 "ticket" in message_lower
                 or "tickets" in message_lower
             )
 
-            if has_open_status and has_ticket_context:
-                result["ticket_status_filter"] = "OPEN"
+            # -----------------------------------------------------
+            # Detect structured ticket status
+            # -----------------------------------------------------
 
-                # "open" / "active" are status filters, not search keywords.
-                search_query = str(
-                    result.get("search_query") or ""
-                ).strip().lower()
+            if has_ticket_context:
 
-                if search_query in [
-                    "open",
-                    "active",
-                    "open ticket",
-                    "open tickets",
-                    "active ticket",
-                    "active tickets",
-                ]:
-                    result["search_query"] = ""
+                if "resolved" in message_words:
+                    result["ticket_status_filter"] = "RESOLVED"
+
+                elif "closed" in message_words:
+                    result["ticket_status_filter"] = "CLOSED"
+
+                elif (
+                    "cancelled" in message_words
+                    or "canceled" in message_words
+                ):
+                    result["ticket_status_filter"] = "CANCELLED"
+
+                elif (
+                    "open" in message_words
+                    or "active" in message_words
+                ):
+                    result["ticket_status_filter"] = "OPEN"
+
+                else:
+                    result["ticket_status_filter"] = None
+
             else:
                 result["ticket_status_filter"] = None
 
+            # -----------------------------------------------------
+            # Status words are filters, not semantic search terms
+            # -----------------------------------------------------
+
+            search_query = str(
+                result.get("search_query") or ""
+            ).strip().lower()
+
+            # Status words belong to ticket_status_filter,
+            # not to the semantic API search query.
             if result.get("ticket_status_filter"):
-                result["missing_fields"] = [
-                    field
-                    for field in result.get("missing_fields", [])
-                    if field != "search_query"
-                ]
-                result["ticket_status_filter"] = "OPEN"
 
-                # "open" is a structured status filter, not a semantic
-                # ticket-search keyword.
-                search_query = str(
-                    result.get("search_query") or ""
-                ).strip().lower()
-
-                if search_query in [
+                status_words = [
+                    "resolved",
+                    "closed",
+                    "cancelled",
+                    "canceled",
                     "open",
                     "active",
-                    "open ticket",
-                    "open tickets",
-                    "active ticket",
-                    "active tickets",
+                ]
+
+                query_words = search_query.split()
+
+                query_words = [
+                    word
+                    for word in query_words
+                    if word not in status_words
+                ]
+
+                search_query = " ".join(query_words).strip()
+
+                # If only generic ticket words remain, there is
+                # no semantic keyword to search for.
+                if search_query in [
+                    "ticket",
+                    "tickets",
+                    "my ticket",
+                    "my tickets",
+                    "all",
+                    "all ticket",
+                    "all tickets",
                 ]:
-                    result["search_query"] = None
+                    search_query = ""
 
-            else:
-                result["ticket_status_filter"] = None
+                result["search_query"] = search_query
 
+            # A search keyword is not required when a structured
+            # status filter is present.
             if result.get("ticket_status_filter"):
                 result["missing_fields"] = [
                     field
