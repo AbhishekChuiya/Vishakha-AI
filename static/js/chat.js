@@ -126,6 +126,11 @@ function addTextInput(placeholder, field) {
     input.placeholder = placeholder;
     input.className = "chat-text-question-input";
 
+    /*
+    * Remember which workflow field this input belongs to.
+    */
+    input.dataset.field = field;
+
     const submitButton = document.createElement("button");
     submitButton.textContent = "Submit";
     submitButton.className = "chat-text-question-submit";
@@ -189,6 +194,12 @@ function addDateInput(field, inputType, placeholder) {
     input.type = inputType; // "date" or "datetime-local"
     input.className = "chat-text-question-input";
     input.required = true;
+
+    /*
+    * Remember which workflow field this input belongs to.
+    * This remains in saved chat HTML.
+    */
+    input.dataset.field = field;
 
     // Target date: allow today and all future dates
     if (field === "target_date") {
@@ -771,8 +782,14 @@ function openSavedChat(chatId) {
      */
     renderRecentChats();
 
-
     scrollToBottom();
+
+
+    /*
+    * Restore/check the backend workflow state
+    * belonging specifically to this conversation.
+    */
+    restoreConversationState();
 }
 
 function renderRecentChats() {
@@ -1024,7 +1041,7 @@ chats.forEach(function(chat) {
 
     deleteButton.addEventListener(
         "click",
-        function(event) {
+        async function(event) {
 
             event.stopPropagation();
 
@@ -1040,6 +1057,57 @@ chats.forEach(function(chat) {
                 return;
             }
 
+
+            /*
+             * Delete this conversation's workflow
+             * from the Django session as well.
+             */
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/chat/delete/",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                chat_id: chat.id
+                            })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!data.success) {
+
+                    alert(
+                        "Could not delete this chat."
+                    );
+
+                    return;
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Delete chat error:",
+                    error
+                );
+
+                alert(
+                    "Could not delete this chat."
+                );
+
+                return;
+            }
 
             const updatedChats =
                 chats.filter(
@@ -1091,10 +1159,18 @@ chats.forEach(function(chat) {
 
                     restoreButtonEvents();
 
+                    /*
+                    * Restore the backend workflow belonging
+                    * to the conversation we just switched to.
+                    */
+                    restoreConversationState();
+
                 } else {
 
                     /*
                      * No conversations remain.
+                     * Create a fresh empty conversation
+                     * and show the normal welcome screen.
                      */
 
                     activeChatId =
@@ -1112,6 +1188,62 @@ chats.forEach(function(chat) {
 
                     chatMessages.innerHTML =
                         "";
+
+
+                    /*
+                     * Show initial AI message.
+                     */
+
+                    addAIMessage(
+                        "Hello! 👋\n\n" +
+                        "I'm your Darpan AI Employee Assistant.\n\n" +
+                        "I can help you perform tasks across your company applications.\n\n" +
+                        "Currently, the Ticketing application is available."
+                    );
+
+
+                    /*
+                     * Show initial suggestions.
+                     */
+
+                    const suggestions =
+                        document.createElement(
+                            "div"
+                        );
+
+                    suggestions.className =
+                        "suggestions";
+
+                    suggestions.innerHTML = `
+                        <button>
+                            Create a laptop repair ticket
+                        </button>
+
+                        <button>
+                            Report a network issue
+                        </button>
+
+                        <button>
+                            Check my ticket status
+                        </button>
+                    `;
+
+
+                    chatMessages.appendChild(
+                        suggestions
+                    );
+
+                    setupSuggestionButtons(
+                        suggestions
+                    );
+
+
+                    /*
+                     * Save the fresh conversation
+                     * into browser chat history.
+                     */
+
+                    saveChatHistory();
 
                 }
             }
@@ -1267,6 +1399,336 @@ function restoreButtonEvents() {
         );
 
     });
+
+
+        /*
+     * Restore Department Change buttons
+     * when an old conversation is reopened.
+     */
+    const departmentChangeButtons =
+        document.querySelectorAll(
+            ".department-change-button"
+        );
+
+    departmentChangeButtons.forEach(
+        function(button) {
+
+            button.addEventListener(
+                "click",
+                function() {
+
+                    button.disabled = true;
+
+                    sendOption(
+                        "Change Department"
+                    );
+                }
+            );
+
+        }
+    );
+
+        /*
+     * Restore text/date input Submit and Enter events
+     * when an old conversation is reopened.
+     */
+    const restoredInputs =
+        document.querySelectorAll(
+            ".chat-text-question-input"
+        );
+
+    restoredInputs.forEach(
+        function(input) {
+
+
+            /*
+             * Restore Service Request Target Date validation.
+             */
+            if (
+                input.dataset.field ===
+                "target_date"
+            ) {
+
+                function getLocalDateValue(date) {
+
+                    const year =
+                        date.getFullYear();
+
+                    const month =
+                        String(
+                            date.getMonth() + 1
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    const day =
+                        String(
+                            date.getDate()
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    return (
+                        `${year}-${month}-${day}`
+                    );
+                }
+
+
+                /*
+                 * Target date must be today
+                 * or a future date.
+                 */
+                input.min =
+                    getLocalDateValue(
+                        new Date()
+                    );
+
+                input.lang =
+                    "en-GB";
+
+
+                /*
+                 * Protect against manually
+                 * entered invalid dates too.
+                 */
+                input.addEventListener(
+                    "change",
+                    function() {
+
+                        if (
+                            this.value &&
+                            this.value <
+                            this.min
+                        ) {
+
+                            alert(
+                                "Please select today or a future date."
+                            );
+
+                            this.value =
+                                "";
+                        }
+                    }
+                );
+            }
+
+            /*
+             * Restore Incident Start Time validation.
+             */
+            if (
+                input.dataset.field ===
+                "start_time"
+            ) {
+
+                function getLocalDateTimeValue(date) {
+
+                    const year =
+                        date.getFullYear();
+
+                    const month =
+                        String(
+                            date.getMonth() + 1
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    const day =
+                        String(
+                            date.getDate()
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    const hours =
+                        String(
+                            date.getHours()
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    const minutes =
+                        String(
+                            date.getMinutes()
+                        ).padStart(
+                            2,
+                            "0"
+                        );
+
+                    return (
+                        `${year}-${month}-${day}` +
+                        `T${hours}:${minutes}`
+                    );
+                }
+
+
+                /*
+                 * Prevent the browser picker from
+                 * allowing a future date/time.
+                 */
+                input.max =
+                    getLocalDateTimeValue(
+                        new Date()
+                    );
+
+
+                /*
+                 * Refresh the maximum whenever
+                 * the field receives focus.
+                 */
+                input.addEventListener(
+                    "focus",
+                    function() {
+
+                        this.max =
+                            getLocalDateTimeValue(
+                                new Date()
+                            );
+                    }
+                );
+
+
+                /*
+                 * Also validate manually entered values.
+                 */
+                input.addEventListener(
+                    "change",
+                    function() {
+
+                        if (!this.value) {
+                            return;
+                        }
+
+                        const selectedTime =
+                            new Date(
+                                this.value
+                            );
+
+                        const now =
+                            new Date();
+
+
+                        if (
+                            selectedTime >
+                            now
+                        ) {
+
+                            alert(
+                                "Incident start time cannot be in the future."
+                            );
+
+                            this.value =
+                                "";
+                        }
+                    }
+                );
+            }
+
+
+
+            const container =
+                input.closest(
+                    ".ai-options"
+                );
+
+            if (!container) {
+                return;
+            }
+
+
+            const submitButton =
+                container.querySelector(
+                    ".chat-text-question-submit"
+                );
+
+            if (!submitButton) {
+                return;
+            }
+
+
+            /*
+             * Do not restore completed/disabled
+             * historical inputs.
+             */
+            if (
+                input.disabled ||
+                submitButton.disabled
+            ) {
+                return;
+            }
+
+
+            async function submitRestoredAnswer() {
+
+                const answer =
+                    input.value.trim();
+
+                if (!answer) {
+
+                    input.focus();
+
+                    return;
+                }
+
+
+                /*
+                 * Prevent duplicate submissions.
+                 */
+                submitButton.disabled = true;
+                input.disabled = true;
+
+
+                /*
+                 * Display the user's answer.
+                 */
+                addUserMessage(
+                    answer
+                );
+
+
+                /*
+                 * Remove the temporary input.
+                 */
+                container.remove();
+
+
+                /*
+                 * Continue this chat's backend workflow.
+                 */
+                await sendToBackend(
+                    answer,
+                    "text"
+                );
+            }
+
+
+            submitButton.addEventListener(
+                "click",
+                submitRestoredAnswer
+            );
+
+
+            input.addEventListener(
+                "keydown",
+                function(event) {
+
+                    if (
+                        event.key === "Enter"
+                    ) {
+
+                        event.preventDefault();
+
+                        submitRestoredAnswer();
+                    }
+                }
+            );
+
+        }
+    );
 
 }
 
@@ -1521,12 +1983,9 @@ async function sendToBackend(
                     },
 
                     body: JSON.stringify({
-
                         message: message,
-
-                        message_type:
-                            messageType
-
+                        message_type: messageType,
+                        chat_id: activeChatId
                     })
                 }
             );
@@ -1905,6 +2364,16 @@ function setupSuggestionButtons(container) {
                     message
                 );
 
+
+                /*
+                * If this is still a new conversation,
+                * use the selected suggestion as its title.
+                */
+                setAutomaticChatTitle(
+                    message
+                );
+
+
                 sendToBackend(
                     message,
                     "text"
@@ -1972,8 +2441,11 @@ async function restoreConversationState() {
 
         const response =
             await fetch(
-                "/api/chat/state/"
-            );
+            "/api/chat/state/?chat_id=" +
+            encodeURIComponent(
+                activeChatId
+            )
+        );
 
         const data =
             await response.json();
@@ -1995,21 +2467,78 @@ async function restoreConversationState() {
          * don't duplicate the current question.
          */
 
+        const hasPendingInput =
+            document.querySelector(
+                ".ai-options"
+            ) ||
+            document.querySelector(
+                ".chat-text-question-input"
+            );
+
         if (
             data.type === "question" &&
-            !document.querySelector(
-                ".ai-options"
-            )
+            !hasPendingInput
         ) {
 
-            addAIMessage(
-                data.message
-            );
+            /*
+            * Request Type question:
+            * restore the detected department message
+            * together with its Change button.
+            */
+            if (
+                data.field === "request_type" &&
+                data.department
+            ) {
 
-            addOptionButtons(
-                data.options
-            );
+                addDepartmentDetectionMessage(
+                    data.message
+                );
 
+            } else {
+
+                addAIMessage(
+                    data.message
+                );
+            }
+
+
+            if (data.input_type === "date") {
+
+                addDateInput(
+                    data.field,
+                    "date",
+                    data.placeholder ||
+                        "Select a date"
+                );
+
+            } else if (
+                data.input_type ===
+                "datetime-local"
+            ) {
+
+                addDateInput(
+                    data.field,
+                    "datetime-local",
+                    data.placeholder ||
+                        "Select date and time"
+                );
+
+            } else if (
+                data.input_type === "text"
+            ) {
+
+                addTextInput(
+                    data.placeholder ||
+                        "Type your answer here...",
+                    data.field
+                );
+
+            } else {
+
+                addOptionButtons(
+                    data.options || []
+                );
+            }
         }
 
         if (
@@ -2062,15 +2591,33 @@ async function startNewChat() {
 
     try {
 
+                    /*
+            * Create the NEW conversation ID first.
+            * The backend must initialize the new chat,
+            * not reset the currently open chat.
+            */
+            activeChatId =
+                "chat_" +
+                Date.now().toString();
+
+            localStorage.setItem(
+                ACTIVE_CHAT_KEY,
+                activeChatId
+            );
+
         const response =
             await fetch(
                 "/api/chat/new/",
                 {
                     method: "POST",
+
                     headers: {
-                        "Content-Type":
-                            "application/json"
-                    }
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        chat_id: activeChatId
+                    })
                 }
             );
 
@@ -2099,15 +2646,6 @@ async function startNewChat() {
             CHAT_HISTORY_KEY
         );
 
-        // Create a new unique conversation ID.
-        activeChatId =
-            "chat_" +
-            Date.now().toString();
-
-        localStorage.setItem(
-            ACTIVE_CHAT_KEY,
-            activeChatId
-        );
 
 
         /* Clear visible chat */
@@ -2214,6 +2752,56 @@ if (newChatButton) {
     );
 
 }
+
+/*
+ * Close Recent Chat three-dot menus
+ * when clicking anywhere outside them.
+ *
+ * Capture mode makes this run even when
+ * another element uses stopPropagation().
+ */
+document.addEventListener(
+    "click",
+    function(event) {
+
+        const clickedMenu =
+            event.target.closest(
+                ".chat-options-menu"
+            );
+
+        const clickedMenuButton =
+            event.target.closest(
+                ".chat-menu-button"
+            );
+
+
+        /*
+         * Let clicks on the three-dot button
+         * or inside the popup menu behave normally.
+         */
+        if (
+            clickedMenu ||
+            clickedMenuButton
+        ) {
+            return;
+        }
+
+
+        document
+            .querySelectorAll(
+                ".chat-options-menu"
+            )
+            .forEach(
+                function(menu) {
+
+                    menu.style.display =
+                        "none";
+                }
+            );
+
+    },
+    true
+);
 
 function addTicketDetailCard(ticket) {
     const container = document.createElement("div");

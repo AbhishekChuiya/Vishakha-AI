@@ -11,6 +11,7 @@ class AgentOrchestrator:
 
     def understand_request(self, user_message, current_ticket_number=None):
 
+
         system_prompt = """
         You are a JSON information extraction engine for Darpan, a company employee assistant.
 

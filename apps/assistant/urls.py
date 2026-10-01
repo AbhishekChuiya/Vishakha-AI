@@ -6,4 +6,9 @@ urlpatterns = [
     path("api/chat/", views.chat, name="chat"),
     path("api/chat/state/", views.chat_state, name="chat_state"),
     path("api/chat/new/", views.new_chat, name="new_chat"),
+    path(
+    "api/chat/delete/",
+    views.delete_chat,
+    name="delete_chat"
+),
 ]

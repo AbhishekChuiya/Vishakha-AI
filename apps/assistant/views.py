@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from ai.agent.conversation import ConversationState
 from ai.agent.workflow import AgentWorkflow
+import time
 
 
 def home(request):
@@ -20,19 +21,73 @@ def home(request):
 # SESSION WORKFLOW
 # =========================================================
 
-def get_workflow(request):
-
-    state_data = request.session.get(
-        "assistant_state"
-    )
+def get_workflow(request, chat_id=None):
 
     state = ConversationState()
 
-    if state_data:
+    # ---------------------------------------------
+    # Multi-chat workflow state
+    # ---------------------------------------------
 
-        state.from_dict(
-            state_data
+    if chat_id:
+
+        assistant_chats = request.session.get(
+            "assistant_chats",
+            {}
         )
+
+        state_data = assistant_chats.get(
+            chat_id
+        )
+
+
+        # # TEMPORARY DEBUG
+        # print(
+        #     "\n========== GET WORKFLOW DEBUG =========="
+        # )
+
+        # print(
+        #     "REQUESTED CHAT ID:",
+        #     repr(chat_id)
+        # )
+
+        # print(
+        #     "AVAILABLE CHAT IDS:",
+        #     list(assistant_chats.keys())
+        # )
+
+        # print(
+        #     "STATE DATA FOUND:",
+        #     state_data
+        # )
+
+        # print(
+        #     "========================================\n"
+        # )
+
+
+        if state_data:
+
+            state.from_dict(
+                state_data
+            )
+
+    # ---------------------------------------------
+    # Legacy single-chat fallback
+    # ---------------------------------------------
+
+    else:
+
+        state_data = request.session.get(
+            "assistant_state"
+        )
+
+        if state_data:
+
+            state.from_dict(
+                state_data
+            )
+
 
     workflow = AgentWorkflow(
         state=state
@@ -40,12 +95,54 @@ def get_workflow(request):
 
     return workflow
 
+def save_workflow(
+    request,
+    workflow,
+    chat_id=None
+):
 
-def save_workflow(request, workflow):
+    # ---------------------------------------------
+    # Multi-chat workflow state
+    # ---------------------------------------------
 
-    request.session[
-        "assistant_state"
-    ] = workflow.state.to_dict()
+    if chat_id:
+
+        # Always create a fresh dictionary copy.
+        # This avoids nested Django session
+        # mutation/persistence problems.
+        assistant_chats = dict(
+            request.session.get(
+                "assistant_chats",
+                {}
+            )
+        )
+
+        assistant_chats[
+            chat_id
+        ] = workflow.state.to_dict()
+
+        # Reassign the complete dictionary
+        # back into the Django session.
+        request.session[
+            "assistant_chats"
+        ] = assistant_chats
+
+
+        # print(
+        #     "SAVED CHAT IDS:",
+        #     list(assistant_chats.keys())
+        # )
+
+    # ---------------------------------------------
+    # Legacy single-chat fallback
+    # ---------------------------------------------
+
+    else:
+
+        request.session[
+            "assistant_state"
+        ] = workflow.state.to_dict()
+
 
     request.session.modified = True
 
@@ -74,6 +171,19 @@ def chat(request):
             "text"
         )
 
+        # ---------------------------------------------
+        # Conversation ID
+        # ---------------------------------------------
+
+        chat_id = data.get(
+            "chat_id"
+        )
+
+        if chat_id:
+            chat_id = str(
+                chat_id
+            ).strip()
+
 
         if not user_message:
 
@@ -92,13 +202,27 @@ def chat(request):
         # ---------------------------------------------
 
         workflow = get_workflow(
-            request
+            request,
+            chat_id=chat_id
         )
+
+        # print("\n================ CHAT DEBUG ================")
+        # print("CHAT ID:", chat_id)
+        # print("MESSAGE:", user_message)
+        # print("MESSAGE TYPE:", message_type)
+        # print("CURRENT QUESTION:", workflow.state.current_question)
+        # print("DEPARTMENT:", workflow.state.department)
+        # print("REQUEST TYPE:", workflow.state.request_type)
+        # print("CATEGORY:", workflow.state.selected_category)
+        # print("SUBCATEGORY:", workflow.state.subcategory)
+        # print("LOCATION:", workflow.state.location)
+        # print("============================================\n")
 
 
         # ---------------------------------------------
         # Process request
         # ---------------------------------------------
+        request_start_time = time.perf_counter()
 
         if message_type == "option":
 
@@ -122,6 +246,17 @@ def chat(request):
                 user_message
             )
 
+        request_end_time = time.perf_counter()
+
+        print(
+            "WORKFLOW PROCESSING TIME:",
+            round(
+                request_end_time -
+                request_start_time,
+                2
+            ),
+            "seconds"
+        )
 
         # ---------------------------------------------
         # Save updated state
@@ -129,7 +264,8 @@ def chat(request):
 
         save_workflow(
             request,
-            workflow
+            workflow,
+            chat_id=chat_id
         )
 
 
@@ -165,7 +301,28 @@ def chat(request):
 @require_GET
 def chat_state(request):
 
-    workflow = get_workflow(request)
+    # ---------------------------------------------
+    # Conversation ID
+    # ---------------------------------------------
+
+    chat_id = request.GET.get(
+        "chat_id"
+    )
+
+    if chat_id:
+        chat_id = str(
+            chat_id
+        ).strip()
+
+
+    # ---------------------------------------------
+    # Load this conversation's workflow
+    # ---------------------------------------------
+
+    workflow = get_workflow(
+        request,
+        chat_id=chat_id
+    )
 
     state = workflow.state
 
@@ -183,6 +340,11 @@ def chat_state(request):
     if state.current_question:
 
         question_map = {
+                "request_type": {
+                "message":
+                    "Please select the Request Type.",
+                "options": [],
+            },
 
             "description": {
                 "message": "What issue are you facing?",
@@ -215,7 +377,142 @@ def chat_state(request):
                 ],
             },
 
+            "impact": {
+                "message":
+                    "What is the impact of this incident?",
+                "options": [
+                    "Low",
+                    "Medium",
+                    "High",
+                ],
+            },
+
+            "start_time": {
+                "message":
+                    "When did this incident start?",
+                "options": [],
+                "input_type":
+                    "datetime-local",
+                "placeholder":
+                    "Select incident start date and time",
+            },
+
+            "target_date": {
+                "message":
+                    "When do you need this request completed by?",
+                "options": [],
+                "input_type":
+                    "date",
+                "placeholder":
+                    "Select target date",
+            },
+
+            "business_justification": {
+                "message":
+                    "Please provide the business justification for this request.",
+                "options": [],
+                "input_type":
+                    "text",
+                "placeholder":
+                    "Enter business justification",
+            },
+
+            "urgency": {
+                "message":
+                    "Please select the urgency of this request.",
+                "options": [
+                    "Low",
+                    "Medium\t- Work is significantly hindered",
+                    "High",
+                ],
+            },
+
+            "email": {
+                "message":
+                    "Please enter your email address.",
+                "options": [],
+                "input_type":
+                    "text",
+                "placeholder":
+                    "Enter email address",
+            },
+
+            "phone": {
+                "message":
+                    "Please enter your phone number.",
+                "options": [],
+                "input_type":
+                    "text",
+                "placeholder":
+                    "Enter phone number",
+            },
+
         }
+
+        # ---------------------------------------------
+        # Request Type options depend on Department
+        # ---------------------------------------------
+
+        if (
+            state.current_question ==
+            "request_type"
+        ):
+
+            request_types = {
+                "IT Department": [
+                    "Incident Request",
+                    "Service Request",
+                ],
+                "Admin": [
+                    "Incident Request",
+                    "Service Request",
+                ],
+                "Safety": [
+                    "Incident Request",
+                    "Service Request",
+                ],
+                "Security": [
+                    "Incident Request",
+                ],
+                "Branding": [
+                    "Change Management",
+                    "Request For Information",
+                    "Service Request",
+                ],
+                "HR Department": [
+                    "Incident Request",
+                    "Service Request",
+                ],
+                "Finance": [
+                    "Service Request",
+                ],
+                "Insurance": [
+                    "Service Request",
+                ],
+                "Compliance & Risk": [
+                    "Service Request",
+                ],
+                "Projects": [
+                    "Change Management",
+                ],
+                "Quality management": [
+                    "Customer Complaint",
+                ],
+                "Strategy": [
+                    "Service Request",
+                ],
+            }
+
+            question_map[
+                "request_type"
+            ][
+                "options"
+            ] = request_types.get(
+                state.department,
+                []
+            )
+
+
 
         question = question_map.get(
             state.current_question
@@ -230,6 +527,9 @@ def chat_state(request):
                 "field": state.current_question,
                 "message": question["message"],
                 "options": question["options"],
+                "department": state.department,
+                "input_type": question.get("input_type"),
+                "placeholder": question.get("placeholder"),
             })
 
 
@@ -254,15 +554,162 @@ def chat_state(request):
 @require_POST
 def new_chat(request):
 
-    # Remove the current assistant workflow state
-    request.session.pop(
-        "assistant_state",
-        None
+    try:
+
+        data = json.loads(
+            request.body or "{}"
+        )
+
+    except json.JSONDecodeError:
+
+        data = {}
+
+
+    chat_id = data.get(
+        "chat_id"
     )
+
+    if chat_id:
+
+        chat_id = str(
+            chat_id
+        ).strip()
+
+
+    # ---------------------------------------------
+    # Initialize only this new conversation.
+    #
+    # IMPORTANT:
+    # Do not remove any previous chat states.
+    # ---------------------------------------------
+
+    if chat_id:
+
+        assistant_chats = request.session.get(
+            "assistant_chats",
+            {}
+        )
+
+        # Make sure this ID starts with
+        # a completely fresh workflow state.
+        assistant_chats[
+            chat_id
+        ] = ConversationState().to_dict()
+
+        request.session[
+            "assistant_chats"
+        ] = assistant_chats
+
+        # print(
+        #     "SAVED CHAT IDS:",
+        #     list(assistant_chats.keys())
+        # )
+
+    else:
+
+        # Legacy fallback
+        request.session.pop(
+            "assistant_state",
+            None
+        )
+
 
     request.session.modified = True
 
+
     return JsonResponse({
         "success": True,
-        "message": "New chat started."
+        "message": "New chat started.",
+        "chat_id": chat_id,
+    })
+
+@csrf_exempt
+@require_POST
+def delete_chat(request):
+
+    try:
+
+        data = json.loads(
+            request.body or "{}"
+        )
+
+    except json.JSONDecodeError:
+
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Invalid JSON."
+            },
+            status=400
+        )
+
+
+    chat_id = data.get(
+        "chat_id"
+    )
+
+
+    if not chat_id:
+
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "chat_id is required."
+            },
+            status=400
+        )
+
+
+    chat_id = str(
+        chat_id
+    ).strip()
+
+
+    # ---------------------------------------------
+    # Remove only this conversation
+    # ---------------------------------------------
+
+    assistant_chats = dict(
+        request.session.get(
+            "assistant_chats",
+            {}
+        )
+    )
+
+
+    existed = (
+        chat_id in assistant_chats
+    )
+
+
+    assistant_chats.pop(
+        chat_id,
+        None
+    )
+
+
+    request.session[
+        "assistant_chats"
+    ] = assistant_chats
+
+    request.session.modified = True
+
+
+    print(
+        "DELETED CHAT ID:",
+        chat_id
+    )
+
+    print(
+        "REMAINING CHAT IDS:",
+        list(
+            assistant_chats.keys()
+        )
+    )
+
+
+    return JsonResponse({
+        "success": True,
+        "deleted": existed,
+        "chat_id": chat_id,
     })
