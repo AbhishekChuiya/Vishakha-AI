@@ -10,11 +10,17 @@ from django.utils import timezone
 
 class AgentWorkflow:
 
-    def __init__(self, state=None):
+    def __init__(
+        self,
+        state=None,
+        requester_email=None,
+    ):
 
         self.orchestrator = AgentOrchestrator()
 
         self.ticketing = TicketingTool()
+
+        self.requester_email = requester_email
 
         if state is not None:
             self.state = state
@@ -177,7 +183,9 @@ class AgentWorkflow:
 
             # No specific ticket number:
             # Show user's recent tickets
-            result = self.ticketing.get_my_tickets()
+            result = self.ticketing.get_my_tickets(
+                requester_email=self.requester_email
+            )
 
             tickets = result.get("content", [])
 
@@ -1689,21 +1697,132 @@ class AgentWorkflow:
     
     def handle_search_tickets(self):
         try:
-            if not self.state.search_query:
+            search_query = self.state.search_query
+            search_scope = self.state.search_scope
+            status_filter = getattr(
+                self.state,
+                "ticket_status_filter",
+                None,
+            )
+
+            # --------------------------------------------------
+            # MY OPEN TICKETS
+            # --------------------------------------------------
+
+            if (
+                search_scope == "MY_TICKETS"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                )
+
+                tickets = result.get("content", [])
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": "You don't have any open tickets.",
+                        "total": 0,
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get("status", "Unknown"),
+                        "priority": priority.get("name", "Unknown"),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list),
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": f"You have {total} open ticket(s).",
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
+            # No text query and no supported structured filter
+            if not search_query:
                 return {
                     "type": "message",
                     "message": "What would you like me to search for?"
                 }
 
-            search_query = self.state.search_query
-            search_scope = self.state.search_scope
+            # --------------------------------------------------
+            # PLAIN "MY TICKETS" REQUEST
+            # --------------------------------------------------
+
+            if (
+                search_scope == "MY_TICKETS"
+                and str(search_query).strip().lower()
+                in ["ticket", "tickets", "my ticket", "my tickets"]
+            ):
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email
+                )
+
+                tickets = result.get("content", [])
+
+                if not tickets:
+                    return {
+                        "type": "ticket_status",
+                        "message": "I couldn't find any tickets for you.",
+                        "tickets": [],
+                    }
+
+                ticket_list = []
+
+                for ticket in tickets:
+                    status = ticket.get("status") or {}
+                    priority = ticket.get("priority") or {}
+
+                    ticket_list.append({
+                        "ticket_number": ticket.get("ticketNumber"),
+                        "title": ticket.get("title"),
+                        "status": status.get("status", "Unknown"),
+                        "priority": priority.get("name", "Unknown"),
+                        "web_url": ticket.get("webUrl"),
+                    })
+
+                total = result.get(
+                    "totalElements",
+                    len(ticket_list)
+                )
+
+                return {
+                    "type": "ticket_status",
+                    "message": f"You have {total} ticket(s).",
+                    "total": total,
+                    "tickets": ticket_list,
+                }
+
 
             # --------------------------------------------------
             # SEARCH MY TICKETS
             # --------------------------------------------------
             if search_scope == "MY_TICKETS":
                 result = self.ticketing.search_my_tickets(
-                    search_query=search_query
+                    search_query=search_query,
+                    requester_email=self.requester_email,
+                    include_closed=(
+                        False
+                        if status_filter == "OPEN"
+                        else True
+                    ),
                 )
 
             # --------------------------------------------------

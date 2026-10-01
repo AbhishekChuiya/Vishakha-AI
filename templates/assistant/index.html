@@ -336,6 +336,80 @@
 
                 </div>
 
+                <!-- User Menu -->
+
+                <div class="user-menu">
+
+                    <button
+                        id="user-menu-button"
+                        class="user-menu-button"
+                        type="button"
+                        title="Account"
+                        aria-label="Account">
+
+                        <span class="user-avatar">
+                            {{ request.user.username|first|upper }}
+                        </span>
+
+                        <span class="user-name">
+                            {{ request.user.username }}
+                        </span>
+
+                        <span class="user-menu-arrow">
+                            ▼
+                        </span>
+
+                    </button>
+
+
+                    <div
+                        id="user-dropdown"
+                        class="user-dropdown">
+
+                        <div class="user-dropdown-header">
+
+                            <div class="user-dropdown-avatar">
+                                {{ request.user.username|first|upper }}
+                            </div>
+
+                            <div class="user-dropdown-info">
+
+                                <strong>
+                                    {{ request.user.username }}
+                                </strong>
+
+                                {% if request.user.email %}
+
+                                    <span>
+                                        {{ request.user.email }}
+                                    </span>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="user-dropdown-divider"></div>
+
+
+                        <a
+                            href="/logout/"
+                            class="user-dropdown-item user-logout">
+
+                            <span>↪</span>
+
+                            <span>
+                                Sign Out
+                            </span>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
             </div>
 
         </header>

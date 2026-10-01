@@ -1,0 +1,181 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Darpan AI - Login</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+</head>
+<script src="{% static 'js/auth.js' %}"></script>
+<body>
+
+<div class="login-page">
+
+    <div class="login-card">
+
+        <!-- Brand -->
+
+        <div class="login-brand">
+
+            <div class="brand-icon">
+                AI
+            </div>
+
+            <div>
+
+                <h1>Darpan AI</h1>
+
+                <p>
+                    Employee Assistant
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- Heading -->
+
+        <div class="login-heading">
+
+            <h2>Welcome back</h2>
+
+            <p>
+                Sign in to continue to Darpan AI
+            </p>
+
+        </div>
+
+
+        <!-- Error -->
+
+        {% if error %}
+
+            <div class="login-error">
+                {{ error }}
+            </div>
+
+        {% endif %}
+
+
+        <!-- Login Form -->
+
+        <form
+            method="POST"
+            class="login-form"
+        >
+
+            {% csrf_token %}
+
+
+            <!-- Username -->
+
+            <div class="form-group">
+
+                <label for="username">
+                    Username
+                </label>
+
+                <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="Enter your username"
+                    autocomplete="username"
+                    required
+                    autofocus
+                >
+
+            </div>
+
+
+            <!-- Password -->
+
+            <div class="form-group">
+
+                <div class="password-label">
+
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <a href="/accounts/password_reset/">
+
+                        Forgot password?
+                    </a>
+
+                </div>
+
+
+                <div class="password-input-wrapper">
+
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        data-password-target="password"
+                        aria-label="Show password"
+                        title="Show password">
+
+                        <span class="password-eye">
+                            👁
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="login-button"
+            >
+                Sign In
+            </button>
+
+        </form>
+
+
+        <!-- Signup -->
+
+        <div class="signup-link">
+
+            Don't have an account?
+
+            <a href="/signup/">
+                Create account
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

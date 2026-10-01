@@ -1073,7 +1073,18 @@ class AgentOrchestrator:
 
             result["missing_fields"] = []
 
-            if not result.get("search_query"):
+            # A text search term is not required when the employee
+            # is using a structured ticket filter.
+            #
+            # Example:
+            # "Show my open tickets"
+            # -> ticket_status_filter = "OPEN"
+            # -> search_query can be None
+
+            if (
+                not result.get("search_query")
+                and not result.get("ticket_status_filter")
+            ):
                 result["missing_fields"].append("search_query")
 
         else:
@@ -1086,18 +1097,109 @@ class AgentOrchestrator:
 
         if result.get("intent") == "SEARCH_TICKETS":
 
-            if result.get("search_scope") not in [
+            # -----------------------------------------------------
+            # Search scope
+            # -----------------------------------------------------
+            # Explicit self-reference in the user's message must
+            # override the LLM. Example:
+            #
+            # "Show my tickets" -> MY_TICKETS
+            # "Show my laptop tickets" -> MY_TICKETS
+            #
+            # This prevents a valid-but-wrong LLM value such as
+            # ALL_TICKETS from exposing unrelated users' tickets.
+
+            detected_scope = self._detect_search_scope(
+                user_message
+            )
+
+            if detected_scope == "MY_TICKETS":
+                result["search_scope"] = "MY_TICKETS"
+
+            elif result.get("search_scope") not in [
                 "MY_TICKETS",
                 "ALL_TICKETS",
             ]:
-                result["search_scope"] = self._detect_search_scope(
-                    user_message
-                )
+                result["search_scope"] = detected_scope
+
+            # -----------------------------------------------------
+            # Search query
+            # -----------------------------------------------------
 
             if not result.get("search_query"):
                 result["search_query"] = self._detect_search_query(
                     user_message
                 )
+
+            # -----------------------------------------------------
+            # Ticket status filter
+            # -----------------------------------------------------
+
+            message_lower = user_message.lower().strip()
+
+            has_open_status = (
+                "open" in message_lower.split()
+                or "active" in message_lower.split()
+            )
+
+            has_ticket_context = (
+                "ticket" in message_lower
+                or "tickets" in message_lower
+            )
+
+            if has_open_status and has_ticket_context:
+                result["ticket_status_filter"] = "OPEN"
+
+                # "open" / "active" are status filters, not search keywords.
+                search_query = str(
+                    result.get("search_query") or ""
+                ).strip().lower()
+
+                if search_query in [
+                    "open",
+                    "active",
+                    "open ticket",
+                    "open tickets",
+                    "active ticket",
+                    "active tickets",
+                ]:
+                    result["search_query"] = ""
+            else:
+                result["ticket_status_filter"] = None
+
+            if result.get("ticket_status_filter"):
+                result["missing_fields"] = [
+                    field
+                    for field in result.get("missing_fields", [])
+                    if field != "search_query"
+                ]
+                result["ticket_status_filter"] = "OPEN"
+
+                # "open" is a structured status filter, not a semantic
+                # ticket-search keyword.
+                search_query = str(
+                    result.get("search_query") or ""
+                ).strip().lower()
+
+                if search_query in [
+                    "open",
+                    "active",
+                    "open ticket",
+                    "open tickets",
+                    "active ticket",
+                    "active tickets",
+                ]:
+                    result["search_query"] = None
+
+            else:
+                result["ticket_status_filter"] = None
+
+            if result.get("ticket_status_filter"):
+                result["missing_fields"] = [
+                    field
+                    for field in result.get("missing_fields", [])
+                    if field != "search_query"
+                ]
 
         # ---------------------------------------------------------
         # Deterministic cleanup for non-create intents

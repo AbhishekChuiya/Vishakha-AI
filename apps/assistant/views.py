@@ -1,12 +1,17 @@
 import json
 
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from ai.agent.conversation import ConversationState
 from ai.agent.workflow import AgentWorkflow
 import time
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from ai.llm.cancellation import (
     register_request,
@@ -15,6 +20,157 @@ from ai.llm.cancellation import (
     LLMCancelled,
 )
 
+def login_view(request):
+
+    # Already logged in
+    if request.user.is_authenticated:
+        return redirect("/")
+
+    error = None
+
+    if request.method == "POST":
+
+        username = request.POST.get(
+            "username",
+            ""
+        ).strip()
+
+        password = request.POST.get(
+            "password",
+            ""
+        )
+
+        user = authenticate(
+            request,
+            username=username,
+            password=password
+        )
+
+        if user is not None:
+
+            login(
+                request,
+                user
+            )
+
+            return redirect("/")
+
+        error = "Invalid username or password."
+
+    return render(
+        request,
+        "assistant/login.html",
+        {
+            "error": error
+        }
+    )
+
+
+def signup_view(request):
+
+    # Already logged in
+    if request.user.is_authenticated:
+        return redirect("/")
+
+    error = None
+
+    if request.method == "POST":
+
+        username = request.POST.get(
+            "username",
+            ""
+        ).strip()
+
+        email = request.POST.get(
+            "email",
+            ""
+        ).strip()
+
+        password = request.POST.get(
+            "password",
+            ""
+        )
+
+        confirm_password = request.POST.get(
+            "confirm_password",
+            ""
+        )
+
+        # Basic validation
+        if not username:
+            error = "Username is required."
+
+        elif not email:
+            error = "Email address is required."
+
+        elif password != confirm_password:
+            error = "Passwords do not match."
+
+        elif not (
+            email.lower().endswith("@vishakha.com")
+            or email.lower().endswith("@gmail.com")
+        ):
+            error = (
+                "Please use a Vishakha or Gmail email address."
+            )
+
+        elif User.objects.filter(
+            username__iexact=username
+        ).exists():
+            error = "This username is already registered."
+
+
+        elif User.objects.filter(
+            email__iexact=email
+        ).exists():
+            error = "This email address is already registered."
+
+        else:
+
+            try:
+                validate_password(
+                    password,
+                    user=User(
+                        username=username,
+                        email=email
+                    )
+                )
+
+            except ValidationError as validation_error:
+                error = " ".join(
+                    validation_error.messages
+                )
+
+            if error is None:
+
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password
+                )
+
+                login(
+                    request,
+                    user
+                )
+
+                return redirect("/")
+
+    return render(
+        request,
+        "assistant/signup.html",
+        {
+            "error": error
+        }
+    )
+
+def logout_view(request):
+
+    logout(request)
+
+    return redirect("/login/")
+
+@login_required
 def home(request):
 
     return render(
@@ -96,7 +252,12 @@ def get_workflow(request, chat_id=None):
 
 
     workflow = AgentWorkflow(
-        state=state
+        state=state,
+        requester_email=(
+            request.user.email
+            if request.user.is_authenticated
+            else None
+        ),
     )
 
     return workflow
@@ -276,7 +437,10 @@ def chat(request):
                 )
 
             finally:
-                unregister_request(chat_id)
+                unregister_request(
+                    chat_id,
+                    cancel_event
+                )
 
         request_end_time = time.perf_counter()
 

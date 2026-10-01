@@ -50,13 +50,17 @@ def cancel_request(chat_id):
     return True
 
 
-def unregister_request(chat_id):
-
+def unregister_request(chat_id, cancel_event=None):
     if not chat_id:
         return
 
     with _lock:
-        _active_requests.pop(
-            chat_id,
-            None
-        )
+        current_event = _active_requests.get(chat_id)
+
+        # Only remove the request that is actually finishing.
+        # Do not accidentally remove a newer request for the same chat.
+        if (
+            cancel_event is None
+            or current_event is cancel_event
+        ):
+            _active_requests.pop(chat_id, None)

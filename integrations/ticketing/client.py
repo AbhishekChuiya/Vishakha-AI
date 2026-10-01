@@ -261,7 +261,7 @@ class TicketingClient:
             "requesterEmail": requester_email or self.requester,
             "includeClosed": str(include_closed).lower(),
             "size": size,
-            "sort": "createdDate,desc",
+            "sort": "createdAt,desc",
         }
 
         response = requests.get(
@@ -303,7 +303,9 @@ class TicketingClient:
 
         params = {
             "search": ticket_number,
-            "size": 10,
+            "includeClosed": "true",
+            "size": 25,
+            "sort": "createdAt,desc",
         }
 
         response = requests.get(
@@ -341,7 +343,13 @@ class TicketingClient:
 
         return response.json()
 
-    def search_my_tickets(self, search_query, size=20):
+    def search_my_tickets(
+        self,
+        search_query,
+        requester_email=None,
+        include_closed=True,
+        size=20,
+        ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
 
         headers = {
@@ -351,11 +359,21 @@ class TicketingClient:
 
         params = {
             "search": search_query,
-            "requesterEmail": self.requester,
-            "includeClosed": "true",
+            "requesterEmail": requester_email or self.requester,
+            "includeClosed": str(include_closed).lower(),
             "size": size,
-            "sort": "createdDate,desc",
+            "sort": "createdAt,desc",
         }
+
+        print(
+            "Search My Tickets Requester Email:",
+            requester_email or self.requester
+        )
+
+        print(
+            "Search My Tickets Include Closed:",
+            include_closed
+        )
 
         response = requests.get(
             url,

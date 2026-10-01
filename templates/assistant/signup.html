@@ -1,0 +1,228 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Darpan AI - Create Account</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+</head>
+<script src="{% static 'js/auth.js' %}"></script>
+<body>
+
+<div class="login-page">
+
+    <div class="login-card">
+
+        <!-- Brand -->
+
+        <div class="login-brand">
+
+            <div class="brand-icon">
+                AI
+            </div>
+
+            <div>
+
+                <h1>Darpan AI</h1>
+
+                <p>
+                    Employee Assistant
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- Heading -->
+
+        <div class="login-heading">
+
+            <h2>Create account</h2>
+
+            <p>
+                Create your account to access Darpan AI
+            </p>
+
+        </div>
+
+
+        <!-- Error -->
+
+        {% if error %}
+
+            <div class="login-error">
+                {{ error }}
+            </div>
+
+        {% endif %}
+
+
+        <!-- Signup Form -->
+
+        <form
+            method="POST"
+            class="login-form"
+        >
+
+            {% csrf_token %}
+
+
+            <!-- Username -->
+
+            <div class="form-group">
+
+                <label for="username">
+                    Username
+                </label>
+
+                <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    autocomplete="username"
+                    required
+                    autofocus
+                >
+
+            </div>
+
+
+            <!-- Email -->
+
+            <div class="form-group">
+
+                <label for="email">
+                    Email address
+                </label>
+
+                <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    autocomplete="email"
+                    required
+                >
+
+            </div>
+
+
+            <!-- Password -->
+
+            <div class="form-group">
+
+                <label for="password">
+                    Password
+                </label>
+
+                <div class="password-input-wrapper">
+
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="Create a password"
+                        autocomplete="new-password"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        data-password-target="password"
+                        aria-label="Show password"
+                        title="Show password">
+
+                        <span class="password-eye">
+                            👁
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Confirm Password -->
+
+            <div class="form-group">
+
+                <label for="confirm_password">
+                    Confirm password
+                </label>
+
+                <div class="password-input-wrapper">
+
+                    <input
+                        id="confirm_password"
+                        name="confirm_password"
+                        type="password"
+                        placeholder="Enter password again"
+                        autocomplete="new-password"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        data-password-target="confirm_password"
+                        aria-label="Show password"
+                        title="Show password">
+
+                        <span class="password-eye">
+                            👁
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="login-button"
+            >
+                Create Account
+            </button>
+
+        </form>
+
+
+        <!-- Login -->
+
+        <div class="signup-link">
+
+            Already have an account?
+
+            <a href="/login/">
+                Sign in
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

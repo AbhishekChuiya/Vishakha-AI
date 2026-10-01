@@ -3449,3 +3449,52 @@ if (themeToggle) {
         }
     );
 }
+
+// =========================================================
+// USER / PROFILE MENU
+// =========================================================
+
+const userMenuButton = document.getElementById(
+    "user-menu-button"
+);
+
+const userDropdown = document.getElementById(
+    "user-dropdown"
+);
+
+
+// Open / close user menu
+if (userMenuButton && userDropdown) {
+
+    userMenuButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.stopPropagation();
+
+            userDropdown.classList.toggle("open");
+
+        }
+    );
+
+
+    // Prevent clicks inside dropdown from closing it
+    userDropdown.addEventListener(
+        "click",
+        function (event) {
+            event.stopPropagation();
+        }
+    );
+
+
+    // Close when clicking anywhere outside
+    document.addEventListener(
+        "click",
+        function () {
+
+            userDropdown.classList.remove("open");
+
+        }
+    );
+
+}

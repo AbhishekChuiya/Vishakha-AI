@@ -208,35 +208,73 @@ class TicketingTool:
         )
 
         return result
-            
-    def get_my_tickets(self):
+                
+    def get_my_tickets(
+        self,
+        requester_email=None,
+        include_closed=True,
+    ):
 
-        return self.client.get_my_tickets()
+        print("Requester Email id: ", requester_email)
+        print("Include Closed:", include_closed)
+
+        return self.client.get_my_tickets(
+            requester_email=requester_email,
+            include_closed=include_closed,
+        )
 
     def get_ticket_by_number(self, ticket_number):
-        search_result = self.client.search_ticket(ticket_number)
+
+        search_result = self.client.search_ticket(
+            ticket_number
+        )
 
         tickets = search_result.get("content", [])
 
-        if not tickets:
+        requested_number = (
+            str(ticket_number)
+            .strip()
+            .upper()
+        )
+
+        # Search may match ticket number, title or description.
+        # Therefore, never blindly use the first result.
+        exact_ticket = None
+
+        for ticket in tickets:
+
+            result_number = (
+                str(ticket.get("ticketNumber", ""))
+                .strip()
+                .upper()
+            )
+
+            if result_number == requested_number:
+                exact_ticket = ticket
+                break
+
+        if not exact_ticket:
             return None
 
-        ticket_id = tickets[0].get("id")
+        ticket_id = exact_ticket.get("id")
 
         if not ticket_id:
             return None
 
-        return self.client.get_ticket_by_id(ticket_id)
-
-    def search_tickets(self, search_query, size=20):
-        return self.client.search_tickets(
-            search_query=search_query,
-            size=size
+        return self.client.get_ticket_by_id(
+            ticket_id
         )
 
-
-    def search_my_tickets(self, search_query, size=20):
+    def search_my_tickets(
+        self,
+        search_query,
+        requester_email=None,
+        include_closed=True,
+        size=20,
+    ):
         return self.client.search_my_tickets(
             search_query=search_query,
-            size=size
+            requester_email=requester_email,
+            include_closed=include_closed,
+            size=size,
         )
