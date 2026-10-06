@@ -7,6 +7,15 @@ from ai.agent.catalog import CATEGORIES, SUBCATEGORY_REQUEST_TYPES
 from datetime import datetime, timedelta
 from django.utils import timezone
 
+# --------------------------------------------------
+# TICKET SEARCH DEPARTMENT CONFIGURATION
+# --------------------------------------------------
+
+DEPARTMENT_SEARCH_CONFIG = {
+    "IT Department": {
+        "ticket_type_ids": [55, 56],
+    },
+}
 
 class AgentWorkflow:
 
@@ -1916,6 +1925,70 @@ class AgentWorkflow:
                     "message": (
                         f"There {'is' if total == 1 else 'are'} "
                         f"{total} IT Department "
+                        f"{ticket_word(total)} matching "
+                        f"'{search_query}'."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # --------------------------------------------------
+            # COUNT ONLY: MY IT DEPARTMENT TICKETS BY KEYWORD
+            # --------------------------------------------------
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and search_query
+            ):
+                status_ids = None
+                include_closed = True
+
+                if status_filter == "OPEN":
+                    include_closed = False
+
+                elif status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]:
+                    status_id_map = {
+                        "RESOLVED": [42],
+                        "CLOSED": [43],
+                        "CANCELLED": [44],
+                    }
+                    status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.search_my_tickets(
+                    search_query=search_query,
+                    requester_email=self.requester_email,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.search_my_tickets(
+                    search_query=search_query,
+                    requester_email=self.requester_email,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} IT Department "
                         f"{ticket_word(total)} matching "
                         f"'{search_query}'."
                     ),
