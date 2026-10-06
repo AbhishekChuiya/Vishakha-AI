@@ -2222,14 +2222,37 @@ function handleAIResponse(result) {
         return;
     }
 
-    if (result.type === "ticket_status") {
+    if (result.type === "ticket_list") {
 
         addAIMessage(result.message);
 
         if (result.tickets && result.tickets.length > 0) {
 
-            addTicketStatusCards(result.tickets);
+            addTicketStatusCards(
+                result.tickets.map(function(ticket) {
 
+                    return {
+                        ticket_number:
+                            ticket.ticketNumber ||
+                            ticket.ticket_number,
+
+                        title:
+                            ticket.title,
+
+                        status:
+                            ticket.status?.status ||
+                            ticket.status,
+
+                        priority:
+                            ticket.priority?.name ||
+                            ticket.priority,
+
+                        web_url:
+                            ticket.webUrl ||
+                            ticket.web_url
+                    };
+                })
+            );
         }
 
         return;

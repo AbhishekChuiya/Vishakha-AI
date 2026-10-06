@@ -29,7 +29,9 @@ class ConversationState:
         self.ticket_query = None
         self.search_query = None
         self.search_scope = None
+        self.search_department = None
         self.ticket_status_filter = None
+        self.ticket_count_only = False
 
         self.current_question = None
         self.status = "idle"
@@ -61,8 +63,18 @@ class ConversationState:
         if "search_scope" in data:
             self.search_scope = data.get("search_scope")
 
+        if "search_department" in data:
+            self.search_department = data.get(
+                "search_department"
+            )
+
         if "ticket_status_filter" in data:
             self.ticket_status_filter = data.get("ticket_status_filter")
+
+        if "ticket_count_only" in data:
+            self.ticket_count_only = bool(
+                data.get("ticket_count_only")
+            )
 
         if data.get("department"):
             self.department = data["department"]
@@ -226,7 +238,9 @@ class ConversationState:
             "ticket_query": self.ticket_query,
             "search_query": self.search_query,
             "search_scope": self.search_scope,
+            "search_department": self.search_department,
             "ticket_status_filter": self.ticket_status_filter,
+            "ticket_count_only": self.ticket_count_only,
             "current_question": self.current_question,
             "status": self.status,
         }
@@ -261,7 +275,11 @@ class ConversationState:
         self.ticket_query = data.get("ticket_query")
         self.search_query = data.get("search_query")
         self.search_scope = data.get("search_scope")
+        self.search_department = data.get("search_department")
         self.ticket_status_filter = data.get("ticket_status_filter")
+        self.ticket_count_only = bool(
+            data.get("ticket_count_only", False)
+        )
 
         self.current_question = data.get("current_question")
         self.status = data.get("status", "idle")

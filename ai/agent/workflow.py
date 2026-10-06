@@ -1699,11 +1699,820 @@ class AgentWorkflow:
         try:
             search_query = self.state.search_query
             search_scope = self.state.search_scope
+            search_department = getattr(
+                self.state,
+                "search_department",
+                None,
+            )
             status_filter = getattr(
                 self.state,
                 "ticket_status_filter",
                 None,
             )
+
+            count_only = getattr(
+                self.state,
+                "ticket_count_only",
+                False,
+            )
+
+            def ticket_word(total):
+                return "ticket" if total == 1 else "tickets"
+
+            # COUNT ONLY: IT DEPARTMENT TICKETS
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and not status_filter
+                and not search_query
+            ):
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} "
+                        f"{total} IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+
+            # COUNT ONLY: OPEN IT DEPARTMENT TICKETS
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} "
+                        f"{total} open IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # COUNT ONLY: IT DEPARTMENT BY EXACT STATUS
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} "
+                        f"{total} {status_label} IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # COUNT ONLY: ALL OF MY IT DEPARTMENT TICKETS
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and not status_filter
+                and not search_query
+            ):
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # COUNT ONLY: MY OPEN IT DEPARTMENT TICKETS
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} open IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # COUNT ONLY: MY IT DEPARTMENT TICKETS BY EXACT STATUS
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} {status_label} "
+                        f"IT Department {ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+
+
+            # COUNT ONLY: ALL OF MY TICKETS
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and not status_filter
+                and not search_query
+            ):
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # --------------------------------------------------
+            # LIST: ALL IT DEPARTMENT TICKETS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and not status_filter
+                and not search_query
+            ):
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: ALL OPEN IT DEPARTMENT TICKETS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} open IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: ALL IT DEPARTMENT TICKETS BY EXACT STATUS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} {status_label} "
+                        f"IT Department {ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: MY IT DEPARTMENT TICKETS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and not status_filter
+                and not search_query
+            ):
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} of your IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: MY OPEN IT DEPARTMENT TICKETS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} of your open IT Department "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: MY IT DEPARTMENT TICKETS BY EXACT STATUS
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} of your {status_label} "
+                        f"IT Department {ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # COUNT ONLY: ALL TICKETS
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and not status_filter
+                and not search_query
+            ):
+                result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} {total} "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+            
+            # --------------------------------------------------
+            # COUNT ONLY: MY OPEN TICKETS
+            # --------------------------------------------------
+
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=False,
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} open "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # --------------------------------------------------
+            # COUNT ONLY: MY RESOLVED / CLOSED / CANCELLED
+            # --------------------------------------------------
+
+            if (
+                count_only
+                and search_scope == "MY_TICKETS"
+                and status_filter in [
+                    "RESOLVED",
+                    "CLOSED",
+                    "CANCELLED",
+                ]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=True,
+                    status_ids=status_id_map[status_filter],
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"You have {total} {status_label} "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # --------------------------------------------------
+            # COUNT ONLY: ALL OPEN TICKETS
+            # --------------------------------------------------
+
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and status_filter == "OPEN"
+                and not search_query
+            ):
+                result = self.ticketing.get_all_tickets(
+                    include_closed=False,
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} {total} open "
+                        f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
+            # --------------------------------------------------
+            # COUNT ONLY: ALL RESOLVED / CLOSED / CANCELLED
+            # --------------------------------------------------
+
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and status_filter in [
+                    "RESOLVED",
+                    "CLOSED",
+                    "CANCELLED",
+                ]
+                and not search_query
+            ):
+                status_id_map = {
+                    "RESOLVED": [42],
+                    "CLOSED": [43],
+                    "CANCELLED": [44],
+                }
+
+                result = self.ticketing.get_all_tickets(
+                    include_closed=True,
+                    status_ids=status_id_map[status_filter],
+                    size=1,
+                )
+
+                total = result.get("totalElements", 0)
+
+                status_label = status_filter.lower()
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} {total} "
+                        f"{status_label} {ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
 
             # --------------------------------------------------
             # MY OPEN TICKETS
@@ -2074,6 +2883,44 @@ class AgentWorkflow:
                 elif status_filter == "CANCELLED":
                     status_ids = [44]
 
+                if count_only:
+                    result = self.ticketing.search_my_tickets(
+                        search_query=search_query,
+                        requester_email=self.requester_email,
+                        include_closed=(
+                            False
+                            if status_filter == "OPEN"
+                            else True
+                        ),
+                        status_ids=status_ids,
+                        size=1,
+                    )
+
+                    total = result.get("totalElements", 0)
+
+                    status_label = ""
+
+                    if status_filter == "OPEN":
+                        status_label = "open "
+                    elif status_filter == "RESOLVED":
+                        status_label = "resolved "
+                    elif status_filter == "CLOSED":
+                        status_label = "closed "
+                    elif status_filter == "CANCELLED":
+                        status_label = "cancelled "
+
+                    return {
+                        "type": "message",
+                        "message": (
+                            f"You have {total} "
+                            f"{status_label}{search_query} "
+                            f"{ticket_word(total)}."
+                        ),
+                        "total": total,
+                        "tickets": [],
+                    }
+
+
                 result = self.ticketing.search_my_tickets(
                     search_query=search_query,
                     requester_email=self.requester_email,
@@ -2097,6 +2944,43 @@ class AgentWorkflow:
                     status_ids = [43]
                 elif status_filter == "CANCELLED":
                     status_ids = [44]
+
+                if count_only:
+                    result = self.ticketing.search_tickets(
+                        search_query=search_query,
+                        include_closed=(
+                            False
+                            if status_filter == "OPEN"
+                            else True
+                        ),
+                        status_ids=status_ids,
+                        size=1,
+                    )
+
+                    total = result.get("totalElements", 0)
+
+                    status_label = ""
+
+                    if status_filter == "OPEN":
+                        status_label = "open "
+                    elif status_filter == "RESOLVED":
+                        status_label = "resolved "
+                    elif status_filter == "CLOSED":
+                        status_label = "closed "
+                    elif status_filter == "CANCELLED":
+                        status_label = "cancelled "
+
+                    return {
+                        "type": "message",
+                        "message": (
+                            f"There {'is' if total == 1 else 'are'} {total} "
+                            f"{status_label}{search_query} "
+                            f"{ticket_word(total)}."
+                        ),
+                        "total": total,
+                        "tickets": [],
+                    }
+
 
                 result = self.ticketing.search_tickets(
                     search_query=search_query,

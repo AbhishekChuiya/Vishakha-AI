@@ -214,29 +214,41 @@ class TicketingTool:
         requester_email=None,
         include_closed=True,
         status_ids=None,
+        ticket_type_id=None,
+        size=20,
     ):
         print("Requester Email id: ", requester_email)
         print("Include Closed:", include_closed)
         print("Status IDs:", status_ids)
 
+        print(
+            "My Tickets Ticket Type ID:",
+            ticket_type_id,
+        )
+
         return self.client.get_my_tickets(
             requester_email=requester_email,
             include_closed=include_closed,
             status_ids=status_ids,
+            ticket_type_id=ticket_type_id,
+            size=size,
         )
 
     def get_all_tickets(
         self,
         include_closed=True,
         status_ids=None,
+        ticket_type_id=None,
         size=20,
     ):
         print("Get All Tickets Include Closed:", include_closed)
         print("Get All Tickets Status IDs:", status_ids)
+        print("Get All Tickets Ticket Type ID:", ticket_type_id)
 
         return self.client.get_all_tickets(
             include_closed=include_closed,
             status_ids=status_ids,
+            ticket_type_id=ticket_type_id,
             size=size,
         )
 
@@ -282,11 +294,13 @@ class TicketingTool:
             ticket_id
         )
 
+
     def search_tickets(
         self,
         search_query,
         include_closed=True,
         status_ids=None,
+        ticket_type_id=None,
         size=20,
     ):
         print("Search All Tickets Query:", search_query)
@@ -298,11 +312,16 @@ class TicketingTool:
             "Search All Tickets Status IDs:",
             status_ids,
         )
+        print(
+            "Search All Tickets Ticket Type ID:",
+            ticket_type_id,
+        )
 
         return self.client.search_tickets(
             search_query=search_query,
             include_closed=include_closed,
             status_ids=status_ids,
+            ticket_type_id=ticket_type_id,
             size=size,
         )
 
@@ -312,14 +331,24 @@ class TicketingTool:
         requester_email=None,
         include_closed=True,
         status_ids=None,
+        ticket_type_id=None,
         size=20,
     ):
         print("Search My Tickets Query:", search_query)
-        print("Search My Tickets Status IDs:", status_ids)
+        print(
+            "Search My Tickets Status IDs:",
+            status_ids,
+        )
+        print(
+            "Search My Tickets Ticket Type ID:",
+            ticket_type_id,
+        )
+
         return self.client.search_my_tickets(
             search_query=search_query,
             requester_email=requester_email,
             include_closed=include_closed,
             status_ids=status_ids,
+            ticket_type_id=ticket_type_id,
             size=size,
         )

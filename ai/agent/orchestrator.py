@@ -756,16 +756,16 @@ class AgentOrchestrator:
 
         Examples:
 
-        "What is the status of INCIT-00503?"
+        "What is the status of <TICKET_NUMBER>?"
         → ticket_query = "STATUS"
 
-        "Who is assigned to INCIT-00503?"
+        "Who is assigned to <TICKET_NUMBER>?"
         → ticket_query = "ASSIGNED_TO"
 
-        "Who raised INCIT-00503?"
+        "Who raised <TICKET_NUMBER>?"
         → ticket_query = "REQUESTER"
 
-        "When was INCIT-00503 created?"
+        "When was <TICKET_NUMBER> created?"
         → ticket_query = "CREATED_DATE"
 
         For CHECK_TICKET_STATUS:
@@ -986,6 +986,41 @@ class AgentOrchestrator:
             result["request_type"] = None
 
         # ---------------------------------------------------------
+        # Deterministic protection for ticket collection queries
+        # ---------------------------------------------------------
+        # Questions about multiple tickets or ticket counts must
+        # never inherit/invent one specific ticket number.
+
+        message_lower = user_message.lower().strip()
+
+        is_ticket_collection_query = (
+            (
+                "ticket" in message_lower
+                or "tickets" in message_lower
+            )
+            and (
+                "how many" in message_lower
+                or "count" in message_lower
+                or "show all" in message_lower
+                or "show my" in message_lower
+                or "list all" in message_lower
+                or "list my" in message_lower
+                or "find all" in message_lower
+                or "find my" in message_lower
+            )
+        )
+
+        if is_ticket_collection_query:
+            result["intent"] = "SEARCH_TICKETS"
+            result["ticket_number"] = None
+            result["ticket_query"] = None
+
+            result["ticket_count_only"] = (
+                "how many" in message_lower
+                or "count" in message_lower
+            )
+
+        # ---------------------------------------------------------
         # Deterministic ticket-query routing
         # ---------------------------------------------------------
 
@@ -1132,13 +1167,18 @@ class AgentOrchestrator:
                 )
 
             # "all" is a scope instruction, not a search keyword.
-            if result.get("search_scope") == "ALL_TICKETS":
+            if result.get("search_scope") in ["ALL_TICKETS", "MY_TICKETS"]:
                 search_query = str(
                     result.get("search_query") or ""
                 ).strip().lower()
 
                 if search_query in [
                     "all",
+                    "my",
+                    "ticket",
+                    "tickets",
+                    "my ticket",
+                    "my tickets",
                     "all ticket",
                     "all tickets",
                 ]:
@@ -1252,6 +1292,45 @@ class AgentOrchestrator:
         ]:
             result["department"] = None
             result["request_type"] = None
+
+        if "ticket_count_only" not in result:
+            result["ticket_count_only"] = False
+
+        if "search_department" not in result:
+            result["search_department"] = None
+
+        # ---------------------------------------------------------
+        # Deterministic ticket-search department detection
+        # ---------------------------------------------------------
+        message_lower = user_message.lower().strip()
+
+        if result.get("intent") == "SEARCH_TICKETS":
+            if (
+                "it department" in message_lower
+                or "it ticket" in message_lower
+                or "it tickets" in message_lower
+            ):
+                result["search_department"] = "IT Department"
+            else:
+                result["search_department"] = None
+
+        # ---------------------------------------------------------
+        # Remove department-only text from semantic search query
+        # ---------------------------------------------------------
+        if result.get("search_department") == "IT Department":
+            search_query = str(
+                result.get("search_query") or ""
+            ).strip().lower()
+
+            if search_query in [
+                "it",
+                "it ticket",
+                "it tickets",
+                "it department",
+                "it department ticket",
+                "it department tickets",
+            ]:
+                result["search_query"] = None
 
         return result
 
