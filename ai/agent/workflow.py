@@ -1860,6 +1860,69 @@ class AgentWorkflow:
                     "tickets": [],
                 }
 
+            # --------------------------------------------------
+            # COUNT ONLY: ALL IT DEPARTMENT TICKETS BY KEYWORD
+            # --------------------------------------------------
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and search_query
+            ):
+                status_ids = None
+                include_closed = True
+
+                if status_filter == "OPEN":
+                    include_closed = False
+
+                elif status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]:
+                    status_id_map = {
+                        "RESOLVED": [42],
+                        "CLOSED": [43],
+                        "CANCELLED": [44],
+                    }
+                    status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.search_tickets(
+                    search_query=search_query,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=1,
+                )
+
+                incident_result = self.ticketing.search_tickets(
+                    search_query=search_query,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=1,
+                )
+
+                service_total = service_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                incident_total = incident_result.get(
+                    "totalElements",
+                    0,
+                )
+
+                total = service_total + incident_total
+
+                return {
+                    "type": "message",
+                    "message": (
+                        f"There {'is' if total == 1 else 'are'} "
+                        f"{total} IT Department "
+                        f"{ticket_word(total)} matching "
+                        f"'{search_query}'."
+                    ),
+                    "total": total,
+                    "tickets": [],
+                }
+
             # COUNT ONLY: ALL OF MY IT DEPARTMENT TICKETS
             if (
                 count_only
@@ -2074,6 +2137,73 @@ class AgentWorkflow:
                     "message": (
                         f"I found {total} IT Department "
                         f"{ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: ALL IT DEPARTMENT TICKETS BY KEYWORD
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department == "IT Department"
+                and search_query
+            ):
+                status_ids = None
+                include_closed = True
+
+                if status_filter == "OPEN":
+                    include_closed = False
+
+                elif status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]:
+                    status_id_map = {
+                        "RESOLVED": [42],
+                        "CLOSED": [43],
+                        "CANCELLED": [44],
+                    }
+                    status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.search_tickets(
+                    search_query=search_query,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.search_tickets(
+                    search_query=search_query,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} IT Department "
+                        f"{ticket_word(total)} matching "
+                        f"'{search_query}'."
                     ),
                     "total": total,
                     "tickets": tickets,
@@ -2349,6 +2479,75 @@ class AgentWorkflow:
                     "message": (
                         f"I found {total} of your {status_label} "
                         f"IT Department {ticket_word(total)}."
+                    ),
+                    "total": total,
+                    "tickets": tickets,
+                }
+
+            # --------------------------------------------------
+            # LIST: MY IT DEPARTMENT TICKETS BY KEYWORD
+            # --------------------------------------------------
+            if (
+                not count_only
+                and search_scope == "MY_TICKETS"
+                and search_department == "IT Department"
+                and search_query
+            ):
+                status_ids = None
+                include_closed = True
+
+                if status_filter == "OPEN":
+                    include_closed = False
+
+                elif status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]:
+                    status_id_map = {
+                        "RESOLVED": [42],
+                        "CLOSED": [43],
+                        "CANCELLED": [44],
+                    }
+                    status_ids = status_id_map[status_filter]
+
+                service_result = self.ticketing.search_my_tickets(
+                    search_query=search_query,
+                    requester_email=self.requester_email,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=55,
+                    size=20,
+                )
+
+                incident_result = self.ticketing.search_my_tickets(
+                    search_query=search_query,
+                    requester_email=self.requester_email,
+                    include_closed=include_closed,
+                    status_ids=status_ids,
+                    ticket_type_id=56,
+                    size=20,
+                )
+
+                service_tickets = service_result.get("content", [])
+                incident_tickets = incident_result.get("content", [])
+
+                service_total = service_result.get("totalElements", 0)
+                incident_total = incident_result.get("totalElements", 0)
+
+                total = service_total + incident_total
+
+                tickets = service_tickets + incident_tickets
+
+                tickets.sort(
+                    key=lambda ticket: ticket.get("createdAt") or "",
+                    reverse=True,
+                )
+
+                tickets = tickets[:20]
+
+                return {
+                    "type": "ticket_list",
+                    "message": (
+                        f"I found {total} of your IT Department "
+                        f"{ticket_word(total)} matching "
+                        f"'{search_query}'."
                     ),
                     "total": total,
                     "tickets": tickets,

@@ -1322,15 +1322,30 @@ class AgentOrchestrator:
                 result.get("search_query") or ""
             ).strip().lower()
 
-            if search_query in [
-                "it",
-                "it ticket",
-                "it tickets",
+            # Remove department wording from keyword searches.
+            # Example:
+            # "IT Department laptop tickets" -> "laptop"
+            cleanup_phrases = [
                 "it department",
-                "it department ticket",
-                "it department tickets",
-            ]:
-                result["search_query"] = None
+                "it tickets",
+                "it ticket",
+            ]
+
+            for phrase in cleanup_phrases:
+                search_query = search_query.replace(phrase, " ")
+
+            # Remove generic ticket words.
+            words = search_query.split()
+
+            words = [
+                word
+                for word in words
+                if word not in ["ticket", "tickets"]
+            ]
+
+            search_query = " ".join(words).strip()
+
+            result["search_query"] = search_query or None
 
         return result
 
