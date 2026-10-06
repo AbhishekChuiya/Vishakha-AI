@@ -215,22 +215,20 @@ class TicketingTool:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
-        print("Requester Email id: ", requester_email)
-        print("Include Closed:", include_closed)
-        print("Status IDs:", status_ids)
-
-        print(
-            "My Tickets Ticket Type ID:",
-            ticket_type_id,
-        )
+        print("Get My Tickets Include Closed:", include_closed)
+        print("Get My Tickets Status IDs:", status_ids)
+        print("Get My Tickets Ticket Type ID:", ticket_type_id)
+        print("Get My Tickets Group IDs:", group_ids)
 
         return self.client.get_my_tickets(
             requester_email=requester_email,
             include_closed=include_closed,
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
+            group_ids=group_ids,
             size=size,
         )
 
@@ -239,16 +237,25 @@ class TicketingTool:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         print("Get All Tickets Include Closed:", include_closed)
         print("Get All Tickets Status IDs:", status_ids)
         print("Get All Tickets Ticket Type ID:", ticket_type_id)
-
+        print("Get All Tickets Group IDs:", group_ids)
+        print("Get All Tickets Category ID:", category_id)
+        print("Get All Tickets Subcategory ID:", subcategory_id)
+        
         return self.client.get_all_tickets(
             include_closed=include_closed,
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
+            group_ids=group_ids,
+            category_id=category_id,
+            subcategory_id=subcategory_id,
             size=size,
         )
 
@@ -301,27 +308,21 @@ class TicketingTool:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
-        print("Search All Tickets Query:", search_query)
-        print(
-            "Search All Tickets Include Closed:",
-            include_closed,
-        )
-        print(
-            "Search All Tickets Status IDs:",
-            status_ids,
-        )
-        print(
-            "Search All Tickets Ticket Type ID:",
-            ticket_type_id,
-        )
+        print("Search Tickets Query:", search_query)
+        print("Search Tickets Include Closed:", include_closed)
+        print("Search Tickets Status IDs:", status_ids)
+        print("Search Tickets Ticket Type ID:", ticket_type_id)
+        print("Search Tickets Group IDs:", group_ids)
 
         return self.client.search_tickets(
             search_query=search_query,
             include_closed=include_closed,
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
+            group_ids=group_ids,
             size=size,
         )
 
@@ -332,17 +333,14 @@ class TicketingTool:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
         print("Search My Tickets Query:", search_query)
-        print(
-            "Search My Tickets Status IDs:",
-            status_ids,
-        )
-        print(
-            "Search My Tickets Ticket Type ID:",
-            ticket_type_id,
-        )
+        print("Search My Tickets Include Closed:", include_closed)
+        print("Search My Tickets Status IDs:", status_ids)
+        print("Search My Tickets Ticket Type ID:", ticket_type_id)
+        print("Search My Tickets Group IDs:", group_ids)
 
         return self.client.search_my_tickets(
             search_query=search_query,
@@ -350,5 +348,6 @@ class TicketingTool:
             include_closed=include_closed,
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
+            group_ids=group_ids,
             size=size,
         )

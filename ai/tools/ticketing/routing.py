@@ -232,20 +232,28 @@ def find_route(
         )
 
     # ----------------------------------------------
-    # Prefer exact location over generic rules
+    # Prefer specific location over generic rules
+
     # ----------------------------------------------
 
-    exact_location_matches = [
+    specific_location_matches = [
         row
         for row in matches
-        if normalize(row["location"]) == location_key
+        if normalize(row["location"]) not in {
+            "all",
+            "all except shantigram",
+        }
+        and location_matches(
+            row["location"],
+            location
+        )
     ]
 
-    if len(exact_location_matches) == 1:
-        return exact_location_matches[0]
+    if len(specific_location_matches) == 1:
+        return specific_location_matches[0]
 
-    if len(exact_location_matches) > 1:
-        matches = exact_location_matches
+    if len(specific_location_matches) > 1:
+        matches = specific_location_matches
 
     # ----------------------------------------------
     # Multiple routes still matched

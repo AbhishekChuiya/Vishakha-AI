@@ -2202,11 +2202,34 @@ function handleAIResponse(result) {
         return;
     }
 
-    if (result.type === "ticket_search") {
+    /* TICKET STATUS */
+
+    if (result.type === "ticket_status") {
+
         addAIMessage(result.message);
 
         if (result.tickets && result.tickets.length > 0) {
-            addTicketSearchCards(result.tickets);
+
+            addTicketStatusCards(
+                result.tickets
+            );
+        }
+
+        return;
+    }
+
+
+    /* TICKET SEARCH */
+
+    if (result.type === "ticket_search") {
+
+        addAIMessage(result.message);
+
+        if (result.tickets && result.tickets.length > 0) {
+
+            addTicketSearchCards(
+                result.tickets
+            );
         }
 
         return;

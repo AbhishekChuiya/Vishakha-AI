@@ -250,6 +250,7 @@ class TicketingClient:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -272,6 +273,9 @@ class TicketingClient:
         if ticket_type_id:
             params["ticketTypeId"] = ticket_type_id
 
+        if group_ids:
+            params["groupId"] = group_ids
+
         response = requests.get(
             url,
             headers=headers,
@@ -288,6 +292,9 @@ class TicketingClient:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -309,9 +316,22 @@ class TicketingClient:
         if ticket_type_id:
             params["ticketTypeId"] = ticket_type_id
 
+        if group_ids:
+            params["groupId"] = group_ids
+
+        if category_id:
+            params["categoryId"] = category_id
+
+        if subcategory_id:
+            params["subCategoryId"] = subcategory_id
+
         print("Get All Tickets Include Closed:", include_closed)
         print("Get All Tickets Status IDs:", status_ids)
-
+        print("Get All Tickets Ticket Type ID:", ticket_type_id)
+        print("Get All Tickets Group IDs:", group_ids)
+        print("Get All Tickets Category ID:", category_id)
+        print("Get All Tickets Subcategory ID:", subcategory_id)
+        
         response = requests.get(
             url,
             headers=headers,
@@ -373,6 +393,7 @@ class TicketingClient:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -394,6 +415,9 @@ class TicketingClient:
 
         if ticket_type_id:
             params["ticketTypeId"] = ticket_type_id
+
+        if group_ids:
+            params["groupId"] = group_ids
 
         print("Search All Tickets Query:", search_query)
         print(
@@ -427,6 +451,7 @@ class TicketingClient:
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
+        group_ids=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -449,6 +474,9 @@ class TicketingClient:
 
         if ticket_type_id:
             params["ticketTypeId"] = ticket_type_id
+
+        if group_ids:
+            params["groupId"] = group_ids
 
         print(
             "Search My Tickets Requester Email:",

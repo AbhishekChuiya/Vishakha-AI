@@ -269,10 +269,10 @@ class AgentOrchestrator:
 
         Examples:
 
-        "What is the status of INC-00029?"
+        "What is the status of <TICKET_NUMBER>?"
         → CHECK_TICKET_STATUS
 
-        "Who is assigned to SRQAD-083?"
+        "Who is assigned to <TICKET_NUMBER>?    "
         → CHECK_TICKET_STATUS
 
         --------------------------------------------------
@@ -1020,6 +1020,154 @@ class AgentOrchestrator:
                 or "count" in message_lower
             )
 
+        # --------------------------------------------------
+        # --------------------------------------------------
+        # DETECT DEPARTMENT FOR TICKET SEARCH
+        # Must run AFTER collection-query intent correction
+        # --------------------------------------------------
+        if result.get("intent") == "SEARCH_TICKETS":
+
+            department_search_names = {
+                "admin": "Admin",
+                "branding": "Branding",
+                "compliance & risk": "Compliance & Risk",
+                "compliance and risk": "Compliance & Risk",
+                "finance": "Finance",
+                "hr department": "HR Department",
+                "hr": "HR Department",
+                "it department": "IT Department",
+                "insurance": "Insurance",
+                "projects": "Projects",
+                "quality management": "Quality management",
+                "safety": "Safety",
+                "security": "Security",
+                "strategy": "Strategy",
+            }
+
+            detected_department = None
+
+            # First use explicit department words from the user's message.
+            for phrase, department_name in department_search_names.items():
+                if phrase in message_lower:
+                    detected_department = department_name
+                    break
+
+            # If not found in the message, use a valid department
+            # already identified by the LLM.
+            if not detected_department:
+                llm_department = result.get("department")
+
+                if llm_department in department_search_names.values():
+                    detected_department = llm_department
+
+            result["search_department"] = detected_department
+
+        # --------------------------------------------------
+        # EXTRACT KEYWORD FOR DEPARTMENT TICKET SEARCH
+        # --------------------------------------------------
+        if (
+            result.get("intent") == "SEARCH_TICKETS"
+            and result.get("search_department")
+        ):
+            department_name = result.get("search_department")
+
+            search_text = message_lower
+
+            # Remove collection/count language.
+            cleanup_phrases = [
+                "how many",
+                "count",
+                "show all",
+                "show my",
+                "list all",
+                "list my",
+                "find all",
+                "find my",
+                "tickets",
+                "ticket",
+            ]
+
+            # Remove department wording.
+            department_phrases = {
+                "Admin": ["admin"],
+                "Branding": ["branding"],
+                "Compliance & Risk": [
+                    "compliance & risk",
+                    "compliance and risk",
+                ],
+                "Finance": ["finance"],
+                "HR Department": [
+                    "hr department",
+                    "hr",
+                ],
+                "IT Department": [
+                    "it department",
+                    "it",
+                ],
+                "Insurance": ["insurance"],
+                "Projects": ["projects"],
+                "Quality management": [
+                    "quality management",
+                ],
+                "Safety": ["safety"],
+                "Security": ["security"],
+                "Strategy": ["strategy"],
+            }
+
+            cleanup_phrases.extend(
+                department_phrases.get(department_name, [])
+            )
+
+            # Remove status words because they are handled separately.
+            cleanup_phrases.extend([
+                "open",
+                "resolved",
+                "closed",
+                "cancelled",
+            ])
+
+            # Longest phrases first.
+            cleanup_phrases.sort(
+                key=len,
+                reverse=True,
+            )
+
+            for phrase in cleanup_phrases:
+                search_text = search_text.replace(
+                    phrase,
+                    " ",
+                )
+
+            search_text = " ".join(
+                search_text.split()
+            ).strip()
+
+            filler_phrases = [
+                "are there",
+                "is there",
+                "do we have",
+            ]
+
+            for phrase in filler_phrases:
+                search_text = search_text.replace(
+                    phrase,
+                    " ",
+                )
+
+            # Remove punctuation left over from the user's question.
+            search_text = re.sub(
+                r"[^\w\s-]",
+                " ",
+                search_text,
+            )
+
+            # Normalize extra spaces.
+            search_text = " ".join(
+                search_text.split()
+            ).strip()
+
+            result["search_query"] = search_text or None
+
         # ---------------------------------------------------------
         # Deterministic ticket-query routing
         # ---------------------------------------------------------
@@ -1303,16 +1451,6 @@ class AgentOrchestrator:
         # Deterministic ticket-search department detection
         # ---------------------------------------------------------
         message_lower = user_message.lower().strip()
-
-        if result.get("intent") == "SEARCH_TICKETS":
-            if (
-                "it department" in message_lower
-                or "it ticket" in message_lower
-                or "it tickets" in message_lower
-            ):
-                result["search_department"] = "IT Department"
-            else:
-                result["search_department"] = None
 
         # ---------------------------------------------------------
         # Remove department-only text from semantic search query
