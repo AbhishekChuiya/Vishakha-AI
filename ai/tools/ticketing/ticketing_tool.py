@@ -10,6 +10,18 @@ class TicketingTool:
         self.client = TicketingClient()
 
 
+    def resolve_category_subcategory(
+        self,
+        ticket_type_id,
+        category_name,
+        subcategory_name=None,
+    ):
+        return self.client.resolve_category_subcategory(
+            ticket_type_id=ticket_type_id,
+            category_name=category_name,
+            subcategory_name=subcategory_name,
+        )
+
     def create_ticket(
         self,
         category,

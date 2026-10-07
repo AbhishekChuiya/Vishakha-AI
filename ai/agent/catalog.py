@@ -660,3 +660,90 @@ SUBCATEGORY_REQUEST_TYPES = {
 
 }
 
+
+def find_catalog_item(
+    department,
+    search_text,
+):
+    """
+    Find an exact category or subcategory in the existing
+    ticket catalog.
+
+    Returns:
+        {
+            "category": ...,
+            "subcategory": ...,
+            "request_types": [...]
+        }
+
+    or None when no catalog item matches.
+    """
+
+    if not department or not search_text:
+        return None
+
+    department_catalog = CATEGORIES.get(
+        department,
+        {}
+    )
+
+    normalized_search = str(
+        search_text
+    ).strip().lower()
+
+    # ------------------------------------------
+    # 1. Match category
+    # ------------------------------------------
+
+    for category, subcategories in (
+        department_catalog.items()
+    ):
+
+        if category.strip().lower() == normalized_search:
+
+            request_types = set()
+
+            request_type_catalog = (
+                SUBCATEGORY_REQUEST_TYPES
+                .get(department, {})
+                .get(category, {})
+            )
+
+            for types in request_type_catalog.values():
+                request_types.update(types)
+
+            return {
+                "category": category,
+                "subcategory": None,
+                "request_types": sorted(request_types),
+            }
+
+    # ------------------------------------------
+    # 2. Match subcategory
+    # ------------------------------------------
+
+    for category, subcategories in (
+        department_catalog.items()
+    ):
+
+        for subcategory in subcategories:
+
+            if (
+                subcategory.strip().lower()
+                == normalized_search
+            ):
+
+                request_types = (
+                    SUBCATEGORY_REQUEST_TYPES
+                    .get(department, {})
+                    .get(category, {})
+                    .get(subcategory, [])
+                )
+
+                return {
+                    "category": category,
+                    "subcategory": subcategory,
+                    "request_types": list(request_types),
+                }
+
+    return None

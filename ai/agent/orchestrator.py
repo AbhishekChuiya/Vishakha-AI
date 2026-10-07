@@ -1036,6 +1036,7 @@ class AgentOrchestrator:
                 "hr department": "HR Department",
                 "hr": "HR Department",
                 "it department": "IT Department",
+                "it": "IT Department",
                 "insurance": "Insurance",
                 "projects": "Projects",
                 "quality management": "Quality management",
@@ -1048,7 +1049,10 @@ class AgentOrchestrator:
 
             # First use explicit department words from the user's message.
             for phrase, department_name in department_search_names.items():
-                if phrase in message_lower:
+                if re.search(
+                    rf"\b{re.escape(phrase)}\b",
+                    message_lower,
+                ):
                     detected_department = department_name
                     break
 
@@ -1133,9 +1137,10 @@ class AgentOrchestrator:
             )
 
             for phrase in cleanup_phrases:
-                search_text = search_text.replace(
-                    phrase,
+                search_text = re.sub(
+                    rf"\b{re.escape(phrase)}\b",
                     " ",
+                    search_text,
                 )
 
             search_text = " ".join(

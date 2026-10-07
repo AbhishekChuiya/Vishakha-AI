@@ -237,6 +237,51 @@ class TicketingClient:
             },
         )
 
+    def resolve_category_subcategory(
+        self,
+        ticket_type_id,
+        category_name,
+        subcategory_name=None,
+    ):
+        """
+        Resolve category/subcategory names to their actual
+        Service Excellence IDs.
+        """
+
+        category_data = self.get_category(
+            ticket_type_id,
+            category_name,
+        )
+
+        result = {
+            "category_id": int(category_data["id"]),
+            "category_name": category_data.get(
+                "name",
+                category_name,
+            ),
+            "subcategory_id": None,
+            "subcategory_name": None,
+        }
+
+        if subcategory_name:
+
+            subcategory_data = self.get_subcategory(
+                category_data["id"],
+                subcategory_name,
+            )
+
+            result["subcategory_id"] = int(
+                subcategory_data["id"]
+            )
+
+            result["subcategory_name"] = (
+                subcategory_data.get(
+                    "name",
+                    subcategory_name,
+                )
+            )
+
+        return result
 
     def get_location(self, location_name):
         return self._lookup_exact_name(

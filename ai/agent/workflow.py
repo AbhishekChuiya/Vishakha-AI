@@ -3,7 +3,7 @@ from ai.agent.orchestrator import AgentOrchestrator
 from ai.tools.ticketing.ticketing_tool import TicketingTool
 from ai.tools.ticketing.routing import get_departments
 from ai.agent.config import REQUEST_TYPES, LOCATIONS
-from ai.agent.catalog import CATEGORIES, SUBCATEGORY_REQUEST_TYPES
+from ai.agent.catalog import CATEGORIES, SUBCATEGORY_REQUEST_TYPES, find_catalog_item
 from datetime import datetime, timedelta
 from django.utils import timezone
 
@@ -1774,6 +1774,7 @@ class AgentWorkflow:
         status_ids=None,
         category_id=None,
         subcategory_id=None,
+        ticket_type_id=None,
         include_closed=True,
         size=20,
     ):
@@ -1814,6 +1815,17 @@ class AgentWorkflow:
                     "ticket_type_ids",
                     []
                 )
+            ]
+
+        # If structured catalog search already determined
+        # the exact request/ticket type, search only that type.
+        if ticket_type_id is not None:
+
+            routes = [
+                route
+                for route in routes
+                if route.get("ticket_type_id")
+                == ticket_type_id
             ]
 
         combined_tickets = []
@@ -1921,42 +1933,234 @@ class AgentWorkflow:
             # --------------------------------------------------
             structured_category_id = None
             structured_subcategory_id = None
+            structured_category_name = None
+            structured_subcategory_name = None
+            structured_request_types = []
+            structured_ticket_type_id = None
+            structured_ticket_type_ids = []
+            structured_routes = []
 
-            if search_department == "Admin" and search_query:
-                normalized_query = search_query.strip().lower()
+            catalog_match = None
 
-                admin_category_aliases = {
-                    "stationery": 78,
-                    "stationery request": 78,
-                }
+            if search_department and search_query:
+                print(
+                    "SEARCH QUERY BEFORE CATALOG:",
+                    repr(search_query),
+                )
 
-                admin_subcategory_aliases = {
-                    "desk accessories": {
-                        "category_id": 78,
-                        "subcategory_id": 423,
+                catalog_match = find_catalog_item(
+                    search_department,
+                    search_query,
+                )
+                print(
+                    "CATALOG MATCH:",
+                    catalog_match,
+                )
+
+                if catalog_match:
+
+                    structured_category_name = catalog_match[
+                        "category"
+                    ]
+
+                    structured_subcategory_name = catalog_match[
+                        "subcategory"
+                    ]
+
+                    structured_request_types = catalog_match[
+                        "request_types"
+                    ]
+
+                    search_query = None
+
+            # --------------------------------------------------
+            # RESOLVE STRUCTURED SEARCH TO LIVE PORTAL IDs
+            # --------------------------------------------------
+
+            if catalog_match:
+
+                # Only resolve automatically when the catalog
+                # points to exactly one request type.
+                # Convert every catalog request type into its
+                # corresponding Service Excellence ticket type ID.
+                request_type_to_ticket_id = {
+                    "Incident Request": {
+                        "Admin": 9,
+                        "Safety": 12,
+                        "Security": 8,
+                        "HR Department": 53,
+                        "IT Department": 56,
+                    },
+                    "Service Request": {
+                        "Admin": 11,
+                        "Safety": 16,
+                        "Branding": 6,
+                        "HR Department": 52,
+                        "Finance": 51,
+                        "Insurance": 54,
+                        "Compliance & Risk": 50,
+                        "Strategy": 60,
+                        "IT Department": 55,
+                    },
+                    "Change Management": {
+                        "Branding": 14,
+                        "Projects": 59,
+                    },
+                    "Request For Information": {
+                        "Branding": 7,
+                    },
+                    "Customer Complaint": {
+                        "Quality management": 61,
                     },
                 }
 
-                subcategory_match = admin_subcategory_aliases.get(
-                    normalized_query
-                )
+                for request_type in structured_request_types:
 
-                if subcategory_match:
-                    structured_category_id = subcategory_match[
-                        "category_id"
-                    ]
-                    structured_subcategory_id = subcategory_match[
-                        "subcategory_id"
-                    ]
-                    search_query = None
-
-                else:
-                    structured_category_id = admin_category_aliases.get(
-                        normalized_query
+                    ticket_type_id = (
+                        request_type_to_ticket_id
+                        .get(request_type, {})
+                        .get(search_department)
                     )
 
-                    if structured_category_id:
-                        search_query = None
+                    if ticket_type_id is not None:
+                        structured_ticket_type_ids.append(
+                            ticket_type_id
+                        )
+
+                print(
+                    "STRUCTURED TICKET TYPE IDS:",
+                    structured_ticket_type_ids,
+                )
+
+                # Resolve the structured category/subcategory
+                # independently for every applicable ticket type.
+                if len(structured_ticket_type_ids) > 1:
+
+                    for request_type, ticket_type_id in zip(
+                        structured_request_types,
+                        structured_ticket_type_ids,
+                    ):
+
+                        try:
+                            resolved = (
+                                self.ticketing
+                                .resolve_category_subcategory(
+                                    ticket_type_id=ticket_type_id,
+                                    category_name=structured_category_name,
+                                    subcategory_name=structured_subcategory_name,
+                                )
+                            )
+
+                            structured_routes.append(
+                                {
+                                    "request_type": request_type,
+                                    "ticket_type_id": ticket_type_id,
+                                    "category_id": resolved["category_id"],
+                                    "subcategory_id": resolved["subcategory_id"],
+                                }
+                            )
+
+                        except Exception as exc:
+                            print(
+                                "STRUCTURED ROUTE RESOLUTION FAILED:",
+                                ticket_type_id,
+                                exc,
+                            )
+
+                    print(
+                        "STRUCTURED ROUTES:",
+                        structured_routes,
+                    )
+
+                if len(structured_request_types) == 1:
+
+                    structured_request_type = (
+                        structured_request_types[0]
+                    )
+
+                    request_type_to_ticket_id = {
+                        "Incident Request": {
+                            "Admin": 9,
+                            "Safety": 12,
+                            "Security": 8,
+                            "HR Department": 53,
+                            "IT Department": 56,
+                        },
+                        "Service Request": {
+                            "Admin": 11,
+                            "Safety": 16,
+                            "Branding": 6,
+                            "HR Department": 52,
+                            "Finance": 51,
+                            "Insurance": 54,
+                            "Compliance & Risk": 50,
+                            "Strategy": 60,
+                            "IT Department": 55,
+                        },
+                        "Change Management": {
+                            "Branding": 14,
+                            "Projects": 59,
+                        },
+                        "Request For Information": {
+                            "Branding": 7,
+                        },
+                        "Customer Complaint": {
+                            "Quality management": 61,
+                        },
+                    }
+
+                    structured_ticket_type_id = (
+                        request_type_to_ticket_id
+                        .get(
+                            structured_request_type,
+                            {},
+                        )
+                        .get(search_department)
+                    )
+
+                    if structured_ticket_type_id:
+
+                        resolved = (
+                            self.ticketing
+                            .resolve_category_subcategory(
+                                ticket_type_id=(
+                                    structured_ticket_type_id
+                                ),
+                                category_name=(
+                                    structured_category_name
+                                ),
+                                subcategory_name=(
+                                    structured_subcategory_name
+                                ),
+                            )
+                        )
+
+                        structured_category_id = resolved[
+                            "category_id"
+                        ]
+
+                        structured_subcategory_id = resolved[
+                            "subcategory_id"
+                        ]
+
+                        print(
+                            "STRUCTURED CATEGORY:",
+                            structured_category_name,
+                            structured_category_id,
+                        )
+
+                        print(
+                            "STRUCTURED SUBCATEGORY:",
+                            structured_subcategory_name,
+                            structured_subcategory_id,
+                        )
+
+                        print(
+                            "STRUCTURED REQUEST TYPE:",
+                            structured_request_type,
+                            structured_ticket_type_id,
+                        )
+                    
             def ticket_word(total):
                 return "ticket" if total == 1 else "tickets"
 
@@ -1990,35 +2194,114 @@ class AgentWorkflow:
                     structured_category_id
                 )
 
-                result = self.search_department_tickets(
-                    department=search_department,
-                    search_scope="ALL_TICKETS",
-                    category_id=structured_category_id,
-                    subcategory_id=structured_subcategory_id,
-                    include_closed=True,
-                    size=1,
-                )
+                # Multi-request-type structured search.
+                # Each ticket type can have different category/subcategory IDs.
+                structured_route_totals = []
+                if structured_routes:
 
-                total = result.get("totalElements", 0)
+                    total = 0
+                    
+                    
 
+                    for route in structured_routes:
+
+                        result = self.search_department_tickets(
+                            department=search_department,
+                            search_scope="ALL_TICKETS",
+                            category_id=route["category_id"],
+                            subcategory_id=route["subcategory_id"],
+                            ticket_type_id=route["ticket_type_id"],
+                            include_closed=True,
+                            size=1,
+                        )
+
+                        route_total = result.get(
+                            "totalElements",
+                            0,
+                        )
+
+                        print(
+                            "STRUCTURED ROUTE TOTAL:",
+                            route["ticket_type_id"],
+                            route_total,
+                        )
+
+                        total += route_total
+
+                        structured_route_totals.append(
+                            {
+                                "request_type": route["request_type"],
+                                "ticket_type_id": route["ticket_type_id"],
+                                "total": route_total,
+                            }
+                        )
+
+                        print(
+                            "STRUCTURED ROUTE TOTALS:",
+                            structured_route_totals,
+                        )
+
+                else:
+
+                    result = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="ALL_TICKETS",
+                        category_id=structured_category_id,
+                        subcategory_id=structured_subcategory_id,
+                        ticket_type_id=structured_ticket_type_id,
+                        include_closed=True,
+                        size=1,
+                    )
+
+                    total = result.get(
+                        "totalElements",
+                        0,
+                    )
+
+
+                route_breakdown = []
+
+                for item in structured_route_totals:
+
+                    request_type_name = item["request_type"]
+
+                    route_breakdown.append(
+                        f"{item['total']} {request_type_name}"
+                        f"{'' if item['total'] == 1 else 's'}"
+                    )
+
+                breakdown_text = " and ".join(route_breakdown)
                 return {
                     "type": "message",
-                    "message": 
+                    "message": (
                         (
-                            f"{total} Admin Stationery Request - "
-                            f"Desk Accessories {ticket_word(total)}."
-                            if structured_subcategory_id == 423
-                            else (
-                                f"{total} Admin Stationery Request "
-                                f"{ticket_word(total)}."
-                                if structured_category_id == 78
-                                else (
-                                    f"{total} {search_department} "
-                                    f"{ticket_word(total)}."
-                                )
+                            f"{total} {search_department} "
+                            f"{structured_category_name} - "
+                            f"{structured_subcategory_name} "
+                            f"{ticket_word(total)}"
+                            + (
+                                f": {breakdown_text}."
+                                if structured_route_totals
+                                else "."
                             )
                         )
-                    ,
+                        if structured_subcategory_name
+                        else (
+                            f"{total} {search_department} "
+                            f"{structured_category_name} "
+                            f"{ticket_word(total)}"
+                            + (
+                                f": {breakdown_text}."
+                                if structured_route_totals
+                                else "."
+                            )
+                        )
+                        if structured_category_name
+                        else (
+                            f"{total} {search_department} "
+                            f"{ticket_word(total)}."
+                        )
+                    ),
                     "total": total,
                     "tickets": [],
                 }
@@ -2098,6 +2381,9 @@ class AgentWorkflow:
                     search_scope="ALL_TICKETS",
                     include_closed=True,
                     status_ids=status_ids,
+                    category_id=structured_category_id,
+                    subcategory_id=structured_subcategory_id,
+                    ticket_type_id=structured_ticket_type_id,
                     size=1,
                 )
 
@@ -2107,10 +2393,26 @@ class AgentWorkflow:
                 return {
                     "type": "message",
                     "message": (
-                        f"There {'is' if total == 1 else 'are'} "
-                        f"{total} {status_label} "
-                        f"{search_department} "
-                        f"{ticket_word(total)}."
+                        (
+                            f"There are {total} {status_label.lower()} "
+                            f"{search_department} "
+                            f"{structured_category_name} - "
+                            f"{structured_subcategory_name} "
+                            f"{ticket_word(total)}."
+                        )
+                        if structured_subcategory_name
+                        else (
+                            f"There are {total} {status_label.lower()} "
+                            f"{search_department} "
+                            f"{structured_category_name} "
+                            f"{ticket_word(total)}."
+                        )
+                        if structured_category_name
+                        else (
+                            f"There are {total} {status_label.lower()} "
+                            f"{search_department} "
+                            f"{ticket_word(total)}."
+                        )
                     ),
                     "total": total,
                     "tickets": [],
@@ -2162,11 +2464,13 @@ class AgentWorkflow:
                 result = self.search_department_tickets(
                     department=search_department,
                     search_scope="ALL_TICKETS",
-                    search_query=search_query,
                     status_ids=status_ids,
-                    include_closed=include_closed,
+                    category_id=structured_category_id,
+                    subcategory_id=structured_subcategory_id,
+                    ticket_type_id=structured_ticket_type_id,
+                    include_closed=True,
                     size=1,
-                )
+                )       
 
                 total = result.get("totalElements", 0)
 
