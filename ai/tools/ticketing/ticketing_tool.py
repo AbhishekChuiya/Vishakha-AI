@@ -29,6 +29,8 @@ class TicketingTool:
         location,
         priority,
         subcategory=None,
+        # requester=None,
+        # actor=None,
         impact=None,
         start_date=None,
         target_date=None,
@@ -195,6 +197,9 @@ class TicketingTool:
             description=full_description,
             ticket_type_id=ticket_type_id,
             priority=priority,
+            requester=requester,
+            actor=actor,
+
             impact=(impact if request_type == "Incident Request" else None),
             start_date=(
                 start_date
@@ -246,6 +251,7 @@ class TicketingTool:
 
     def get_all_tickets(
         self,
+        search_query=None,
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
@@ -254,14 +260,16 @@ class TicketingTool:
         subcategory_id=None,
         size=20,
     ):
+        print("Get All Tickets Search Query:", search_query)
         print("Get All Tickets Include Closed:", include_closed)
         print("Get All Tickets Status IDs:", status_ids)
         print("Get All Tickets Ticket Type ID:", ticket_type_id)
         print("Get All Tickets Group IDs:", group_ids)
         print("Get All Tickets Category ID:", category_id)
         print("Get All Tickets Subcategory ID:", subcategory_id)
-        
+
         return self.client.get_all_tickets(
+            search_query=search_query,
             include_closed=include_closed,
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,

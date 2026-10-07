@@ -580,25 +580,62 @@ function disableButtons(container) {
 
 function addLoadingMessage() {
 
-    const messageDiv = document.createElement("div");
+    const messageDiv =
+        document.createElement("div");
 
     messageDiv.id = "ai-loading";
-
-    messageDiv.className = "message ai-message";
+    messageDiv.className =
+        "message ai-message ai-thinking-message";
 
     messageDiv.innerHTML = `
-        <div class="avatar">
+        <div class="avatar ai-thinking-avatar">
             AI
         </div>
 
-        <div class="message-bubble">
-            <p>Thinking...</p>
+        <div class="ai-thinking-bubble">
+
+            <div class="ai-thinking-content">
+
+                <span
+                    class="ai-thinking-text"
+                    id="ai-thinking-text"
+                >
+                    Thinking
+                </span>
+
+                <div class="ai-thinking-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+            </div>
+
         </div>
     `;
 
     chatMessages.appendChild(messageDiv);
 
     scrollToBottom();
+
+
+    /*
+     * If processing takes longer, show the user
+     * that Darpan is still actively working.
+     */
+    setTimeout(function() {
+
+        const text =
+            document.getElementById(
+                "ai-thinking-text"
+            );
+
+        if (text) {
+            text.textContent =
+                "Working on your request";
+        }
+
+    }, 3500);
 }
 
 
@@ -856,6 +893,7 @@ chats.forEach(function(chat) {
             "active"
         );
     }
+
 
 
     /* =========================
@@ -2202,6 +2240,14 @@ function handleAIResponse(result) {
         return;
     }
 
+    if (result.type === "ticket_search_summary") {
+        addAIMessage(result.message);
+
+        addTicketSearchSummary(result);
+
+        return;
+    }
+
     /* TICKET STATUS */
 
     if (result.type === "ticket_status") {
@@ -2302,6 +2348,202 @@ function handleAIResponse(result) {
         return;
     }
 
+}
+
+function getTicketStatusClass(status) {
+
+    if (!status) {
+        return "status-default";
+    }
+
+    const value = status
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    if (
+        value === "resolved" ||
+        value === "completed" ||
+        value === "fulfilled" ||
+        value === "approved"
+    ) {
+        return "status-success";
+    }
+
+    if (
+        value === "cancelled" ||
+        value === "canceled" ||
+        value === "rejected" ||
+        value === "failed"
+    ) {
+        return "status-danger";
+    }
+
+    if (
+        value === "pending" ||
+        value === "pending approval" ||
+        value === "on-hold" ||
+        value === "user input required"
+    ) {
+        return "status-warning";
+    }
+
+    if (
+        value === "new" ||
+        value === "open" ||
+        value === "re-open"
+    ) {
+        return "status-info";
+    }
+
+    if (
+        value === "in progress" ||
+        value === "in fulfillment" ||
+        value === "under investigation" ||
+        value === "development" ||
+        value === "testing" ||
+        value === "under uat"
+    ) {
+        return "status-progress";
+    }
+
+    if (
+        value === "closed" ||
+        value === "cr closed"
+    ) {
+        return "status-neutral";
+    }
+
+    return "status-default";
+}
+
+/* =========================================================
+   TICKET SEARCH SUMMARY
+========================================================= */
+
+function addTicketSearchSummary(result) {
+
+    const container = document.createElement("div");
+    container.className = "ticket-search-summary";
+
+    const categoryPath = [
+        result.category,
+        result.subcategory
+    ]
+        .filter(Boolean)
+        .join(" › ");
+
+    const breakdownHTML = (result.breakdown || [])
+        .map(function(item) {
+
+            return `
+                <div class="ticket-summary-breakdown-item">
+
+                    <span class="ticket-summary-breakdown-label">
+                        ${escapeHtml(item.label)}
+                    </span>
+
+                    <strong class="ticket-summary-breakdown-count">
+                        ${item.count ?? 0}
+                    </strong>
+
+                </div>
+            `;
+
+        })
+        .join("");
+
+
+    container.innerHTML = `
+
+        <div class="ticket-summary-card">
+
+            <div class="ticket-summary-header">
+
+                <div>
+                    <div class="ticket-summary-title">
+                        Ticket Search Results
+                    </div>
+
+                    <div class="ticket-summary-department">
+                        ${escapeHtml(
+                            result.department ||
+                            "All Departments"
+                        )}
+                    </div>
+                </div>
+
+                ${
+                    result.status
+                        ? `
+                            <span class="ticket-summary-status ${getTicketStatusClass(result.status)}">
+                                ${escapeHtml(result.status)}
+                            </span>
+                        `
+                        : ""
+                }
+
+            </div>
+
+
+            ${
+                categoryPath
+                    ? `
+                        <div class="ticket-summary-category">
+                            ${escapeHtml(categoryPath)}
+                        </div>
+                    `
+                    : ""
+            }
+
+            ${
+                result.keyword
+                    ? `
+                        <div class="ticket-summary-category">
+                            <strong>Keyword:</strong>
+                            ${escapeHtml(result.keyword)}
+                        </div>
+                    `
+                    : ""
+            }
+
+
+            <div class="ticket-summary-total">
+
+                <strong>
+                    ${result.total ?? 0}
+                </strong>
+
+                <span>
+                    ${
+                        result.total === 1
+                            ? "Matching Ticket"
+                            : "Matching Tickets"
+                    }
+                </span>
+
+            </div>
+
+
+            ${
+                breakdownHTML
+                    ? `
+                        <div class="ticket-summary-breakdown">
+                            ${breakdownHTML}
+                        </div>
+                    `
+                    : ""
+            }
+
+        </div>
+    `;
+
+
+    chatMessages.appendChild(container);
+
+    saveChatHistory();
+
+    scrollToBottom();
 }
 
 function addTicketStatusCards(tickets) {

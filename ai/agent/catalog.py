@@ -666,8 +666,13 @@ def find_catalog_item(
     search_text,
 ):
     """
-    Find an exact category or subcategory in the existing
-    ticket catalog.
+    Find a category or subcategory in the configured ticket catalog.
+
+    Matching priority:
+    1. Exact category
+    2. Exact subcategory
+    3. Category contained in search / search contained in category
+    4. Subcategory contained in search / search contained in subcategory
 
     Returns:
         {
@@ -676,7 +681,7 @@ def find_catalog_item(
             "request_types": [...]
         }
 
-    or None when no catalog item matches.
+    or None when no safe catalog match is found.
     """
 
     if not department or not search_text:
@@ -687,51 +692,65 @@ def find_catalog_item(
         {}
     )
 
-    normalized_search = str(
-        search_text
-    ).strip().lower()
+    normalized_search = (
+        str(search_text)
+        .strip()
+        .lower()
+    )
 
-    # ------------------------------------------
-    # 1. Match category
-    # ------------------------------------------
+    # Common spelling normalization.
+    normalized_search = normalized_search.replace(
+        "stationary",
+        "stationery",
+    )
 
-    for category, subcategories in (
-        department_catalog.items()
-    ):
+    def normalize(value):
+        return (
+            str(value)
+            .strip()
+            .lower()
+        )
 
-        if category.strip().lower() == normalized_search:
+    def get_category_request_types(category):
 
-            request_types = set()
+        request_types = set()
 
-            request_type_catalog = (
-                SUBCATEGORY_REQUEST_TYPES
-                .get(department, {})
-                .get(category, {})
-            )
+        request_type_catalog = (
+            SUBCATEGORY_REQUEST_TYPES
+            .get(department, {})
+            .get(category, {})
+        )
 
-            for types in request_type_catalog.values():
-                request_types.update(types)
+        for types in request_type_catalog.values():
+            request_types.update(types)
+
+        return sorted(request_types)
+
+    # --------------------------------------------------
+    # 1. EXACT CATEGORY MATCH
+    # --------------------------------------------------
+
+    for category, subcategories in department_catalog.items():
+
+        if normalize(category) == normalized_search:
 
             return {
                 "category": category,
                 "subcategory": None,
-                "request_types": sorted(request_types),
+                "request_types": get_category_request_types(
+                    category
+                ),
             }
 
-    # ------------------------------------------
-    # 2. Match subcategory
-    # ------------------------------------------
+    # --------------------------------------------------
+    # 2. EXACT SUBCATEGORY MATCH
+    # --------------------------------------------------
 
-    for category, subcategories in (
-        department_catalog.items()
-    ):
+    for category, subcategories in department_catalog.items():
 
         for subcategory in subcategories:
 
-            if (
-                subcategory.strip().lower()
-                == normalized_search
-            ):
+            if normalize(subcategory) == normalized_search:
 
                 request_types = (
                     SUBCATEGORY_REQUEST_TYPES
@@ -745,5 +764,81 @@ def find_catalog_item(
                     "subcategory": subcategory,
                     "request_types": list(request_types),
                 }
+
+    # --------------------------------------------------
+    # 3. PARTIAL CATEGORY MATCH
+    # --------------------------------------------------
+
+    category_matches = []
+
+    for category, subcategories in department_catalog.items():
+
+        normalized_category = normalize(category)
+
+        if (
+            normalized_search in normalized_category
+            or normalized_category in normalized_search
+        ):
+            category_matches.append(category)
+
+    # Only automatically use the result when it is
+    # unambiguous.
+    if len(category_matches) == 1:
+
+        category = category_matches[0]
+
+        return {
+            "category": category,
+            "subcategory": None,
+            "request_types": get_category_request_types(
+                category
+            ),
+        }
+
+    # --------------------------------------------------
+    # 4. PARTIAL SUBCATEGORY MATCH
+    # --------------------------------------------------
+
+    subcategory_matches = []
+
+    for category, subcategories in department_catalog.items():
+
+        for subcategory in subcategories:
+
+            normalized_subcategory = normalize(
+                subcategory
+            )
+
+            if (
+                normalized_search in normalized_subcategory
+                or normalized_subcategory in normalized_search
+            ):
+
+                subcategory_matches.append(
+                    (
+                        category,
+                        subcategory,
+                    )
+                )
+
+    # Again, only accept an unambiguous result.
+    if len(subcategory_matches) == 1:
+
+        category, subcategory = (
+            subcategory_matches[0]
+        )
+
+        request_types = (
+            SUBCATEGORY_REQUEST_TYPES
+            .get(department, {})
+            .get(category, {})
+            .get(subcategory, [])
+        )
+
+        return {
+            "category": category,
+            "subcategory": subcategory,
+            "request_types": list(request_types),
+        }
 
     return None

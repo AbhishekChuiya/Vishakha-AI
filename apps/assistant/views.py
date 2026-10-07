@@ -258,6 +258,11 @@ def get_workflow(request, chat_id=None):
             if request.user.is_authenticated
             else None
         ),
+        # actor_email=(
+        #     request.user.email
+        #     if request.user.is_authenticated
+        #     else None
+        # ),
     )
 
     return workflow

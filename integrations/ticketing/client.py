@@ -92,6 +92,9 @@ class TicketingClient:
                 location
             )
 
+        # print("AUTHENTICATOR REQUESTER: ", requester)
+        # print("AUTHENTICATOR ACTOR: ", actor)
+
         # 1. Create the payload FIRST
         payload = {
             "title": title,
@@ -99,8 +102,8 @@ class TicketingClient:
             "source": self.source,
             "ticketType": {"id": ticket_type_id},
             "priority": {"name": priority},
-            "requester": requester or self.requester,
-            "actor": actor or self.actor,
+            # "requester": requester,
+            # "actor": actor,
         }
 
         if category_data:
@@ -331,9 +334,10 @@ class TicketingClient:
         response.raise_for_status()
 
         return response.json()
-    
+        
     def get_all_tickets(
         self,
+        search_query=None,
         include_closed=True,
         status_ids=None,
         ticket_type_id=None,
@@ -355,6 +359,9 @@ class TicketingClient:
             "sort": "createdAt,desc",
         }
 
+        if search_query:
+            params["search"] = search_query
+
         if status_ids:
             params["statusId"] = status_ids
 
@@ -370,13 +377,14 @@ class TicketingClient:
         if subcategory_id:
             params["subCategoryId"] = subcategory_id
 
+        print("Get All Tickets Search Query:", search_query)
         print("Get All Tickets Include Closed:", include_closed)
         print("Get All Tickets Status IDs:", status_ids)
         print("Get All Tickets Ticket Type ID:", ticket_type_id)
         print("Get All Tickets Group IDs:", group_ids)
         print("Get All Tickets Category ID:", category_id)
         print("Get All Tickets Subcategory ID:", subcategory_id)
-        
+
         response = requests.get(
             url,
             headers=headers,

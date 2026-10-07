@@ -5,7 +5,15 @@ TICKET_STATUS_IDS = {
     # as includeClosed=False, meaning all active/non-closed tickets.
 
     "IN PROGRESS": [25],
-    "PENDING": [26],
+
+    "PENDING": [
+        26,  # Pending
+        27,  # Pending Approval
+        41,  # On-Hold
+        46,  # CR Pending for HOD Approval
+        49,  # KDD - UNDER HOD APPROVAL
+    ],
+
     "PENDING APPROVAL": [27],
     "RE-OPEN": [28],
 

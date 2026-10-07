@@ -11,10 +11,6 @@ from ai.agent.ticket_statuses import TICKET_STATUS_IDS
 # TICKET SEARCH DEPARTMENT CONFIGURATION
 # --------------------------------------------------
 
-# --------------------------------------------------
-# TICKET SEARCH DEPARTMENT CONFIGURATION
-# --------------------------------------------------
-
 DEPARTMENT_SEARCH_CONFIG = {
     "Admin": {
         "ticket_type_ids": [9, 11],
@@ -63,6 +59,27 @@ DEPARTMENT_SEARCH_CONFIG = {
     "Strategy": {
         "ticket_type_ids": [60],
     },
+}
+
+TICKET_TYPE_NAMES = {
+    6: "Service Request",
+    7: "Request For Information",
+    8: "Incident Request",
+    9: "Incident Request",
+    11: "Service Request",
+    12: "Incident Request",
+    14: "Change Management",
+    16: "Service Request",
+    50: "Service Request",
+    51: "Service Request",
+    52: "Service Request",
+    53: "Incident Request",
+    54: "Service Request",
+    55: "Service Request",
+    56: "Incident Request",
+    59: "Change Management",
+    60: "Service Request",
+    61: "Customer Complaint",
 }
 
 class AgentWorkflow:
@@ -1866,6 +1883,7 @@ class AgentWorkflow:
 
                 if search_query:
                     result = self.ticketing.get_all_tickets(
+                        search_query=search_query,
                         include_closed=include_closed,
                         status_ids=status_ids,
                         ticket_type_id=ticket_type_id,
@@ -2078,36 +2096,6 @@ class AgentWorkflow:
                         structured_request_types[0]
                     )
 
-                    request_type_to_ticket_id = {
-                        "Incident Request": {
-                            "Admin": 9,
-                            "Safety": 12,
-                            "Security": 8,
-                            "HR Department": 53,
-                            "IT Department": 56,
-                        },
-                        "Service Request": {
-                            "Admin": 11,
-                            "Safety": 16,
-                            "Branding": 6,
-                            "HR Department": 52,
-                            "Finance": 51,
-                            "Insurance": 54,
-                            "Compliance & Risk": 50,
-                            "Strategy": 60,
-                            "IT Department": 55,
-                        },
-                        "Change Management": {
-                            "Branding": 14,
-                            "Projects": 59,
-                        },
-                        "Request For Information": {
-                            "Branding": 7,
-                        },
-                        "Customer Complaint": {
-                            "Quality management": 61,
-                        },
-                    }
 
                     structured_ticket_type_id = (
                         request_type_to_ticket_id
@@ -2259,53 +2247,38 @@ class AgentWorkflow:
                     )
 
 
-                route_breakdown = []
-        
-                for item in structured_route_totals:
-
-                    request_type_name = item["request_type"]
-
-                    route_breakdown.append(
-                        f"{item['total']} {request_type_name}"
-                        f"{'' if item['total'] == 1 else 's'}"
-                    )
-
-                breakdown_text = " and ".join(route_breakdown)
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
+
                     "message": (
-                        (
-                            f"{total} {search_department} "
-                            f"{structured_category_name} - "
-                            f"{structured_subcategory_name} "
-                            f"{ticket_word(total)}"
-                            + (
-                                f": {breakdown_text}."
-                                if structured_route_totals
-                                else "."
-                            )
-                        )
-                        if structured_subcategory_name
+                        "I found no matching tickets."
+                        if total == 0
                         else (
-                            f"{total} {search_department} "
-                            f"{structured_category_name} "
-                            f"{ticket_word(total)}"
-                            + (
-                                f": {breakdown_text}."
-                                if structured_route_totals
-                                else "."
-                            )
-                        )
-                        if structured_category_name
-                        else (
-                            f"{total} {search_department} "
+                            f"I found {total} matching "
                             f"{ticket_word(total)}."
                         )
                     ),
+
+                    "department": search_department,
+
+                    "category": structured_category_name,
+
+                    "subcategory": structured_subcategory_name,
+
+                    "status": None,
+
                     "total": total,
+
+                    "breakdown": [
+                        {
+                            "label": item["request_type"],
+                            "count": item["total"],
+                        }
+                        for item in structured_route_totals
+                    ],
+
                     "tickets": [],
                 }
-
 
             # --------------------------------------------------
             # COUNT ONLY: OPEN DEPARTMENT TICKETS
@@ -2332,29 +2305,101 @@ class AgentWorkflow:
                         "tickets": [],
                     }
 
-                print(
-                    "STRUCTURED CATEGORY ID:",
-                    structured_category_id
-                )
+                structured_route_totals = []
 
-                result = self.search_department_tickets(
-                    department=search_department,
-                    search_scope="ALL_TICKETS",
-                    category_id=structured_category_id,
-                    include_closed=True,
-                    size=1,
-                )
+                # ----------------------------------------------
+                # Multi-request-type structured search
+                # Example:
+                # IT Network / Internet Connectivity
+                # -> Incident + Service Request
+                # ----------------------------------------------
+                if structured_routes:
 
-                total = result.get("totalElements", 0)
+                    total = 0
+
+                    for route in structured_routes:
+
+                        result = self.search_department_tickets(
+                            department=search_department,
+                            search_scope="ALL_TICKETS",
+                            category_id=route["category_id"],
+                            subcategory_id=route["subcategory_id"],
+                            ticket_type_id=route["ticket_type_id"],
+
+                            # OPEN in Darpan means all active /
+                            # non-closed workflow states.
+                            include_closed=False,
+
+                            size=1,
+                        )
+
+                        route_total = result.get(
+                            "totalElements",
+                            0,
+                        )
+
+                        total += route_total
+
+                        structured_route_totals.append(
+                            {
+                                "request_type": route["request_type"],
+                                "total": route_total,
+                            }
+                        )
+
+                # ----------------------------------------------
+                # Single request type / department-only search
+                # ----------------------------------------------
+                else:
+
+                    result = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="ALL_TICKETS",
+                        category_id=structured_category_id,
+                        subcategory_id=structured_subcategory_id,
+                        ticket_type_id=structured_ticket_type_id,
+
+                        # Keep existing Darpan OPEN semantics.
+                        include_closed=False,
+
+                        size=1,
+                    )
+
+                    total = result.get(
+                        "totalElements",
+                        0,
+                    )
 
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
+
                     "message": (
-                        f"There {'is' if total == 1 else 'are'} "
-                        f"{total} open {search_department} "
-                        f"{ticket_word(total)}."
+                        "I found no matching tickets."
+                        if total == 0
+                        else (
+                            f"I found {total} matching "
+                            f"{ticket_word(total)}."
+                        )
                     ),
+
+                    "department": search_department,
+
+                    "category": structured_category_name,
+
+                    "subcategory": structured_subcategory_name,
+
+                    "status": "Open",
+
                     "total": total,
+
+                    "breakdown": [
+                        {
+                            "label": item["request_type"],
+                            "count": item["total"],
+                        }
+                        for item in structured_route_totals
+                    ],
+
                     "tickets": [],
                 }
 
@@ -2421,55 +2466,27 @@ class AgentWorkflow:
                         0,
                     )
 
-                status_label = status_filter.lower()
-
-                breakdown_text = ""
-
-                if structured_route_totals:
-                    route_breakdown = []
-
-                    for item in structured_route_totals:
-                        request_type_name = item["request_type"]
-
-                        route_breakdown.append(
-                            f"{item['total']} {request_type_name}"
-                            f"{'' if item['total'] == 1 else 's'}"
-                        )
-
-                    breakdown_text = " and ".join(
-                        route_breakdown
-                    )
+                status_label = status_filter.replace("_", " ").title()
 
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
                     "message": (
-                            (
-                                f"There are {total} {status_label.lower()} "
-                                f"{search_department} "
-                                f"{structured_category_name} - "
-                                f"{structured_subcategory_name} "
-                                f"{ticket_word(total)}"
-                                + (
-                                    f": {breakdown_text}."
-                                    if breakdown_text
-                                    else "."
-                                )
-                            )
-                        if structured_subcategory_name
-                        else (
-                            f"There are {total} {status_label.lower()} "
-                            f"{search_department} "
-                            f"{structured_category_name} "
-                            f"{ticket_word(total)}."
-                        )
-                        if structured_category_name
-                        else (
-                            f"There are {total} {status_label.lower()} "
-                            f"{search_department} "
-                            f"{ticket_word(total)}."
-                        )
+                        "I found no matching tickets."
+                        if total == 0
+                        else f"I found {total} matching {ticket_word(total)}."
                     ),
+                    "department": search_department,
+                    "category": structured_category_name,
+                    "subcategory": structured_subcategory_name,
+                    "status": status_label,
                     "total": total,
+                    "breakdown": [
+                        {
+                            "label": item["request_type"],
+                            "count": item["total"],
+                        }
+                        for item in structured_route_totals
+                    ],
                     "tickets": [],
                 }
 
@@ -2503,41 +2520,79 @@ class AgentWorkflow:
                 if status_filter == "OPEN":
                     include_closed = False
 
-                elif status_filter in [
-                    "RESOLVED",
-                    "CLOSED",
-                    "CANCELLED",
-                ]:
-                    status_id_map = {
-                        "RESOLVED": [42],
-                        "CLOSED": [43],
-                        "CANCELLED": [44],
-                    }
+                elif status_filter in TICKET_STATUS_IDS:
+                    status_ids = TICKET_STATUS_IDS[status_filter]
 
-                    status_ids = status_id_map[status_filter]
+                # Get total per request type so the result card
+                # can show a request-type breakdown.
 
-                result = self.search_department_tickets(
-                    department=search_department,
-                    search_scope="ALL_TICKETS",
-                    status_ids=status_ids,
-                    category_id=structured_category_id,
-                    subcategory_id=structured_subcategory_id,
-                    ticket_type_id=structured_ticket_type_id,
-                    include_closed=True,
-                    size=1,
-                )       
 
-                total = result.get("totalElements", 0)
+                breakdown = []
+                total = 0
+
+                ticket_type_ids = department_config.get(
+                    "ticket_type_ids",
+                    []
+                )
+
+                for ticket_type_id in ticket_type_ids:
+
+                    result = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="ALL_TICKETS",
+                        search_query=search_query,
+                        status_ids=status_ids,
+                        category_id=structured_category_id,
+                        subcategory_id=structured_subcategory_id,
+                        ticket_type_id=ticket_type_id,
+                        include_closed=include_closed,
+                        size=1,
+                    )
+
+                    request_type_total = result.get(
+                        "totalElements",
+                        0,
+                    )
+
+                    total += request_type_total
+
+                    breakdown.append({
+                        "label": TICKET_TYPE_NAMES.get(
+                            ticket_type_id,
+                            f"Request Type {ticket_type_id}",
+                        ),
+                        "count": request_type_total,
+                    })
 
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
+
                     "message": (
                         f"There {'is' if total == 1 else 'are'} "
-                        f"{total} {search_department} "
+                        f"{total} "
+                        f"{(status_filter.replace('_', ' ').lower() + ' ') if status_filter else ''}"
+                        f"{search_department} "
                         f"{ticket_word(total)} matching "
                         f"'{search_query}'."
                     ),
+
+                    "department": search_department,
+
+                    "category": None,
+
+                    "subcategory": None,
+                    "keyword": search_query,
+
+                    "status": (
+                        status_filter.replace("_", " ").title()
+                        if status_filter
+                        else None
+                    ),
+
                     "total": total,
+
+                    "breakdown": breakdown,
+
                     "tickets": [],
                 }
 
@@ -2941,77 +2996,6 @@ class AgentWorkflow:
                 }
 
             # --------------------------------------------------
-            # COUNT ONLY: DEPARTMENT TICKETS BY EXACT STATUS
-            # --------------------------------------------------
-            if (
-                count_only
-                and search_scope == "ALL_TICKETS"
-                and search_department
-                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
-                and not search_query
-            ):
-                department_config = self.get_department_search_config(
-                    search_department
-                )
-
-                if not department_config:
-                    return {
-                        "type": "message",
-                        "message": (
-                            f"Ticket search for {search_department} "
-                            f"is not configured yet."
-                        ),
-                        "total": 0,
-                        "tickets": [],
-                    }
-
-                status_id_map = {
-                    "RESOLVED": [42],
-                    "CLOSED": [43],
-                    "CANCELLED": [44],
-                }
-
-                status_ids = status_id_map[status_filter]
-
-                result = self.search_department_tickets(
-                    department=search_department,
-                    search_scope="ALL_TICKETS",
-                    category_id=structured_category_id,
-                    include_closed=True,
-                    size=1,
-                )
-
-                total = result.get("totalElements", 0)
-                status_label = status_filter.lower()
-
-                breakdown_text = ""
-                route_breakdown = []
-
-                for item in structured_route_totals:
-                    request_type_name = item["request_type"]
-
-                    route_breakdown.append(
-                        f"{item['total']} {request_type_name}"
-                        f"{'' if item['total'] == 1 else 's'}"
-                    )
-
-                breakdown_text = " and ".join(
-                    route_breakdown
-                )
-
-                return {
-                    "type": "message",
-                    "message": (
-                        f"There {'is' if total == 1 else 'are'} "
-                        f"{total} {status_label} "
-                        f"{search_department} "
-                        f"{ticket_word(total)}."
-                    ),
-                    "total": total,
-                    "tickets": [],
-                }
-
-            # --------------------------------------------------
             # LIST: MY IT DEPARTMENT TICKETS
             # --------------------------------------------------
             if (
@@ -3298,43 +3282,59 @@ class AgentWorkflow:
                 }
 
             # --------------------------------------------------
-            # COUNT ONLY: MY RESOLVED / CLOSED / CANCELLED
+            # COUNT ONLY: MY TICKETS BY EXACT STATUS
             # --------------------------------------------------
-
             if (
                 count_only
                 and search_scope == "MY_TICKETS"
-                and status_filter in [
-                    "RESOLVED",
-                    "CLOSED",
-                    "CANCELLED",
-                ]
+                and not search_department
+                and status_filter in TICKET_STATUS_IDS
                 and not search_query
             ):
-                status_id_map = {
-                    "RESOLVED": [42],
-                    "CLOSED": [43],
-                    "CANCELLED": [44],
-                }
+                status_ids = TICKET_STATUS_IDS[status_filter]
 
                 result = self.ticketing.get_my_tickets(
                     requester_email=self.requester_email,
                     include_closed=True,
-                    status_ids=status_id_map[status_filter],
+                    status_ids=status_ids,
                     size=1,
                 )
 
-                total = result.get("totalElements", 0)
+                total = result.get(
+                    "totalElements",
+                    0,
+                )
 
-                status_label = status_filter.lower()
+                status_label = (
+                    status_filter
+                    .replace("_", " ")
+                    .title()
+                )
 
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
+
                     "message": (
-                        f"You have {total} {status_label} "
-                        f"{ticket_word(total)}."
+                        "I found no matching tickets."
+                        if total == 0
+                        else (
+                            f"I found {total} matching "
+                            f"{ticket_word(total)}."
+                        )
                     ),
+
+                    "department": "My Tickets",
+
+                    "category": None,
+
+                    "subcategory": None,
+
+                    "status": status_label,
+
                     "total": total,
+
+                    "breakdown": [],
+
                     "tickets": [],
                 }
 
@@ -3366,42 +3366,58 @@ class AgentWorkflow:
                 }
 
             # --------------------------------------------------
-            # COUNT ONLY: ALL RESOLVED / CLOSED / CANCELLED
+            # COUNT ONLY: ALL TICKETS BY EXACT STATUS
             # --------------------------------------------------
-
             if (
                 count_only
                 and search_scope == "ALL_TICKETS"
-                and status_filter in [
-                    "RESOLVED",
-                    "CLOSED",
-                    "CANCELLED",
-                ]
+                and not search_department
+                and status_filter in TICKET_STATUS_IDS
                 and not search_query
             ):
-                status_id_map = {
-                    "RESOLVED": [42],
-                    "CLOSED": [43],
-                    "CANCELLED": [44],
-                }
+                status_ids = TICKET_STATUS_IDS[status_filter]
 
                 result = self.ticketing.get_all_tickets(
                     include_closed=True,
-                    status_ids=status_id_map[status_filter],
+                    status_ids=status_ids,
                     size=1,
                 )
 
-                total = result.get("totalElements", 0)
+                total = result.get(
+                    "totalElements",
+                    0,
+                )
 
-                status_label = status_filter.lower()
+                status_label = (
+                    status_filter
+                    .replace("_", " ")
+                    .title()
+                )
 
                 return {
-                    "type": "message",
+                    "type": "ticket_search_summary",
+
                     "message": (
-                        f"There {'is' if total == 1 else 'are'} {total} "
-                        f"{status_label} {ticket_word(total)}."
+                        "I found no matching tickets."
+                        if total == 0
+                        else (
+                            f"I found {total} matching "
+                            f"{ticket_word(total)}."
+                        )
                     ),
+
+                    "department": None,
+
+                    "category": None,
+
+                    "subcategory": None,
+
+                    "status": status_label,
+
                     "total": total,
+
+                    "breakdown": [],
+
                     "tickets": [],
                 }
 
@@ -3988,6 +4004,9 @@ class AgentWorkflow:
                 location=self.state.location,
 
                 priority=self.state.priority,
+
+                # requester=self.requester_email,
+                # actor=self.actor_email,
 
                 impact=(
                     self.state.impact

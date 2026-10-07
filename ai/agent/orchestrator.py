@@ -2217,17 +2217,31 @@ class AgentOrchestrator:
         text = user_message.lower().strip()
 
         my_phrases = [
+            # Direct ownership
             "my ",
+            "my ticket",
             "my tickets",
+
+            # Natural ownership/count questions
+            "do i have",
+            "i have",
+            "have i got",
+            "for me",
+
+            # Raised / created / submitted by current employee
             "i raised",
             "i created",
             "i submitted",
             "i have raised",
             "i have created",
+            "i have submitted",
             "tickets i raised",
             "tickets i created",
-            "tickets assigned to me",
+            "tickets i submitted",
+
+            # Assignment
             "assigned to me",
+            "tickets assigned to me",
         ]
 
         for phrase in my_phrases:
