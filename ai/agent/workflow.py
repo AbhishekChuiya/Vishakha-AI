@@ -6,7 +6,7 @@ from ai.agent.config import REQUEST_TYPES, LOCATIONS
 from ai.agent.catalog import CATEGORIES, SUBCATEGORY_REQUEST_TYPES, find_catalog_item
 from datetime import datetime, timedelta
 from django.utils import timezone
-
+from ai.agent.ticket_statuses import TICKET_STATUS_IDS
 # --------------------------------------------------
 # TICKET SEARCH DEPARTMENT CONFIGURATION
 # --------------------------------------------------
@@ -2173,7 +2173,7 @@ class AgentWorkflow:
                 and search_department
                 and not status_filter
                 and not search_query
-            ):
+                ):
 
                 department_config = self.get_department_search_config(
                     search_department
@@ -2260,7 +2260,7 @@ class AgentWorkflow:
 
 
                 route_breakdown = []
-
+        
                 for item in structured_route_totals:
 
                     request_type_name = item["request_type"]
@@ -2365,41 +2365,96 @@ class AgentWorkflow:
                 count_only
                 and search_scope == "ALL_TICKETS"
                 and search_department
-                and status_filter in ["RESOLVED", "CLOSED", "CANCELLED"]
+                and status_filter in TICKET_STATUS_IDS
                 and not search_query
             ):
-                status_id_map = {
-                    "RESOLVED": [42],
-                    "CLOSED": [43],
-                    "CANCELLED": [44],
-                }
+                status_ids = TICKET_STATUS_IDS[status_filter]
 
-                status_ids = status_id_map[status_filter]
+                structured_route_totals = []
 
-                result = self.search_department_tickets(
-                    department=search_department,
-                    search_scope="ALL_TICKETS",
-                    include_closed=True,
-                    status_ids=status_ids,
-                    category_id=structured_category_id,
-                    subcategory_id=structured_subcategory_id,
-                    ticket_type_id=structured_ticket_type_id,
-                    size=1,
-                )
+                if structured_routes:
 
-                total = result.get("totalElements", 0)
+                    total = 0
+
+                    for route in structured_routes:
+
+                        result = self.search_department_tickets(
+                            department=search_department,
+                            search_scope="ALL_TICKETS",
+                            include_closed=True,
+                            status_ids=status_ids,
+                            category_id=route["category_id"],
+                            subcategory_id=route["subcategory_id"],
+                            ticket_type_id=route["ticket_type_id"],
+                            size=1,
+                        )
+
+                        route_total = result.get(
+                            "totalElements",
+                            0,
+                        )
+
+                        total += route_total
+
+                        structured_route_totals.append(
+                            {
+                                "request_type": route["request_type"],
+                                "total": route_total,
+                            }
+                        )
+
+                else:
+
+                    result = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="ALL_TICKETS",
+                        include_closed=True,
+                        status_ids=status_ids,
+                        category_id=structured_category_id,
+                        subcategory_id=structured_subcategory_id,
+                        ticket_type_id=structured_ticket_type_id,
+                        size=1,
+                    )
+
+                    total = result.get(
+                        "totalElements",
+                        0,
+                    )
+
                 status_label = status_filter.lower()
+
+                breakdown_text = ""
+
+                if structured_route_totals:
+                    route_breakdown = []
+
+                    for item in structured_route_totals:
+                        request_type_name = item["request_type"]
+
+                        route_breakdown.append(
+                            f"{item['total']} {request_type_name}"
+                            f"{'' if item['total'] == 1 else 's'}"
+                        )
+
+                    breakdown_text = " and ".join(
+                        route_breakdown
+                    )
 
                 return {
                     "type": "message",
                     "message": (
-                        (
-                            f"There are {total} {status_label.lower()} "
-                            f"{search_department} "
-                            f"{structured_category_name} - "
-                            f"{structured_subcategory_name} "
-                            f"{ticket_word(total)}."
-                        )
+                            (
+                                f"There are {total} {status_label.lower()} "
+                                f"{search_department} "
+                                f"{structured_category_name} - "
+                                f"{structured_subcategory_name} "
+                                f"{ticket_word(total)}"
+                                + (
+                                    f": {breakdown_text}."
+                                    if breakdown_text
+                                    else "."
+                                )
+                            )
                         if structured_subcategory_name
                         else (
                             f"There are {total} {status_label.lower()} "
@@ -2928,6 +2983,21 @@ class AgentWorkflow:
 
                 total = result.get("totalElements", 0)
                 status_label = status_filter.lower()
+
+                breakdown_text = ""
+                route_breakdown = []
+
+                for item in structured_route_totals:
+                    request_type_name = item["request_type"]
+
+                    route_breakdown.append(
+                        f"{item['total']} {request_type_name}"
+                        f"{'' if item['total'] == 1 else 's'}"
+                    )
+
+                breakdown_text = " and ".join(
+                    route_breakdown
+                )
 
                 return {
                     "type": "message",

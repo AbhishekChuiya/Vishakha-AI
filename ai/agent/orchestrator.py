@@ -2,7 +2,7 @@ import json
 import re
 
 from ai.llm.client import LocalLLM
-
+from ai.agent.ticket_statuses import TICKET_STATUS_IDS
 
 class AgentOrchestrator:
 
@@ -1122,12 +1122,25 @@ class AgentOrchestrator:
                 department_phrases.get(department_name, [])
             )
 
-            # Remove status words because they are handled separately.
+            cleanup_phrases = sorted(
+                cleanup_phrases,
+                key=len,
+                reverse=True,
+            )
+
+            # Remove all known portal status names because
+            # status filtering is handled separately.
+            cleanup_phrases.extend(
+                status_name.lower()
+                for status_name in TICKET_STATUS_IDS.keys()
+            )
+
+            # "open" and "active" are Darpan aliases for all
+            # active/non-closed tickets.
             cleanup_phrases.extend([
                 "open",
-                "resolved",
-                "closed",
-                "cancelled",
+                "active",
+                "canceled",
             ])
 
             # Longest phrases first.
@@ -1355,30 +1368,39 @@ class AgentOrchestrator:
 
             if has_ticket_context:
 
-                if "resolved" in message_words:
-                    result["ticket_status_filter"] = "RESOLVED"
+                detected_status = None
 
-                elif "closed" in message_words:
-                    result["ticket_status_filter"] = "CLOSED"
-
-                elif (
-                    "cancelled" in message_words
-                    or "canceled" in message_words
-                ):
-                    result["ticket_status_filter"] = "CANCELLED"
-
-                elif (
+                # Preserve Darpan's existing meaning of "open":
+                # all active/non-closed tickets, not only portal status ID 24.
+                if (
                     "open" in message_words
                     or "active" in message_words
                 ):
-                    result["ticket_status_filter"] = "OPEN"
+                    detected_status = "OPEN"
 
                 else:
-                    result["ticket_status_filter"] = None
+                    # Match longest status names first.
+                    # This prevents "UAT" style/overlapping status names
+                    # from interfering with more specific statuses.
+                    status_names = sorted(
+                        TICKET_STATUS_IDS.keys(),
+                        key=len,
+                        reverse=True,
+                    )
+
+                    for status_name in status_names:
+
+                        if re.search(
+                            rf"\b{re.escape(status_name.lower())}\b",
+                            message_lower,
+                        ):
+                            detected_status = status_name
+                            break
+
+                result["ticket_status_filter"] = detected_status
 
             else:
                 result["ticket_status_filter"] = None
-
             # -----------------------------------------------------
             # Status words are filters, not semantic search terms
             # -----------------------------------------------------
