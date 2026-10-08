@@ -360,6 +360,19 @@ class AgentWorkflow:
         if not email or email not in allowed:
             return {"type": "message", "message": "You don't have permission to view department-wide ticket analytics."}
 
+        if agent_result.get("analytics_view") == "CATEGORY_RANKING":
+            try:
+                from ai.analytics.category_analytics import get_category_ranking
+                report = get_category_ranking(
+                    self.ticketing, department, config["ticket_type_ids"],
+                    sort_by=agent_result.get("analytics_sort", "total"),
+                )
+                return {"type": "category_analytics", "analytics": report,
+                        "message": f"{department} category ranking"}
+            except Exception as exc:
+                print("CATEGORY ANALYTICS ERROR:", type(exc).__name__, str(exc))
+                return {"type": "error", "message": "Category analytics could not be retrieved. Check the server logs."}
+
         try:
             from ai.agent.ticket_statuses import TICKET_STATUS_IDS
 

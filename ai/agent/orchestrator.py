@@ -22,6 +22,33 @@ class AgentOrchestrator:
 
         message_lower = user_message.lower().strip()
 
+        # Category reports are handled deterministically, before summary and LLM routes.
+        # Never intercept a creation request, single ticket lookup, or ordinary count query.
+        category_report = bool(re.search(
+            r"\b(?:top\s*\d*|highest|most|rank|ranking|category[- ]wise|by category|category breakdown|categories breakdown|category analytics|category report|category summary)\b",
+            message_lower,
+        ))
+        category_context = bool(re.search(r"\b(?:categor(?:y|ies)|tickets?)\b", message_lower))
+        category_looks_like_creation = bool(re.search(
+            r"\b(?:create|raise|submit|file|log|prepare|draft|new)\s+(?:an?\s+)?(?:ticket|request)\b", message_lower,
+        ))
+        category_single_ticket = bool(re.search(r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I))
+        category_depts = (
+            ("HR Department", r"\b(?:hr|human resources)(?:\s+department)?\b"),
+            ("Admin", r"\b(?:admin|administration)(?:\s+department)?\b"),
+            ("IT Department", r"\b(?:it|information technology)(?:\s+department)?\b"),
+        )
+        category_department = next((name for name, p in category_depts if re.search(p, message_lower)), None)
+        # Require an explicit supported department; never leak a global report.
+        if (category_report and category_context and category_department
+                and not category_looks_like_creation and not category_single_ticket):
+            return {
+                "intent": "ANALYZE_TICKETS", "analytics_department": category_department,
+                "analytics_view": "CATEGORY_RANKING",
+                "analytics_sort": "non_closed" if re.search(r"\b(?:open|pending|backlog|active|unresolved|non[- ]closed)\b", message_lower) else "total",
+                "missing_fields": [],
+            }
+
         # Multi-department reporting: route before LLM and ticket search.
         # Only explicit report phrases; ordinary creation/search is unaffected.
         summary_word = bool(re.search(
