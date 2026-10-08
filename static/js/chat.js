@@ -1,14 +1,19 @@
 const chatInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-area");
-const CHAT_HISTORY_KEY = "darpan_chat_history";
+// Server-rendered authenticated user ID; never trust an email supplied by JS.
+const DARPAN_USER_ID = document.body.dataset.darpanUserId;
+if (!DARPAN_USER_ID || !/^\d+$/.test(DARPAN_USER_ID)) {
+    throw new Error("Authenticated user identity missing from page");
+}
+const CHAT_HISTORY_KEY = `darpan_chat_history_user_${DARPAN_USER_ID}`;
 let activeChatRequestController = null;
 let isAIResponding = false;
 
 
 // Multiple-conversation storage
-const CHAT_LIST_KEY = "darpan_chat_list";
-const ACTIVE_CHAT_KEY = "darpan_active_chat_id";
+const CHAT_LIST_KEY = `darpan_chat_list_user_${DARPAN_USER_ID}`;
+const ACTIVE_CHAT_KEY = `darpan_active_chat_id_user_${DARPAN_USER_ID}`;
 
 let activeChatId =
     localStorage.getItem(ACTIVE_CHAT_KEY);
@@ -16,8 +21,7 @@ let activeChatId =
 if (!activeChatId) {
 
     activeChatId =
-        "chat_" +
-        Date.now().toString();
+        "chat_" + crypto.randomUUID();
 
     localStorage.setItem(
         ACTIVE_CHAT_KEY,
@@ -2052,9 +2056,11 @@ async function sendToBackend(
             );
 
 
-        const data =
-            await response.json();
-
+        if (response.status === 401 || response.status === 403) {
+            window.location.assign("/login/");
+            return;
+        }
+        const data = await response.json();
 
         removeLoadingMessage();
 
@@ -2128,6 +2134,12 @@ function handleAIResponse(result) {
 
     }
 
+
+    /* STRUCTURED ANALYTICS REPORT */
+    if (result.type === "ticket_analytics" && result.analytics) {
+        addTicketAnalyticsCard(result.analytics, result.analytics_view || "OVERVIEW");
+        return;
+    }
 
     /* MESSAGE */
 
@@ -2415,6 +2427,85 @@ function getTicketStatusClass(status) {
     }
 
     return "status-default";
+}
+
+
+/* =========================================================
+   ANALYTICS REPORT — DATA COMES FROM AUTHORIZED BACKEND
+========================================================= */
+function addTicketAnalyticsCard(data, view = "OVERVIEW") {
+    const fmt = n => Number(n ?? 0).toLocaleString("en-IN");
+    const total = Number(data.total_tickets || 0);
+    const segments = [
+        ["Open / non-closed", Number(data.open_tickets || 0), "#f59e0b"],
+        ["Resolved", Number(data.resolved_tickets || 0), "#10b981"],
+        ["Cancelled", Number(data.cancelled_tickets || 0), "#ef476f"],
+        ["Closed", Number(data.closed_tickets || 0), "#818cf8"],
+    ];
+    const typeRows = Object.entries(data.by_request_type || {});
+    const incident = data.by_request_type?.["Incident Request"] || {};
+    const service = data.by_request_type?.["Service Request"] || {};
+    let offset = 0;
+    const stops = segments.filter(x => x[1] > 0).map(([label, value, color]) => {
+        const from = offset;
+        offset += total > 0 ? 100 * value / total : 0;
+        return `${color} ${from.toFixed(2)}% ${offset.toFixed(2)}%`;
+    });
+    const ring = stops.length ? `conic-gradient(${stops.join(",")})` : "#64748b";
+    const percent = n => `${Number(n || 0).toFixed(1)}%`;
+    const viewLabels = {
+        OVERVIEW: "Department overview",
+        REQUEST_TYPES: "Incident vs Service Request",
+        RESOLUTION_RATE: "Resolution percentage",
+        BACKLOG: "Non-closed ticket workload",
+        STATUS_BREAKDOWN: "Status distribution"
+    };
+    let highlight = "";
+    if (view === "REQUEST_TYPES") {
+        highlight = `<div class="darpan-analytics-types"><h4>Request Type Comparison</h4>
+            <div><span>Incident share</span><strong>${percent(data.incident_share_percent)}</strong></div>
+            <div><span>Service share</span><strong>${percent(data.service_share_percent)}</strong></div></div>`;
+    } else if (view === "RESOLUTION_RATE") {
+        highlight = `<div class="darpan-analytics-types"><h4>Resolution Rate</h4>
+            <div><span>Resolved / total</span><strong>${percent(data.resolution_rate_percent)}</strong></div>
+            <div><span>Resolved tickets</span><strong>${fmt(data.resolved_tickets)}</strong></div></div>`;
+    } else if (view === "BACKLOG") {
+        highlight = `<div class="darpan-analytics-types"><h4>Non-closed workload</h4>
+            <div><span>Non-closed tickets</span><strong>${fmt(data.open_tickets)}</strong></div>
+            <div><span>Share of total</span><strong>${percent(data.non_closed_rate_percent)}</strong></div></div>`;
+    } else if (view === "STATUS_BREAKDOWN") {
+        highlight = `<div class="darpan-analytics-types"><h4>Status totals</h4>
+            <div><span>Resolved</span><strong>${fmt(data.resolved_tickets)}</strong></div>
+            <div><span>Closed</span><strong>${fmt(data.closed_tickets)}</strong></div>
+            <div><span>Cancelled</span><strong>${fmt(data.cancelled_tickets)}</strong></div></div>`;
+    }
+    const metric = (label, value) => `<div class="darpan-analytics-metric"><span>${label}</span><strong>${fmt(value)}</strong></div>`;
+    const wrapper = document.createElement("section");
+    wrapper.className = "darpan-analytics-report";
+    wrapper.innerHTML = `
+        <div class="darpan-analytics-heading"><div><small>TICKET ANALYTICS</small>
+        <h3>${escapeHtml(data.department || "IT Department")}</h3>
+        <p>${escapeHtml(viewLabels[view] || viewLabels.OVERVIEW)} · Service Excellence</p></div><span class="darpan-analytics-pill">Report</span></div>
+        <div class="darpan-analytics-metrics">
+            ${metric("Total Tickets", total)}
+            ${metric("Open / non-closed", data.open_tickets)}
+            ${metric("Resolved", data.resolved_tickets)}
+            ${metric("Cancelled", data.cancelled_tickets)}
+        </div>
+        <div class="darpan-analytics-lower">
+            <div class="darpan-analytics-ring" style="background:${ring}"><div>${fmt(total)}<small>Total</small></div></div>
+            <div class="darpan-analytics-legend">${segments.map(([name,value,color]) =>
+                `<div><span class="darpan-analytics-dot" style="background:${color}"></span><span>${name}</span><b>${fmt(value)}</b></div>`
+            ).join("")}</div>
+        </div>
+        ${highlight}
+        <div class="darpan-analytics-types"><h4>Request Type Breakdown</h4>
+        ${typeRows.map(([label,row]) => `<div><span>${escapeHtml(label)}</span><strong>${fmt(row.total)}</strong></div>`).join("")}</div>
+        <p class="darpan-analytics-foot">Open is defined using the API's non-closed filter. Values reflect the latest API response.</p>
+    `;
+    chatMessages.appendChild(wrapper);
+    saveChatHistory();
+    scrollToBottom();
 }
 
 /* =========================================================

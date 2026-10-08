@@ -15,10 +15,36 @@
     <link rel="stylesheet"
           href="{% static 'css/main.css' %}">
 
+
+<style>
+.darpan-analytics-report{width:min(100%,640px);box-sizing:border-box;border:1px solid var(--border-color,#324056);border-radius:18px;padding:22px;margin:12px 0 20px 48px;background:var(--card-bg,#142033);color:var(--text-color,#e5e7eb);box-shadow:0 6px 24px #00000012}
+.darpan-analytics-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.darpan-analytics-heading small{font-size:11px;letter-spacing:1.1px;color:#93a4bf;font-weight:700}
+.darpan-analytics-heading h3{font-size:20px;margin:4px 0 3px}.darpan-analytics-heading p{margin:0;font-size:12px;color:#93a4bf}
+.darpan-analytics-pill{border-radius:20px;padding:5px 10px;background:#2563eb26;color:#60a5fa;font-size:12px;font-weight:700}
+.darpan-analytics-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.darpan-analytics-metric{background:#ffffff0a;border:1px solid #ffffff14;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:4px}
+.darpan-analytics-metric span{font-size:12px;color:#99a9c3}.darpan-analytics-metric strong{font-size:25px;font-weight:750;font-variant-numeric:tabular-nums}
+.darpan-analytics-lower{display:flex;align-items:center;gap:26px;margin:22px 0;flex-wrap:wrap}
+.darpan-analytics-ring{width:154px;height:154px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.darpan-analytics-ring>div{width:112px;height:112px;background:#142033;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:21px;font-weight:700}
+.darpan-analytics-ring small{font-size:12px;font-weight:400;color:#a1aec3}
+.darpan-analytics-legend{flex:1;min-width:170px;display:grid;gap:13px}
+.darpan-analytics-legend>div{display:flex;align-items:center;gap:9px;font-size:13px}.darpan-analytics-legend b{margin-left:auto}
+.darpan-analytics-dot{width:10px;height:10px;display:inline-block;border-radius:50%}
+.darpan-analytics-types{border-top:1px solid #ffffff20;padding-top:12px}.darpan-analytics-types h4{margin:3px 0 12px}
+.darpan-analytics-types>div{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
+.darpan-analytics-foot{color:#9aaac2;font-size:11px;line-height:1.4;margin:12px 0 0}
+body:not(.dark-mode) .darpan-analytics-report{background:#fff;color:#172033;border-color:#dbe2ee}
+body:not(.dark-mode) .darpan-analytics-metric{background:#f4f7fb;border-color:#e4eaf2}
+body:not(.dark-mode) .darpan-analytics-ring>div{background:#fff}
+body:not(.dark-mode) .darpan-analytics-types{border-color:#e4eaf2}
+@media(max-width:700px){.darpan-analytics-report{margin-left:0;padding:15px}.darpan-analytics-lower{justify-content:center}}
+</style>
 </head>
 
 
-<body>
+<body data-darpan-user-id="{{ request.user.pk }}">
 
 <div class="app-container">
 
@@ -393,6 +419,14 @@
 
                         <div class="user-dropdown-divider"></div>
 
+
+                        <a
+                            href="{% url 'account_chooser' %}"
+                            class="user-dropdown-item user-switch-account"
+                            title="Choose a remembered account or add another">
+                            <span>⇄</span>
+                            <span>Switch Account</span>
+                        </a>
 
                         <a
                             href="/logout/"

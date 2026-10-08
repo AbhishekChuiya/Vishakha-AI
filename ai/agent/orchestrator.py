@@ -22,6 +22,84 @@ class AgentOrchestrator:
 
         message_lower = user_message.lower().strip()
 
+        # Multi-department reporting: route before LLM and ticket search.
+        # Only explicit report phrases; ordinary creation/search is unaffected.
+        summary_word = bool(re.search(
+            r"\b(?:summary|summarize|summarise|overview|analytics|statistics|dashboard)\b",
+            message_lower,
+        ))
+        department_aliases = (
+            ("HR Department", r"\b(?:hr|human resources)(?:\s+department)?\b"),
+            ("Admin", r"\b(?:admin|administration)(?:\s+department)?\b"),
+            ("IT Department", r"\b(?:it|information technology)(?:\s+department)?\b"),
+        )
+        analytics_department = next((name for name, pattern in department_aliases
+            if re.search(pattern, message_lower)), None)
+        explicit_ticket_context = bool(re.search(r"\btickets?\b", message_lower))
+        analytics_action = bool(re.search(
+            r"\b(?:give|show|display|provide|view|generate|summarize|summarise|overview|analytics|summary|dashboard)\b",
+            message_lower,
+        ))
+        has_specific_ticket = bool(re.search(
+            r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I
+        ))
+        wants_creation = bool(re.search(
+            r"\b(?:create|raise|submit|file|log|prepare|draft)\s+(?:an?\s+)?(?:new\s+)?(?:ticket|request)\b",
+            message_lower,
+        ))
+        if (summary_word and analytics_department and explicit_ticket_context
+                and analytics_action and not has_specific_ticket and not wants_creation):
+            print("\nFAST DEPARTMENT ANALYTICS:", analytics_department)
+            return {
+                "intent": "ANALYZE_TICKETS",
+                "analytics_department": analytics_department,
+                "analytics_view": "OVERVIEW",
+                "missing_fields": [],
+            }
+
+        # Dedicated deterministic comparison, including plural 'requests'.
+        # Prevent local LLM from generating prose instead of JSON.
+        if (re.search(r"\b(?:compare|comparison)\b", message_lower)
+                and re.search(r"\bincidents?\b", message_lower)
+                and re.search(r"\bservice\s+requests?\b", message_lower)
+                and not has_specific_ticket and not wants_creation):
+            if analytics_department in (None, "IT Department"):
+                print("\nFAST IT ANALYTICS COMPARISON")
+                return {
+                    "intent": "ANALYZE_TICKETS",
+                    "analytics_department": "IT Department",
+                    "analytics_view": "REQUEST_TYPES",
+                    "missing_fields": [],
+                }
+
+        # Read-only analytics questions supported by the existing summary API.
+        # Department-wide access is checked in the workflow, not here.
+        analytics_views = (
+            ("REQUEST_TYPES", r"\b(?:compare|comparison|breakdown|distribution|split)\b.*\b(?:incident|service)\b.*\b(?:ticket|request)s?\b|\b(?:incident|service)\b.*\b(?:vs\.?|versus|compared to)\b.*\b(?:incident|service)\b"),
+            ("RESOLUTION_RATE", r"\b(?:resolution|resolved)\s+(?:rate|percentage|percent|ratio)\b|\bwhat\s+(?:percentage|percent)\s+of\s+(?:it\s+)?tickets?\s+(?:are|were)\s+resolved\b"),
+            ("BACKLOG", r"\b(?:backlog|pending workload|unresolved\s+(?:it\s+)?tickets?)\b"),
+            ("STATUS_BREAKDOWN", r"\b(?:status|statuses)\s+(?:breakdown|distribution|split|analysis)\b|\b(?:breakdown|distribution)\s+(?:of|by)\s+(?:ticket\s+)?status\b"),
+        )
+        has_it_context = bool(re.search(r"\b(?:it department|it tickets?|it requests?)\b", message_lower))
+        # These specific reporting questions default to IT, the only configured
+        # analytics department. Do not intercept explicit other departments.
+        other_department = bool(re.search(
+            r"\b(?:admin|finance|hr|safety|security|branding|insurance|projects|quality)\b",
+            message_lower,
+        ))
+        if not other_department and not re.search(
+            r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I
+        ) and not re.search(r"\b(?:create|raise|submit|delete|change|update|assign)\b", message_lower):
+            for view, pattern in analytics_views:
+                if re.search(pattern, message_lower) and (has_it_context or "ticket" in message_lower):
+                    print("\nFAST IT ANALYTICS VIEW:", view)
+                    return {
+                        "intent": "ANALYZE_TICKETS",
+                        "analytics_department": "IT Department",
+                        "analytics_view": view,
+                        "missing_fields": [],
+                    }
+
         # -------------------------------------------------
         # FAST READ-ONLY IT ANALYTICS ROUTE
         # Do not use this route for ticket creation or individual tickets.
@@ -48,6 +126,7 @@ class AgentOrchestrator:
             return {
                 "intent": "ANALYZE_TICKETS",
                 "analytics_department": "IT Department",
+                "analytics_view": "OVERVIEW",
                 "missing_fields": [],
             }
 

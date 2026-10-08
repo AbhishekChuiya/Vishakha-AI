@@ -343,61 +343,78 @@ class AgentWorkflow:
         }
 
     def handle_ticket_analytics(self, agent_result):
-        """Authorized IT summary only; never return department-wide data
-        to arbitrary employees or fall back to unrestricted ticket searches.
-        """
+        """Authorized department analytics; counts from live ticket API."""
         from django.conf import settings
 
-        if agent_result.get("analytics_department") != "IT Department":
-            return {"type": "message", "message": "That analytics report is not available yet."}
+        department = agent_result.get("analytics_department")
+        config = DEPARTMENT_SEARCH_CONFIG.get(department)
+        if not config:
+            return {"type": "message", "message": "Analytics for that department are not configured."}
 
-        # Deny access by default. Configure explicit approved employees in
-        # Django settings; an authenticated email alone is not authorization.
-        approved = getattr(settings, "DARPAN_ANALYTICS_ALLOWED_EMAILS", ())
-        if isinstance(approved, str):
-            approved = [part.strip() for part in approved.split(",")]
-        approved = {str(email).strip().casefold() for email in approved if email}
-        actor = str(self.requester_email or "").strip().casefold()
-
-        if not actor or actor not in approved:
-            return {
-                "type": "message",
-                "message": "You don't have permission to view department-wide ticket analytics.",
-            }
+        # Explicit allowlist, deny by default. Never use a client-supplied email.
+        allowed = getattr(settings, "DARPAN_ANALYTICS_ALLOWED_EMAILS", ())
+        if isinstance(allowed, str):
+            allowed = allowed.split(",")
+        allowed = {str(e).strip().casefold() for e in allowed if e}
+        email = str(self.requester_email or "").strip().casefold()
+        if not email or email not in allowed:
+            return {"type": "message", "message": "You don't have permission to view department-wide ticket analytics."}
 
         try:
-            from ai.analytics.ticket_analytics import TicketAnalytics
-            data = TicketAnalytics().get_it_summary()
-            if data.get("department") != "IT Department":
-                raise ValueError("Unexpected analytics department")
-            for key in ("total_tickets", "open_tickets", "resolved_tickets",
-                        "closed_tickets", "cancelled_tickets"):
-                if key not in data:
-                    raise ValueError(f"Analytics response missing {key}")
-            breakdown = data.get("by_request_type") or {}
-            incident = breakdown.get("Incident Request", {})
-            service = breakdown.get("Service Request", {})
-            summary = (
-                "IT Department Ticket Summary\n"
-                f"Total: {data['total_tickets']}\n"
-                f"Open (API non-closed filter): {data['open_tickets']}\n"
-                f"Resolved: {data['resolved_tickets']}\n"
-                f"Closed: {data['closed_tickets']}\n"
-                f"Cancelled: {data['cancelled_tickets']}\n\n"
-                f"Incident Requests: {incident.get('total', 'Unavailable')}\n"
-                f"Service Requests: {service.get('total', 'Unavailable')}"
-            )
-            return {
-                "type": "message",  # Compatible with existing chatbot UI
-                "message": summary,
+            from ai.agent.ticket_statuses import TICKET_STATUS_IDS
+
+            def count(ticket_type_id, status=None, include_closed=True):
+                ids = TICKET_STATUS_IDS.get(status) if status else None
+                response = self.ticketing.get_all_tickets(
+                    ticket_type_id=ticket_type_id,
+                    status_ids=ids,
+                    include_closed=include_closed,
+                    size=1,
+                )
+                if response.get("totalElements") is None:
+                    raise ValueError("Missing API totalElements")
+                return int(response["totalElements"])
+
+            summary = {
+                "department": department,
+                "total_tickets": 0,
+                "open_tickets": 0,
+                "resolved_tickets": 0,
+                "closed_tickets": 0,
+                "cancelled_tickets": 0,
+                "by_request_type": {},
             }
+            for ticket_type_id in config.get("ticket_type_ids", []):
+                label = TICKET_TYPE_NAMES.get(ticket_type_id, f"Type {ticket_type_id}")
+                row = {
+                    "total": count(ticket_type_id),
+                    "open": count(ticket_type_id, include_closed=False),
+                    "resolved": count(ticket_type_id, status="RESOLVED"),
+                    "closed": count(ticket_type_id, status="CLOSED"),
+                    "cancelled": count(ticket_type_id, status="CANCELLED"),
+                }
+                # Disambiguate repeated names if multiple types share the label.
+                if label in summary["by_request_type"]:
+                    label = f"{label} ({ticket_type_id})"
+                summary["by_request_type"][label] = row
+                for src, dest in (("total", "total_tickets"), ("open", "open_tickets"),
+                                  ("resolved", "resolved_tickets"), ("closed", "closed_tickets"),
+                                  ("cancelled", "cancelled_tickets")):
+                    summary[dest] += row[src]
+
+            total = summary["total_tickets"]
+            summary["resolution_rate_percent"] = round(100 * summary["resolved_tickets"] / total, 1) if total else 0
+            summary["non_closed_rate_percent"] = round(100 * summary["open_tickets"] / total, 1) if total else 0
+            summary["incident_share_percent"] = round(100 * sum(v["total"] for k,v in summary["by_request_type"].items() if k.startswith("Incident Request")) / total, 1) if total else 0
+            summary["service_share_percent"] = round(100 * sum(v["total"] for k,v in summary["by_request_type"].items() if k.startswith("Service Request")) / total, 1) if total else 0
+            view = agent_result.get("analytics_view") or "OVERVIEW"
+            if view not in {"OVERVIEW", "REQUEST_TYPES", "RESOLUTION_RATE", "BACKLOG", "STATUS_BREAKDOWN"}:
+                view = "OVERVIEW"
+            return {"type": "ticket_analytics", "message": f"{department} ticket analytics",
+                    "analytics_view": view, "analytics": summary}
         except Exception as exc:
-            # Don't leak tokens, requests or internal stack traces to employees.
-            print("TICKET ANALYTICS ERROR:", type(exc).__name__)
-            return {
-                "type": "message",
-                "message": "I couldn't retrieve the ticket analytics right now.",
-            }
+            print("TICKET ANALYTICS ERROR:", type(exc).__name__, str(exc))
+            return {"type": "message", "message": "I couldn't retrieve the ticket analytics right now."}
 
     def handle_create_ticket(self):
         

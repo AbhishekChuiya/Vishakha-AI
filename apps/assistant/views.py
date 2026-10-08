@@ -12,6 +12,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.utils import timezone
+from django.db import transaction
+from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
+from django.utils.crypto import constant_time_compare
+from datetime import timedelta
+import secrets
+import hashlib
+from .models import RememberedAccount
 
 from ai.llm.cancellation import (
     register_request,
@@ -183,9 +193,28 @@ def home(request):
 # SESSION WORKFLOW
 # =========================================================
 
+def _user_chat_session_key(request):
+    # A Django user ID is server-controlled; browser chat_id is not.
+    if not request.user.is_authenticated:
+        raise PermissionError("Login required for chat")
+    return f"assistant_chats_user_{request.user.pk}"
+
+
+def _validated_chat_id(chat_id):
+    import re
+    value = str(chat_id or "").strip()
+    if not re.fullmatch(r"chat_[a-zA-Z0-9_-]{1,100}", value):
+        raise ValueError("Invalid chat identifier")
+    return value
+
+
 def get_workflow(request, chat_id=None):
 
     state = ConversationState()
+    if not request.user.is_authenticated:
+        raise PermissionError("Login required")
+    if chat_id:
+        chat_id = _validated_chat_id(chat_id)
 
     # ---------------------------------------------
     # Multi-chat workflow state
@@ -194,7 +223,7 @@ def get_workflow(request, chat_id=None):
     if chat_id:
 
         assistant_chats = request.session.get(
-            "assistant_chats",
+            _user_chat_session_key(request),
             {}
         )
 
@@ -240,9 +269,8 @@ def get_workflow(request, chat_id=None):
 
     else:
 
-        state_data = request.session.get(
-            "assistant_state"
-        )
+        # Do not load legacy shared state.
+        state_data = None
 
         if state_data:
 
@@ -278,13 +306,14 @@ def save_workflow(
     # ---------------------------------------------
 
     if chat_id:
+        chat_id = _validated_chat_id(chat_id)
 
         # Always create a fresh dictionary copy.
         # This avoids nested Django session
         # mutation/persistence problems.
         assistant_chats = dict(
             request.session.get(
-                "assistant_chats",
+                _user_chat_session_key(request),
                 {}
             )
         )
@@ -296,7 +325,7 @@ def save_workflow(
         # Reassign the complete dictionary
         # back into the Django session.
         request.session[
-            "assistant_chats"
+            _user_chat_session_key(request)
         ] = assistant_chats
 
 
@@ -311,9 +340,8 @@ def save_workflow(
 
     else:
 
-        request.session[
-            "assistant_state"
-        ] = workflow.state.to_dict()
+        # No shared legacy state; require explicit chat IDs.
+        raise ValueError("chat_id is required")
 
 
     request.session.modified = True
@@ -325,6 +353,7 @@ def save_workflow(
 
 @csrf_exempt
 @require_POST
+@login_required
 def chat(request):
 
     try:
@@ -369,6 +398,10 @@ def chat(request):
             )
 
 
+        if not chat_id:
+            return JsonResponse({"success": False, "error": "chat_id required"}, status=400)
+        chat_id = _validated_chat_id(chat_id)
+
         # ---------------------------------------------
         # Get this user's workflow
         # ---------------------------------------------
@@ -395,7 +428,7 @@ def chat(request):
         # ---------------------------------------------
 
         cancel_event = register_request(
-            chat_id
+            f"user_{request.user.pk}:{chat_id}"
         )
         # ---------------------------------------------
         # Process request
@@ -423,7 +456,7 @@ def chat(request):
             try:
                 result = workflow.process_message(
                     user_message,
-                    chat_id=chat_id
+                    chat_id=f"user_{request.user.pk}:{chat_id}"
                 )
 
             except LLMCancelled:
@@ -443,7 +476,7 @@ def chat(request):
 
             finally:
                 unregister_request(
-                    chat_id,
+                    f"user_{request.user.pk}:{chat_id}",
                     cancel_event
                 )
 
@@ -500,6 +533,7 @@ def chat(request):
         )
 
 @require_GET
+@login_required
 def chat_state(request):
 
     # ---------------------------------------------
@@ -515,6 +549,10 @@ def chat_state(request):
             chat_id
         ).strip()
 
+
+    if not chat_id:
+        return JsonResponse({"success": False, "error": "chat_id required"}, status=400)
+    chat_id = _validated_chat_id(chat_id)
 
     # ---------------------------------------------
     # Load this conversation's workflow
@@ -753,6 +791,7 @@ def chat_state(request):
 
 @csrf_exempt
 @require_POST
+@login_required
 def new_chat(request):
 
     try:
@@ -777,6 +816,9 @@ def new_chat(request):
         ).strip()
 
 
+    if not chat_id:
+        return JsonResponse({"success": False, "error": "chat_id required"}, status=400)
+
     # ---------------------------------------------
     # Initialize only this new conversation.
     #
@@ -785,9 +827,10 @@ def new_chat(request):
     # ---------------------------------------------
 
     if chat_id:
+        chat_id = _validated_chat_id(chat_id)
 
         assistant_chats = request.session.get(
-            "assistant_chats",
+            _user_chat_session_key(request),
             {}
         )
 
@@ -798,7 +841,7 @@ def new_chat(request):
         ] = ConversationState().to_dict()
 
         request.session[
-            "assistant_chats"
+            _user_chat_session_key(request)
         ] = assistant_chats
 
         # print(
@@ -826,6 +869,7 @@ def new_chat(request):
 
 @csrf_exempt
 @require_POST
+@login_required
 def delete_chat(request):
 
     try:
@@ -861,9 +905,7 @@ def delete_chat(request):
         )
 
 
-    chat_id = str(
-        chat_id
-    ).strip()
+    chat_id = _validated_chat_id(chat_id)
 
 
     # ---------------------------------------------
@@ -872,7 +914,7 @@ def delete_chat(request):
 
     assistant_chats = dict(
         request.session.get(
-            "assistant_chats",
+            _user_chat_session_key(request),
             {}
         )
     )
@@ -890,7 +932,7 @@ def delete_chat(request):
 
 
     request.session[
-        "assistant_chats"
+        _user_chat_session_key(request)
     ] = assistant_chats
 
     request.session.modified = True
@@ -921,6 +963,7 @@ def delete_chat(request):
 
 @csrf_exempt
 @require_POST
+@login_required
 def stop_chat(request):
 
     try:
@@ -967,7 +1010,7 @@ def stop_chat(request):
     )
 
     cancelled = cancel_request(
-        chat_id
+        f"user_{request.user.pk}:{_validated_chat_id(chat_id)}"
     )
 
     print(
@@ -982,3 +1025,150 @@ def stop_chat(request):
             "chat_id": chat_id
         }
     )
+
+# =========================================================
+# OPT-IN REMEMBERED ACCOUNTS (Django authentication)
+# =========================================================
+# Each remembered account receives its OWN HttpOnly browser cookie.
+# Browser JS never has access to these bearer credentials.
+REMEMBERED_ACCOUNT_DAYS = 7
+REMEMBERED_COOKIE_PREFIX = "darpan_remembered_"
+
+
+def _remember_cookie_name(user_id):
+    return f"{REMEMBERED_COOKIE_PREFIX}{int(user_id)}"
+
+
+def _remembered_account(request, user):
+    """Validate cookie, database record, expiration, and password version."""
+    if not user.is_active:
+        return None
+    token = request.COOKIES.get(_remember_cookie_name(user.pk), "")
+    if not token:
+        return None
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    record = RememberedAccount.objects.filter(
+        user=user, token_hash=digest, revoked_at__isnull=True,
+        expires_at__gt=timezone.now()
+    ).first()
+    if not record or not constant_time_compare(
+        record.auth_hash, user.get_session_auth_hash()
+    ):
+        return None
+    return record
+
+
+def _remembered_accounts_for_request(request):
+    # Enumerate only cookie names on THIS browser, then validate server-side.
+    ids = []
+    for name in request.COOKIES:
+        if name.startswith(REMEMBERED_COOKIE_PREFIX):
+            suffix = name[len(REMEMBERED_COOKIE_PREFIX):]
+            if suffix.isascii() and suffix.isdecimal():
+                ids.append(int(suffix))
+    accounts = []
+    for user in User.objects.filter(pk__in=ids, is_active=True):
+        record = _remembered_account(request, user)
+        if record:
+            accounts.append({"user": user, "expires_at": record.expires_at})
+    return sorted(accounts, key=lambda x: x["user"].username.lower())
+
+
+@login_required
+@require_GET
+def account_chooser(request):
+    return render(request, "assistant/account_chooser.html", {
+        "accounts": _remembered_accounts_for_request(request),
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def account_add(request):
+    """Explicit authorization of an account for quick switching on this device."""
+    if request.method == "GET":
+        return render(request, "assistant/account_add.html")
+
+    username = request.POST.get("username", "").strip()
+    password = request.POST.get("password", "")
+    # Prefer persistent distributed cache/rate limiter for production.
+    # The cache guard reduces repeated attempts during development.
+    remote = request.META.get("REMOTE_ADDR", "unknown")
+    key = "darpan_add_attempts:" + hashlib.sha256(remote.encode()).hexdigest()
+    attempts = cache.get(key, 0)
+    if attempts >= 8:
+        return render(request, "assistant/account_add.html", {
+            "error": "Too many attempts. Please try again later."
+        }, status=429)
+
+    account = authenticate(request, username=username, password=password)
+    if not account or not account.is_active:
+        cache.set(key, attempts + 1, 15 * 60)
+        return render(request, "assistant/account_add.html", {
+            "error": "Invalid username or password."
+        }, status=400)
+    cache.delete(key)
+
+    # A new token revokes this user's previous *same-browser* token,
+    # without affecting remembered devices elsewhere.
+    old_token = request.COOKIES.get(_remember_cookie_name(account.pk))
+    if old_token:
+        old_hash = hashlib.sha256(old_token.encode()).hexdigest()
+        RememberedAccount.objects.filter(
+            user=account, token_hash=old_hash
+        ).update(revoked_at=timezone.now())
+
+    raw_token = secrets.token_urlsafe(48)
+    expires = timezone.now() + timedelta(days=REMEMBERED_ACCOUNT_DAYS)
+    RememberedAccount.objects.create(
+        user=account,
+        token_hash=hashlib.sha256(raw_token.encode()).hexdigest(),
+        auth_hash=account.get_session_auth_hash(),
+        expires_at=expires,
+    )
+    response = redirect("account_chooser")
+    response.set_cookie(
+        _remember_cookie_name(account.pk), raw_token,
+        max_age=REMEMBERED_ACCOUNT_DAYS * 24 * 60 * 60,
+        httponly=True, secure=request.is_secure(), samesite="Lax", path="/",
+    )
+    return response
+
+
+@login_required
+@require_POST
+def account_switch(request):
+    """Never accept a user ID as proof of authorization."""
+    target_id = request.POST.get("user_id", "")
+    if not target_id.isascii() or not target_id.isdecimal():
+        return redirect("account_chooser")
+    account = User.objects.filter(pk=int(target_id), is_active=True).first()
+    if account is None or not _remembered_account(request, account):
+        return render(request, "assistant/account_chooser.html", {
+            "accounts": _remembered_accounts_for_request(request),
+            "error": "That remembered login is unavailable or expired. Add the account again."
+        }, status=403)
+
+    # Django login rotates/flushes the session as appropriate. The new
+    # request.user is ALWAYS the actual target user after redirect.
+    login(request, account, backend=settings.AUTHENTICATION_BACKENDS[0])
+    request.session.cycle_key()
+    return redirect("home")
+
+
+@login_required
+@require_POST
+def account_remove(request):
+    target_id = request.POST.get("user_id", "")
+    if not target_id.isascii() or not target_id.isdecimal():
+        return redirect("account_chooser")
+    target_id = int(target_id)
+    token = request.COOKIES.get(_remember_cookie_name(target_id))
+    if token:
+        digest = hashlib.sha256(token.encode()).hexdigest()
+        RememberedAccount.objects.filter(
+            user_id=target_id, token_hash=digest
+        ).update(revoked_at=timezone.now())
+    response = redirect("account_chooser")
+    response.delete_cookie(_remember_cookie_name(target_id), path="/", samesite="Lax")
+    return response
