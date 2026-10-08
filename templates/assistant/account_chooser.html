@@ -1,1 +1,20 @@
-{% extends "assistant/account_base.html" %}{% block title %}Switch Account · Darpan{% endblock %}{% block content %}<h1>Switch account</h1><p class="sub">Choose an account previously verified on this device, or add another with its password.</p>{% if error %}<p class="error">{{ error }}</p>{% endif %}{% for item in accounts %}<div class="account"><div><strong>{{ item.user.username }}{% if item.user.pk == request.user.pk %} · current{% endif %}</strong><small>{{ item.user.email }} · expires {{ item.expires_at|date:"d M Y" }}</small></div><div style="display:flex;align-items:center;gap:6px"><form method="post" action="{% url 'account_switch' %}">{% csrf_token %}<input type="hidden" name="user_id" value="{{ item.user.pk }}"><button type="submit" class="btn">Switch</button></form><form method="post" action="{% url 'account_remove' %}">{% csrf_token %}<input type="hidden" name="user_id" value="{{ item.user.pk }}"><button type="submit" class="remove" title="Forget this device login">Remove</button></form></div></div>{% empty %}<p class="sub">No accounts remembered yet. Add the current account and any other account once.</p>{% endfor %}<div class="links"><a href="{% url 'account_add' %}" class="btn secondary">+ Add account</a><a href="{% url 'home' %}" class="btn secondary">Back to Darpan</a></div><p class="notice">Remembered accounts allow anyone with access to this unlocked browser to switch between those accounts for up to 7 days. Use only on a trusted personal device. “Remove” revokes that account's remembered credential for this browser.</p>{% endblock %}
+{% extends "assistant/account_base.html" %}
+{% block title %}Switch Account · Darpan AI{% endblock %}
+{% block content %}
+<h1>Switch account</h1>
+<p class="sub">Select a remembered account to continue in Darpan, or securely add another account on this browser.</p>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% for item in accounts %}
+<div class="account">
+  <span class="avatar">{{ item.user.username|first|upper }}</span>
+  <div class="account-details"><strong>{{ item.user.username }}{% if item.user.pk == request.user.pk %}<span class="current-pill">Active</span>{% endif %}</strong>
+  <small>{{ item.user.email }} · Remembered until {{ item.expires_at|date:"d M Y" }}</small></div>
+  <div class="account-buttons">
+  {% if item.user.pk != request.user.pk %}<form method="post" action="{% url 'account_switch' %}">{% csrf_token %}<input type="hidden" name="user_id" value="{{ item.user.pk }}"><button type="submit" class="btn">Switch →</button></form>{% endif %}
+  <form method="post" action="{% url 'account_remove' %}">{% csrf_token %}<input type="hidden" name="user_id" value="{{ item.user.pk }}"><button type="submit" class="btn remove" aria-label="Forget {{ item.user.username }}">Remove</button></form>
+  </div>
+</div>
+{% empty %}<p class="sub">No remembered accounts yet. Add an account to enable quick switching.</p>{% endfor %}
+<div class="links"><a href="{% url 'account_add' %}" class="btn">＋ Add another account</a><a href="{% url 'home' %}" class="btn secondary">← Back to Darpan</a></div>
+<p class="notice">Remembered accounts grant access from this browser for up to 7 days. Use only on a private, trusted device. Removing an account revokes its remembered credential.</p>
+{% endblock %}

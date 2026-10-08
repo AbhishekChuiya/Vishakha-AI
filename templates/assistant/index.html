@@ -40,6 +40,28 @@ body:not(.dark-mode) .darpan-analytics-metric{background:#f4f7fb;border-color:#e
 body:not(.dark-mode) .darpan-analytics-ring>div{background:#fff}
 body:not(.dark-mode) .darpan-analytics-types{border-color:#e4eaf2}
 @media(max-width:700px){.darpan-analytics-report{margin-left:0;padding:15px}.darpan-analytics-lower{justify-content:center}}
+
+/* Inline remembered-account menu. Forms submit via Django CSRF-protected POST. */
+.user-dropdown{min-width:318px;max-width:min(360px,calc(100vw - 20px));max-height:min(75vh,650px);overflow-y:auto;box-sizing:border-box;z-index:9999}
+.darpan-account-menu-title{padding:14px 15px 7px;font-size:10px;font-weight:800;letter-spacing:1.5px;color:#8090a5}
+.darpan-account-menu-list{padding:0 8px}
+.darpan-account-switch-form{margin:0}
+.darpan-account-choice{box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:11px 9px;margin:2px 0;background:transparent;color:inherit;border:1px solid transparent;border-radius:12px;font:inherit;text-align:left;cursor:pointer;text-decoration:none}
+.darpan-account-choice:hover{background:rgba(110,137,179,.11)}
+.darpan-account-choice.current{background:rgba(65,125,225,.085);border-color:rgba(65,125,225,.18);cursor:default}
+.darpan-account-initial{height:36px;width:36px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:#e6eefd;color:#2456a6;font-weight:800;font-size:15px}
+.darpan-account-identity{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.darpan-account-identity strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.darpan-account-identity small{font-size:11px;color:#8996a9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.darpan-current-tag{background:rgba(20,164,115,.13);color:#13a677;border-radius:16px;padding:4px 7px;font-size:10px;font-weight:800}
+.darpan-account-arrow{font-size:18px;color:#7184a0}
+.darpan-account-hint{padding:11px;color:#8896a9;font-size:12px;line-height:1.5}
+.darpan-menu-separator{margin:7px 12px;border-top:1px solid rgba(130,151,180,.19)}
+.darpan-account-action{display:flex;align-items:center;gap:11px;color:inherit;text-decoration:none;font-size:12px;font-weight:600;padding:11px 18px;border-radius:10px;margin:0 8px}
+.darpan-account-action:hover{background:rgba(110,137,179,.11)}
+.darpan-account-action span{font-size:18px;line-height:1;color:#6988bb}
+body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
+
 </style>
 </head>
 
@@ -420,13 +442,40 @@ body:not(.dark-mode) .darpan-analytics-types{border-color:#e4eaf2}
                         <div class="user-dropdown-divider"></div>
 
 
-                        <a
-                            href="{% url 'account_chooser' %}"
-                            class="user-dropdown-item user-switch-account"
-                            title="Choose a remembered account or add another">
-                            <span>⇄</span>
-                            <span>Switch Account</span>
-                        </a>
+                        <div class="darpan-account-menu-title">SWITCH ACCOUNT</div>
+                        <div class="darpan-account-menu-list">
+                            {% for item in remembered_accounts %}
+                                {% if item.user.pk == request.user.pk %}
+                                <div class="darpan-account-choice current" aria-current="true">
+                                    <span class="darpan-account-initial">{{ item.user.username|first|upper }}</span>
+                                    <span class="darpan-account-identity">
+                                        <strong>{{ item.user.username }}</strong>
+                                        <small>{{ item.user.email|default:"Current account" }}</small>
+                                    </span>
+                                    <span class="darpan-current-tag">Active</span>
+                                </div>
+                                {% else %}
+                                <form class="darpan-account-switch-form" method="post" action="{% url 'account_switch' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ item.user.pk }}">
+                                    <button class="darpan-account-choice" type="submit" title="Switch to {{ item.user.username }}">
+                                        <span class="darpan-account-initial">{{ item.user.username|first|upper }}</span>
+                                        <span class="darpan-account-identity">
+                                            <strong>{{ item.user.username }}</strong>
+                                            <small>{{ item.user.email|default:"Remembered account" }}</small>
+                                        </span>
+                                        <span class="darpan-account-arrow">→</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            {% empty %}
+                                <div class="darpan-account-hint">No accounts remembered on this browser yet.</div>
+                            {% endfor %}
+                        </div>
+                        <div class="darpan-menu-separator"></div>
+                        <a class="darpan-account-action" href="{% url 'account_add' %}"><span>＋</span> Add another account</a>
+                        <a class="darpan-account-action" href="{% url 'account_chooser' %}"><span>⚙</span> Manage remembered accounts</a>
+                        <div class="darpan-menu-separator"></div>
 
                         <a
                             href="/logout/"

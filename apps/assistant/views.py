@@ -185,7 +185,8 @@ def home(request):
 
     return render(
         request,
-        "assistant/index.html"
+        "assistant/index.html",
+        {"remembered_accounts": _remembered_accounts_for_request(request)},
     )
 
 
