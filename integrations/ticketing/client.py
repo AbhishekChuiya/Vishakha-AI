@@ -299,6 +299,8 @@ class TicketingClient:
         status_ids=None,
         ticket_type_id=None,
         group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -323,6 +325,12 @@ class TicketingClient:
 
         if group_ids:
             params["groupId"] = group_ids
+
+        if category_id is not None:
+            params["categoryId"] = category_id
+
+        if subcategory_id is not None:
+            params["subCategoryId"] = subcategory_id
 
         response = requests.get(
             url,
@@ -505,6 +513,8 @@ class TicketingClient:
         status_ids=None,
         ticket_type_id=None,
         group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         url = f"{self.base_url}/api/itsm/v1/tickets"
@@ -530,6 +540,12 @@ class TicketingClient:
 
         if group_ids:
             params["groupId"] = group_ids
+
+        if category_id is not None:
+            params["categoryId"] = category_id
+
+        if subcategory_id is not None:
+            params["subCategoryId"] = subcategory_id
 
         print(
             "Search My Tickets Requester Email:",

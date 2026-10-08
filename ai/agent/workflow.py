@@ -315,6 +315,11 @@ class AgentWorkflow:
             chat_id=chat_id
         )
 
+        # Analytics is a stateless read-only operation. Do not modify the
+        # conversation's ticket-creation state or require new state fields.
+        if agent_result.get("intent") == "ANALYZE_TICKETS":
+            return self.handle_ticket_analytics(agent_result)
+
         self.state.update_from_agent(agent_result)
 
         # CREATE TICKET
@@ -336,6 +341,63 @@ class AgentWorkflow:
                 "or checking ticket status."
             ),
         }
+
+    def handle_ticket_analytics(self, agent_result):
+        """Authorized IT summary only; never return department-wide data
+        to arbitrary employees or fall back to unrestricted ticket searches.
+        """
+        from django.conf import settings
+
+        if agent_result.get("analytics_department") != "IT Department":
+            return {"type": "message", "message": "That analytics report is not available yet."}
+
+        # Deny access by default. Configure explicit approved employees in
+        # Django settings; an authenticated email alone is not authorization.
+        approved = getattr(settings, "DARPAN_ANALYTICS_ALLOWED_EMAILS", ())
+        if isinstance(approved, str):
+            approved = [part.strip() for part in approved.split(",")]
+        approved = {str(email).strip().casefold() for email in approved if email}
+        actor = str(self.requester_email or "").strip().casefold()
+
+        if not actor or actor not in approved:
+            return {
+                "type": "message",
+                "message": "You don't have permission to view department-wide ticket analytics.",
+            }
+
+        try:
+            from ai.analytics.ticket_analytics import TicketAnalytics
+            data = TicketAnalytics().get_it_summary()
+            if data.get("department") != "IT Department":
+                raise ValueError("Unexpected analytics department")
+            for key in ("total_tickets", "open_tickets", "resolved_tickets",
+                        "closed_tickets", "cancelled_tickets"):
+                if key not in data:
+                    raise ValueError(f"Analytics response missing {key}")
+            breakdown = data.get("by_request_type") or {}
+            incident = breakdown.get("Incident Request", {})
+            service = breakdown.get("Service Request", {})
+            summary = (
+                "IT Department Ticket Summary\n"
+                f"Total: {data['total_tickets']}\n"
+                f"Open (API non-closed filter): {data['open_tickets']}\n"
+                f"Resolved: {data['resolved_tickets']}\n"
+                f"Closed: {data['closed_tickets']}\n"
+                f"Cancelled: {data['cancelled_tickets']}\n\n"
+                f"Incident Requests: {incident.get('total', 'Unavailable')}\n"
+                f"Service Requests: {service.get('total', 'Unavailable')}"
+            )
+            return {
+                "type": "message",  # Compatible with existing chatbot UI
+                "message": summary,
+            }
+        except Exception as exc:
+            # Don't leak tokens, requests or internal stack traces to employees.
+            print("TICKET ANALYTICS ERROR:", type(exc).__name__)
+            return {
+                "type": "message",
+                "message": "I couldn't retrieve the ticket analytics right now.",
+            }
 
     def handle_create_ticket(self):
         
@@ -1869,6 +1931,8 @@ class AgentWorkflow:
                         status_ids=status_ids,
                         ticket_type_id=ticket_type_id,
                         group_ids=group_ids,
+                        category_id=category_id,
+                        subcategory_id=subcategory_id,
                         size=size,
                     )
 
@@ -1879,6 +1943,8 @@ class AgentWorkflow:
                         status_ids=status_ids,
                         ticket_type_id=ticket_type_id,
                         group_ids=group_ids,
+                        category_id=category_id,
+                        subcategory_id=subcategory_id,
                         size=size,
                     )
 
@@ -2215,6 +2281,204 @@ class AgentWorkflow:
             def ticket_word(total):
                 return "ticket" if total == 1 else "tickets"
 
+
+            # --------------------------------------------------
+            # CONSISTENT TICKET LISTING (BEFORE OLD LIST BRANCHES)
+            # --------------------------------------------------
+            # Personal department queries must stay requester-scoped.
+            # Never discard a matched catalog's category filters.
+            if search_scope == "MY_TICKETS" and catalog_match:
+                # Enforce authenticated-requester restriction at API level.
+                if not self.requester_email:
+                    return {
+                        "type": "error",
+                        "message": "Your employee identity is unavailable for personal ticket search.",
+                        "tickets": [],
+                    }
+
+                status_ids = (
+                    TICKET_STATUS_IDS.get(status_filter)
+                    if status_filter != "OPEN" else None
+                )
+                include_closed = status_filter != "OPEN"
+
+                # Category-only: no keyword restriction. For specific
+                # subcategories, use both category IDs and the item keyword.
+                keyword = None
+                if structured_subcategory_name and original_search_query:
+                    candidate = str(original_search_query).strip()
+                    if candidate.casefold() != structured_subcategory_name.casefold():
+                        keyword = candidate
+
+                routes = list(structured_routes)
+                if not routes and structured_ticket_type_id is not None:
+                    routes = [{
+                        "ticket_type_id": structured_ticket_type_id,
+                        "category_id": structured_category_id,
+                        "subcategory_id": structured_subcategory_id,
+                    }]
+
+                # Fail closed: never substitute an unfiltered personal search
+                # for a structured search whose catalog IDs failed to resolve.
+                if (
+                    not routes
+                    or any(route.get("category_id") is None for route in routes)
+                    or (structured_subcategory_name and any(
+                        route.get("subcategory_id") is None for route in routes
+                    ))
+                ):
+                    return {
+                        "type": "error",
+                        "message": "I couldn't resolve the required catalog filters for your tickets.",
+                        "tickets": [],
+                    }
+
+                total = 0
+                tickets = []
+                breakdown = []
+                for route in routes:
+                    result = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="MY_TICKETS",
+                        search_query=keyword,
+                        status_ids=status_ids,
+                        include_closed=include_closed,
+                        category_id=route["category_id"],
+                        subcategory_id=route.get("subcategory_id"),
+                        ticket_type_id=route["ticket_type_id"],
+                        size=1 if count_only else 20,
+                    )
+                    route_total = result.get("totalElements", 0)
+                    total += route_total
+                    breakdown.append({
+                        "label": TICKET_TYPE_NAMES.get(route["ticket_type_id"], "Request"),
+                        "count": route_total,
+                    })
+                    if not count_only:
+                        tickets.extend(result.get("content", []))
+
+                tickets.sort(key=lambda t: t.get("createdAt") or "", reverse=True)
+                print("PERSONAL STRUCTURED SEARCH:", {
+                    "department": search_department,
+                    "category": structured_category_name,
+                    "subcategory": structured_subcategory_name,
+                    "keyword": keyword,
+                    "total": total,
+                })
+                return {
+                    "type": "ticket_search_summary" if count_only else "ticket_list",
+                    "message": f"I found {total} matching {ticket_word(total)} in your {search_department} tickets.",
+                    "department": search_department,
+                    "category": structured_category_name,
+                    "subcategory": structured_subcategory_name,
+                    "keyword": keyword,
+                    "status": status_filter,
+                    "total": total,
+                    "breakdown": breakdown,
+                    "tickets": [] if count_only else tickets[:20],
+                }
+
+            if search_scope == "MY_TICKETS" and search_department:
+                config = self.get_department_search_config(search_department)
+                if not config:
+                    return {"type": "message", "message": "Department search is not configured.", "tickets": []}
+                status_ids = (TICKET_STATUS_IDS.get(status_filter)
+                              if status_filter != "OPEN" else None)
+                include_closed = status_filter != "OPEN"
+                total = 0
+                tickets = []
+                for tid in config.get("ticket_type_ids", []):
+                    args = dict(
+                        requester_email=self.requester_email,
+                        ticket_type_id=tid,
+                        status_ids=status_ids,
+                        include_closed=include_closed,
+                        size=1 if count_only else 20,
+                    )
+                    if search_query:
+                        r = self.ticketing.search_my_tickets(search_query=search_query, **args)
+                    else:
+                        r = self.ticketing.get_my_tickets(**args)
+                    total += r.get("totalElements", 0)
+                    tickets.extend(r.get("content", []))
+                tickets.sort(key=lambda t: t.get("createdAt") or "", reverse=True)
+                return {
+                    "type": "ticket_search_summary" if count_only else "ticket_list",
+                    "message": f"I found {total} of your {search_department} {ticket_word(total)}.",
+                    "total": total,
+                    "tickets": [] if count_only else tickets[:20],
+                }
+
+            if not count_only and search_scope == "MY_TICKETS" and not search_department and not search_query:
+                result = self.ticketing.get_my_tickets(
+                    requester_email=self.requester_email,
+                    include_closed=(status_filter != "OPEN"),
+                    status_ids=(TICKET_STATUS_IDS.get(status_filter)
+                                if status_filter != "OPEN" else None),
+                    size=20,
+                )
+                return {
+                    "type": "ticket_list",
+                    "message": f"I found {result.get('totalElements', 0)} of your tickets.",
+                    "total": result.get("totalElements", 0),
+                    "tickets": result.get("content", []),
+                }
+
+            if not count_only and search_scope == "ALL_TICKETS" and search_department:
+                status_ids = (TICKET_STATUS_IDS.get(status_filter)
+                              if status_filter != "OPEN" else None)
+                include_closed = (status_filter != "OPEN")
+                keyword = original_search_query if original_search_query else None
+                # For a category-only catalog match use the category
+                # instead of searching its literal name in ticket text.
+                if catalog_match and not structured_subcategory_name:
+                    keyword = None
+                elif catalog_match and keyword and structured_subcategory_name:
+                    if keyword.casefold() == structured_subcategory_name.casefold():
+                        keyword = None
+
+                routes = []
+                if catalog_match:
+                    if structured_routes:
+                        routes = structured_routes
+                    elif structured_ticket_type_id is not None:
+                        routes = [{
+                            "ticket_type_id": structured_ticket_type_id,
+                            "category_id": structured_category_id,
+                            "subcategory_id": structured_subcategory_id,
+                        }]
+                    if not routes or any(r.get("category_id") is None for r in routes):
+                        return {"type": "error", "message": "Catalog filter resolution failed.", "tickets": []}
+                else:
+                    config = self.get_department_search_config(search_department)
+                    if not config:
+                        return {"type": "message", "message": "Department search is not configured.", "tickets": []}
+                    routes = [{"ticket_type_id": tid, "category_id": None, "subcategory_id": None}
+                              for tid in config.get("ticket_type_ids", [])]
+
+                results = []
+                total = 0
+                for route in routes:
+                    r = self.search_department_tickets(
+                        department=search_department,
+                        search_scope="ALL_TICKETS",
+                        search_query=keyword,
+                        status_ids=status_ids,
+                        include_closed=include_closed,
+                        category_id=route["category_id"],
+                        subcategory_id=route["subcategory_id"],
+                        ticket_type_id=route["ticket_type_id"],
+                        size=20,
+                    )
+                    total += r.get("totalElements", 0)
+                    results.extend(r.get("content", []))
+                results.sort(key=lambda t: t.get("createdAt") or "", reverse=True)
+                return {
+                    "type": "ticket_list",
+                    "message": f"I found {total} matching {ticket_word(total)}.",
+                    "total": total,
+                    "tickets": results[:20],
+                }
 
             # --------------------------------------------------
             # HYBRID SEARCH: STRUCTURED CATALOG + KEYWORD

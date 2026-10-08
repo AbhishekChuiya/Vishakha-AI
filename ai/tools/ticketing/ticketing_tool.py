@@ -1,14 +1,14 @@
+
 from integrations.ticketing.client import TicketingClient
 from ai.tools.ticketing.routing import find_route
+
 
 class TicketingTool:
 
     name = "ticketing"
 
     def __init__(self):
-
         self.client = TicketingClient()
-
 
     def resolve_category_subcategory(
         self,
@@ -94,8 +94,6 @@ class TicketingTool:
         else:
             group_hint = subcategory or category
 
-
-
         # Look up the exact route in the Excel mapping
         route = find_route(
             department=department,
@@ -112,7 +110,7 @@ class TicketingTool:
         incident_custom_fields = {}
 
         if request_type == "Service Request":
-                    
+
             target_date_field_keys = {
                 11: "neede_by",   # Admin
                 16: "needed_by",  # Safety
@@ -144,8 +142,6 @@ class TicketingTool:
 
                 if phone:
                     service_custom_fields["Phone_Number"] = phone
-
-                    # Build Incident Request custom fields
 
         # IT Incident Request (ticket type 56)
         if request_type == "Incident Request" and ticket_type_id == 56:
@@ -189,7 +185,7 @@ class TicketingTool:
                 full_description += f"\nImpact: {impact}"
 
             if start_date:
-                full_description += f"\nWhen did this start?: {start_date}" 
+                full_description += f"\nWhen did this start?: {start_date}"
 
         # Ticket type is now taken from Excel, not hardcoded
         result = self.client.create_ticket(
@@ -225,7 +221,7 @@ class TicketingTool:
         )
 
         return result
-                
+
     def get_my_tickets(
         self,
         requester_email=None,
@@ -233,6 +229,8 @@ class TicketingTool:
         status_ids=None,
         ticket_type_id=None,
         group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         print("Get My Tickets Include Closed:", include_closed)
@@ -246,6 +244,8 @@ class TicketingTool:
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
             group_ids=group_ids,
+            category_id=category_id,
+            subcategory_id=subcategory_id,
             size=size,
         )
 
@@ -321,7 +321,6 @@ class TicketingTool:
             ticket_id
         )
 
-
     def search_tickets(
         self,
         search_query,
@@ -354,6 +353,8 @@ class TicketingTool:
         status_ids=None,
         ticket_type_id=None,
         group_ids=None,
+        category_id=None,
+        subcategory_id=None,
         size=20,
     ):
         print("Search My Tickets Query:", search_query)
@@ -369,5 +370,7 @@ class TicketingTool:
             status_ids=status_ids,
             ticket_type_id=ticket_type_id,
             group_ids=group_ids,
+            category_id=category_id,
+            subcategory_id=subcategory_id,
             size=size,
         )

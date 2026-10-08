@@ -22,47 +22,88 @@ class AgentOrchestrator:
 
         message_lower = user_message.lower().strip()
 
-
         # -------------------------------------------------
-        # FAST PATH: Detect obvious ticket-count questions
+        # FAST READ-ONLY IT ANALYTICS ROUTE
+        # Do not use this route for ticket creation or individual tickets.
+        # Authorization is enforced separately in AgentWorkflow.
         # -------------------------------------------------
+        analytics_patterns = (
+            r"\b(?:give me|show me|show|display|provide|view|what is|what's)\s+"
+            r"(?:an?\s+)?(?:it department|it)\s+"
+            r"(?:ticket\s+)?(?:summary|overview|analytics|statistics|dashboard)\b",
+            r"\b(?:give me|show me|show|display|provide|view)\s+"
+            r"(?:an?\s+)?(?:summary|overview|analytics|statistics|dashboard)\s+"
+            r"(?:of|for|on|about)\s+(?:the\s+)?(?:it department|it)\s+tickets?\b",
+            r"\b(?:summarize|summarise)\s+(?:the\s+)?(?:it department|it)\s+tickets?\b",
+            r"\b(?:it department|it)\s+(?:ticket\s+)?"
+            r"(?:summary|overview|analytics|statistics|dashboard)\b",
+        )
+        is_it_analytics_query = (
+            any(re.search(pattern, message_lower) for pattern in analytics_patterns)
+            and not re.search(r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I)
+            and not re.search(r"\b(?:create|raise|submit|file|log|prepare|draft)\s+(?:an?\s+)?(?:new\s+)?ticket\b", message_lower)
+        )
+        if is_it_analytics_query:
+            print("\nFAST IT ANALYTICS ROUTE ACTIVATED")
+            return {
+                "intent": "ANALYZE_TICKETS",
+                "analytics_department": "IT Department",
+                "missing_fields": [],
+            }
 
+
+        # Fast, deterministic routing for unambiguous ticket questions.
         is_fast_count_query = bool(
-            re.search(r"\b(how many|count)\b", message_lower)
+            re.search(r"\b(?:how many|count)\b", message_lower)
             and re.search(r"\btickets?\b", message_lower)
         )
 
-
-        # -------------------------------------------------
-        # FAST PATH: Individual ticket status queries
-        # -------------------------------------------------
-
-        # Examples: INC-00123, INCIT-00541, INCS-061,
-        # PRB-00021, SR-00123.
-        ticket_number_match = re.search(
+        # Do not confuse individual ticket references with collection queries.
+        ticket_number_matches = re.findall(
             r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b",
             user_message,
             flags=re.IGNORECASE,
         )
-
-        is_status_question = bool(
-            re.search(
-                r"\b(status|progress)\b",
-                message_lower,
-            )
+        ticket_number_match = (
+            ticket_number_matches[0].upper()
+            if len(ticket_number_matches) == 1
+            else None
         )
-
-        # Only route clear status questions with an
-        # explicitly supplied ticket number.
-        is_fast_ticket_status = bool(
+        # A valid ticket number by itself can mean 'show details'.
+        # Avoid fast-routing actions that might create/update tickets.
+        has_write_intent = bool(re.search(
+            r"\b(?:create|raise|submit|update|modify|change|edit|"
+            r"cancel|close|resolve|reopen|delete|assign|reassign|approve|reject)\b",
+            message_lower,
+        ))
+        has_collection_intent = bool(re.search(
+            r"\b(?:how many|count|all tickets|my tickets|list tickets|search tickets)\b",
+            message_lower,
+        ))
+        is_fast_ticket_detail = bool(
             ticket_number_match
-            and is_status_question
             and not is_fast_count_query
-            and not re.search(
-                r"\b(create|raise|submit|open a new)\b",
-                message_lower,
-            )
+            and not has_write_intent
+            and not has_collection_intent
         )
+
+        # Only recognize explicit read-only intents with a ticket number.
+        fast_ticket_query = None
+        if is_fast_ticket_detail:
+            if re.search(r"\b(?:who (?:raised|created|submitted)|raised by|created by|submitted by|requester)\b", message_lower):
+                fast_ticket_query = "REQUESTER"
+            elif re.search(r"\b(?:assigned to|who (?:is )?assigned|who (?:is )?handling|who (?:is )?working on|assignee)\b", message_lower):
+                fast_ticket_query = "ASSIGNED_TO"
+            elif re.search(r"\b(?:when (?:was|did)|created (?:on|date)|date (?:of )?creation)\b", message_lower):
+                fast_ticket_query = "CREATED_DATE"
+            elif re.search(r"\b(?:status|progress|state)\b", message_lower):
+                fast_ticket_query = "STATUS"
+            elif re.search(r"\b(?:detail|details|information|summary|show|view|tell me about)\b", message_lower) or message_lower == ticket_number_match.lower():
+                fast_ticket_query = "DETAILS"
+            # Questions that are not clearly among supported read-only
+            # actions follow the existing LLM route.
+        is_fast_ticket_detail = bool(is_fast_ticket_detail and fast_ticket_query)
+
 
 
         new_it_issue_keywords = [
@@ -109,6 +150,7 @@ class AgentOrchestrator:
             is_obvious_new_it_issue
             and not is_ticket_search
             and not is_fast_count_query
+            and not is_fast_ticket_detail
         ):
             return {
                 "intent": "CREATE_TICKET",
@@ -965,16 +1007,17 @@ class AgentOrchestrator:
             }
         )
 
+        # Read-only list requests can use the same deterministic
+        # department/status/keyword normalization as count requests.
+        is_fast_list_query = bool(
+            re.match(r"^(?:show|list|find|search|display)\b", message_lower)
+            and re.search(r"\btickets?\b", message_lower)
+            and not ticket_number_match
+            and not has_write_intent
+        )
 
-        # -------------------------------------------------
-        # FAST INTENT ROUTING FOR TICKET COUNT QUESTIONS
-        # -------------------------------------------------
-
-        if is_fast_count_query:
-
-            print("\nFAST COUNT ROUTE ACTIVATED")
-            print("USER MESSAGE:", user_message)
-
+        if is_fast_list_query:
+            print("\nFAST LIST ROUTE ACTIVATED")
             result = {
                 "intent": "SEARCH_TICKETS",
                 "department": None,
@@ -985,24 +1028,33 @@ class AgentOrchestrator:
                 "ticket_number": None,
                 "ticket_query": None,
                 "search_query": None,
-                "search_scope": self._detect_search_scope(
-                    user_message
-                ),
+                "search_scope": self._detect_search_scope(user_message),
+                "priority": None,
+                "missing_fields": [],
+                "ticket_count_only": False,
+            }
+        elif is_fast_count_query:
+            print("\nFAST COUNT ROUTE ACTIVATED")
+            print("USER MESSAGE:", user_message)
+            result = {
+                "intent": "SEARCH_TICKETS",
+                "department": None,
+                "request_type": None,
+                "category": None,
+                "description": None,
+                "location": None,
+                "ticket_number": None,
+                "ticket_query": None,
+                "search_query": None,
+                "search_scope": self._detect_search_scope(user_message),
                 "priority": None,
                 "missing_fields": [],
                 "ticket_count_only": True,
             }
-
-
-        elif is_fast_ticket_status:
-
-            ticket_number = (
-                ticket_number_match.group(0).upper()
-            )
-
-            print("\nFAST TICKET STATUS ROUTE ACTIVATED")
-            print("TICKET NUMBER:", ticket_number)
-
+        elif is_fast_ticket_detail:
+            print("\nFAST TICKET DETAIL ROUTE ACTIVATED")
+            print("TICKET NUMBER:", ticket_number_match)
+            print("TICKET QUERY:", fast_ticket_query)
             result = {
                 "intent": "CHECK_TICKET_STATUS",
                 "department": None,
@@ -1010,28 +1062,22 @@ class AgentOrchestrator:
                 "category": None,
                 "description": None,
                 "location": None,
-                "ticket_number": ticket_number,
-                "ticket_query": "STATUS",
+                "ticket_number": ticket_number_match,
+                "ticket_query": fast_ticket_query,
                 "search_query": None,
                 "search_scope": None,
                 "priority": None,
                 "missing_fields": [],
                 "ticket_count_only": False,
             }
-
-
         else:
-
             response = self.llm.chat(
                 messages,
                 chat_id=chat_id
             )
-
             print("\nRAW LLM RESPONSE:")
             print(response)
-
             result = self._parse_json(response)
-
 
         # ---------------------------------------------------------
         # Ensure new fields always exist
@@ -1475,8 +1521,8 @@ class AgentOrchestrator:
                 # Preserve Darpan's existing meaning of "open":
                 # all active/non-closed tickets, not only portal status ID 24.
                 if (
-                    "open" in message_words
-                    or "active" in message_words
+                    re.search(r"\bopen\b", message_lower)
+                    or re.search(r"\bactive\b", message_lower)
                 ):
                     detected_status = "OPEN"
 
@@ -1613,6 +1659,40 @@ class AgentOrchestrator:
             search_query = " ".join(words).strip()
 
             result["search_query"] = search_query or None
+
+        # Final normalization for collection searches. Use the actual
+        # employee utterance rather than an unreliable LLM keyword.
+        if result.get("intent") == "SEARCH_TICKETS":
+            query = message_lower
+            remove_phrases = [
+                "how many", "do i have", "are there", "is there",
+                "of my", "for me", "show me", "show all", "show my",
+                "show", "list all", "list my", "list", "find all",
+                "find my", "find", "search for", "search", "display",
+                "all", "my", "tickets", "ticket", "count", "there",
+                "please", "the", "a", "an", "of", "are", "is", "do",
+                "i", "have", "me", "open", "active", "canceled",
+            ]
+            for name in TICKET_STATUS_IDS:
+                remove_phrases.append(name.lower().replace("_", " "))
+            department = result.get("search_department")
+            department_cleanup = {
+                "Admin": ["admin"],
+                "IT Department": ["it department", "it"],
+                "HR Department": ["hr department", "hr"],
+                "Compliance & Risk": ["compliance & risk", "compliance and risk"],
+            }
+            if department:
+                remove_phrases.extend(
+                    department_cleanup.get(department, [department.lower()])
+                )
+            for phrase in sorted(set(remove_phrases), key=len, reverse=True):
+                query = re.sub(rf"\b{re.escape(phrase)}\b", " ", query)
+            query = re.sub(r"[^\w\s-]", " ", query)
+            result["search_query"] = " ".join(query.split()) or None
+            # The status filter has already been extracted from the
+            # utterance, independent of keyword cleanup.
+            result["missing_fields"] = []
 
         return result
 

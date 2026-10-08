@@ -140,3 +140,11 @@ LOGOUT_REDIRECT_URL = "/login/"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 DEFAULT_FROM_EMAIL = "Darpan AI <noreply@vishakha.com>"
+
+
+# Darpan AI - Department Analytics Permissions
+
+DARPAN_ANALYTICS_ALLOWED_EMAILS = [
+    # Add company-approved reporting users here.
+    "abhishek.chuiya@vishakha.com",
+]
