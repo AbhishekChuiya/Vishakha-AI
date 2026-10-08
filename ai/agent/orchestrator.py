@@ -22,6 +22,49 @@ class AgentOrchestrator:
 
         message_lower = user_message.lower().strip()
 
+
+        # -------------------------------------------------
+        # FAST PATH: Detect obvious ticket-count questions
+        # -------------------------------------------------
+
+        is_fast_count_query = bool(
+            re.search(r"\b(how many|count)\b", message_lower)
+            and re.search(r"\btickets?\b", message_lower)
+        )
+
+
+        # -------------------------------------------------
+        # FAST PATH: Individual ticket status queries
+        # -------------------------------------------------
+
+        # Examples: INC-00123, INCIT-00541, INCS-061,
+        # PRB-00021, SR-00123.
+        ticket_number_match = re.search(
+            r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b",
+            user_message,
+            flags=re.IGNORECASE,
+        )
+
+        is_status_question = bool(
+            re.search(
+                r"\b(status|progress)\b",
+                message_lower,
+            )
+        )
+
+        # Only route clear status questions with an
+        # explicitly supplied ticket number.
+        is_fast_ticket_status = bool(
+            ticket_number_match
+            and is_status_question
+            and not is_fast_count_query
+            and not re.search(
+                r"\b(create|raise|submit|open a new)\b",
+                message_lower,
+            )
+        )
+
+
         new_it_issue_keywords = [
             "network issue",
             "network issues",
@@ -65,6 +108,7 @@ class AgentOrchestrator:
         if (
             is_obvious_new_it_issue
             and not is_ticket_search
+            and not is_fast_count_query
         ):
             return {
                 "intent": "CREATE_TICKET",
@@ -921,15 +965,73 @@ class AgentOrchestrator:
             }
         )
 
-        response = self.llm.chat(
-            messages,
-            chat_id=chat_id
-        )
 
-        print("\nRAW LLM RESPONSE:")
-        print(response)
+        # -------------------------------------------------
+        # FAST INTENT ROUTING FOR TICKET COUNT QUESTIONS
+        # -------------------------------------------------
 
-        result = self._parse_json(response)
+        if is_fast_count_query:
+
+            print("\nFAST COUNT ROUTE ACTIVATED")
+            print("USER MESSAGE:", user_message)
+
+            result = {
+                "intent": "SEARCH_TICKETS",
+                "department": None,
+                "request_type": None,
+                "category": None,
+                "description": None,
+                "location": None,
+                "ticket_number": None,
+                "ticket_query": None,
+                "search_query": None,
+                "search_scope": self._detect_search_scope(
+                    user_message
+                ),
+                "priority": None,
+                "missing_fields": [],
+                "ticket_count_only": True,
+            }
+
+
+        elif is_fast_ticket_status:
+
+            ticket_number = (
+                ticket_number_match.group(0).upper()
+            )
+
+            print("\nFAST TICKET STATUS ROUTE ACTIVATED")
+            print("TICKET NUMBER:", ticket_number)
+
+            result = {
+                "intent": "CHECK_TICKET_STATUS",
+                "department": None,
+                "request_type": None,
+                "category": None,
+                "description": None,
+                "location": None,
+                "ticket_number": ticket_number,
+                "ticket_query": "STATUS",
+                "search_query": None,
+                "search_scope": None,
+                "priority": None,
+                "missing_fields": [],
+                "ticket_count_only": False,
+            }
+
+
+        else:
+
+            response = self.llm.chat(
+                messages,
+                chat_id=chat_id
+            )
+
+            print("\nRAW LLM RESPONSE:")
+            print(response)
+
+            result = self._parse_json(response)
+
 
         # ---------------------------------------------------------
         # Ensure new fields always exist
@@ -1667,6 +1769,7 @@ class AgentOrchestrator:
         department,
         request_type,
         allowed_categories,
+        search_mode=False,
     ):
         """
         Classify a ticket description into an allowed category/subcategory.
@@ -1687,7 +1790,9 @@ class AgentOrchestrator:
                 "subcategory": None,
             }
 
-        if not request_type:
+        # Ticket creation requires a selected request type.
+        # Ticket search can classify without one.
+        if not request_type and not search_mode:
             return {
                 "category": None,
                 "subcategory": None,
@@ -2166,6 +2271,37 @@ class AgentOrchestrator:
                 "content": description,
             },
         ]
+
+        if search_mode:
+            messages[0]["content"] += """
+
+            TICKET SEARCH CLASSIFICATION MODE:
+
+            The employee is searching EXISTING tickets.
+
+            Interpret the search expression as an item,
+            service, issue or business concept.
+
+            Match it to the most relevant allowed
+            category/subcategory combination.
+
+            Examples of semantic relationships:
+
+            - ballpoint is a type of writing instrument
+            - a protective helmet is personal protective equipment
+            - a wireless mouse is computer hardware
+
+            Use these relationships only when the corresponding
+            category/subcategory exists in ALLOWED CATEGORIES.
+
+            Do not require the employee's exact wording
+            to appear in the catalog.
+
+            If multiple allowed combinations are equally plausible,
+            or there is insufficient information, return null.
+
+            Return exact catalog values only.
+            """
 
         response = self.llm.chat(messages)
 

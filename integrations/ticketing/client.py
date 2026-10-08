@@ -92,8 +92,8 @@ class TicketingClient:
                 location
             )
 
-        # print("AUTHENTICATOR REQUESTER: ", requester)
-        # print("AUTHENTICATOR ACTOR: ", actor)
+        print("AUTHENTICATOR REQUESTER: ", requester)
+        print("AUTHENTICATOR ACTOR: ", actor)
 
         # 1. Create the payload FIRST
         payload = {
@@ -102,8 +102,8 @@ class TicketingClient:
             "source": self.source,
             "ticketType": {"id": ticket_type_id},
             "priority": {"name": priority},
-            # "requester": requester,
-            # "actor": actor,
+            "requester": requester,
+            "actor": actor,
         }
 
         if category_data:

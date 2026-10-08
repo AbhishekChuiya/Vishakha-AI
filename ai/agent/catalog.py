@@ -660,6 +660,41 @@ SUBCATEGORY_REQUEST_TYPES = {
 
 }
 
+SEARCH_CATALOG_ALIASES = {
+    "Admin": {
+        "pen": ("Stationery Request", "Writing Instruments"),
+        "pens": ("Stationery Request", "Writing Instruments"),
+        "pencil": ("Stationery Request", "Writing Instruments"),
+        "pencils": ("Stationery Request", "Writing Instruments"),
+    },
+
+    "IT Department": {
+        "wi-fi": ("Network", "WIFI"),
+        "wifi": ("Network", "WIFI"),
+        "wireless internet": ("Network", "WIFI"),
+    },
+
+    "Safety": {
+        "near miss": (
+            "Incident Reporting & Management",
+            "Near Miss Reporting",
+        ),
+    },
+
+    "Branding": {
+        "logo": (
+            "Design & Creatives",
+            "Logo & Brand Guidelines",
+        ),
+    },
+
+    "Strategy": {
+        "automation": (
+            "Digital Transformation",
+            "Automation Proposal",
+        ),
+    },
+}
 
 def find_catalog_item(
     department,
@@ -703,6 +738,35 @@ def find_catalog_item(
         "stationary",
         "stationery",
     )
+
+    # Resolve common employee terminology to real portal
+    # categories and subcategories.
+    aliases = SEARCH_CATALOG_ALIASES.get(
+        department,
+        {},
+    )
+
+    alias_match = aliases.get(normalized_search)
+
+    if alias_match:
+        category, subcategory = alias_match
+
+        # Validate against the actual configured catalog.
+        if subcategory in department_catalog.get(category, []):
+
+            request_types = (
+                SUBCATEGORY_REQUEST_TYPES
+                .get(department, {})
+                .get(category, {})
+                .get(subcategory, [])
+            )
+
+            if request_types:
+                return {
+                    "category": category,
+                    "subcategory": subcategory,
+                    "request_types": list(request_types),
+                }
 
     def normalize(value):
         return (

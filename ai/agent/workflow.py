@@ -88,6 +88,7 @@ class AgentWorkflow:
         self,
         state=None,
         requester_email=None,
+        actor_email=None,
     ):
 
         self.orchestrator = AgentOrchestrator()
@@ -95,6 +96,8 @@ class AgentWorkflow:
         self.ticketing = TicketingTool()
 
         self.requester_email = requester_email
+
+        self.actor_email = actor_email
 
         if state is not None:
             self.state = state
@@ -1929,6 +1932,7 @@ class AgentWorkflow:
         try:
             search_query = self.state.search_query
             search_scope = self.state.search_scope
+            original_search_query = search_query
             search_department = getattr(
                 self.state,
                 "search_department",
@@ -1966,14 +1970,73 @@ class AgentWorkflow:
                     repr(search_query),
                 )
 
+
+                # STEP 1: Fast deterministic catalog matching
                 catalog_match = find_catalog_item(
                     search_department,
                     search_query,
                 )
+
+                # STEP 2: AI semantic fallback
+                # Run only when exact, partial and alias matching fail.
+                if not catalog_match:
+
+                    allowed_categories = CATEGORIES.get(
+                        search_department,
+                        {},
+                    )
+
+                    if allowed_categories:
+                        try:
+                            classification = (
+                                self.orchestrator.classify_category(
+                                    description=search_query,
+                                    department=search_department,
+                                    request_type=None,
+                                    allowed_categories=allowed_categories,
+                                    search_mode=True,
+                                )
+                            )
+
+                            category = classification.get("category")
+                            subcategory = classification.get("subcategory")
+
+                            # Validate both values against the real catalog.
+                            if (
+                                category in allowed_categories
+                                and subcategory
+                                in allowed_categories.get(category, [])
+                            ):
+                                request_types = (
+                                    SUBCATEGORY_REQUEST_TYPES
+                                    .get(search_department, {})
+                                    .get(category, {})
+                                    .get(subcategory, [])
+                                )
+
+                                if request_types:
+                                    catalog_match = {
+                                        "category": category,
+                                        "subcategory": subcategory,
+                                        "request_types": list(request_types),
+                                    }
+
+                                    print(
+                                        "AI SEMANTIC CATALOG MATCH:",
+                                        catalog_match,
+                                    )
+
+                        except (ValueError, TypeError) as exc:
+                            print(
+                                "AI SEMANTIC MATCH FAILED:",
+                                str(exc),
+                            )
+
                 print(
                     "CATALOG MATCH:",
                     catalog_match,
                 )
+
 
                 if catalog_match:
 
@@ -2151,6 +2214,114 @@ class AgentWorkflow:
                     
             def ticket_word(total):
                 return "ticket" if total == 1 else "tickets"
+
+
+            # --------------------------------------------------
+            # HYBRID SEARCH: STRUCTURED CATALOG + KEYWORD
+            # Count-only searches across all accessible tickets.
+            # --------------------------------------------------
+
+            if (
+                count_only
+                and search_scope == "ALL_TICKETS"
+                and search_department
+                and catalog_match
+                and structured_subcategory_name
+                and original_search_query
+            ):
+                keyword = str(original_search_query).strip()
+
+                # If the employee supplied the exact subcategory name,
+                # retain existing category/subcategory-wide behavior.
+                if keyword.casefold() != structured_subcategory_name.casefold():
+
+                    status_ids = None
+                    include_closed = True
+
+                    if status_filter == "OPEN":
+                        include_closed = False
+                    elif status_filter in TICKET_STATUS_IDS:
+                        status_ids = TICKET_STATUS_IDS[status_filter]
+
+                    # Build separate routes because the same catalog
+                    # names can have different IDs for each ticket type.
+                    if structured_routes:
+                        routes = structured_routes
+                    elif structured_ticket_type_id is not None:
+                        routes = [{
+                            "request_type": structured_request_types[0],
+                            "ticket_type_id": structured_ticket_type_id,
+                            "category_id": structured_category_id,
+                            "subcategory_id": structured_subcategory_id,
+                        }]
+                    else:
+                        routes = []
+
+                    # Do not widen a structured search when portal
+                    # ID resolution has failed.
+                    if not routes or any(
+                        route.get("category_id") is None
+                        or route.get("subcategory_id") is None
+                        for route in routes
+                    ):
+                        return {
+                            "type": "error",
+                            "message": (
+                                "I couldn't resolve the catalog filters "
+                                "for this ticket search."
+                            ),
+                        }
+
+                    total = 0
+                    breakdown = []
+
+                    for route in routes:
+                        result = self.search_department_tickets(
+                            department=search_department,
+                            search_scope="ALL_TICKETS",
+                            search_query=keyword,
+                            status_ids=status_ids,
+                            category_id=route["category_id"],
+                            subcategory_id=route["subcategory_id"],
+                            ticket_type_id=route["ticket_type_id"],
+                            include_closed=include_closed,
+                            size=1,
+                        )
+
+                        route_total = result.get("totalElements", 0)
+                        total += route_total
+
+                        breakdown.append({
+                            "label": route["request_type"],
+                            "count": route_total,
+                        })
+
+                    print("HYBRID SEARCH KEYWORD:", keyword)
+                    print("HYBRID SEARCH TOTAL:", total)
+                    print("HYBRID SEARCH BREAKDOWN:", breakdown)
+
+                    return {
+                        "type": "ticket_search_summary",
+                        "message": (
+                            f"I found {total} matching "
+                            f"{ticket_word(total)} for '{keyword}' "
+                            f"under {structured_category_name} / "
+                            f"{structured_subcategory_name}."
+                        ),
+                        "department": search_department,
+                        "category": structured_category_name,
+                        "subcategory": structured_subcategory_name,
+                        "keyword": keyword,
+                        "status": (
+                            "Open"
+                            if status_filter == "OPEN"
+                            else status_filter
+                        ),
+                        "total": total,
+                        "breakdown": breakdown,
+                        "tickets": [],
+                    }
+
 
             # --------------------------------------------------
             # COUNT ONLY: DEPARTMENT TICKETS
@@ -4005,8 +4176,8 @@ class AgentWorkflow:
 
                 priority=self.state.priority,
 
-                # requester=self.requester_email,
-                # actor=self.actor_email,
+                requester=self.requester_email,
+                actor=self.actor_email,
 
                 impact=(
                     self.state.impact
