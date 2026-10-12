@@ -21,6 +21,25 @@ class AgentOrchestrator:
         # -------------------------------------------------
 
         message_lower = user_message.lower().strip()
+        if re.match(r"^(?:who\s+(?:is|was|are)|what\s+(?:is|was|are)|tell me about|can you explain)\b", message_lower) and not re.search(r"\b(?:ticket|incident|service request|portal|my tickets|sep)\b", message_lower):
+            return {"intent": "GENERAL_CHAT", "missing_fields": []}
+
+
+        # Clear conversational requests do not need JSON extraction. Do not
+        # intercept an explicit ticket action or a specific ticket number.
+        # More ambiguous employee-service requests keep the existing router.
+        direct_chat = bool(
+            re.fullmatch(r"(?:hi+|hey+|hello|good morning|good afternoon|good evening|thanks|thank you|how are you|who are you)[!.? ]*", message_lower)
+            or re.match(r"^(?:please\s+)?(?:explain|define|translate|summarize|summarise|teach me|what (?:is|are|does)|how (?:does|do|to)|why (?:is|does|do))\b", message_lower)
+            or re.match(r"^(?:please\s+)?(?:write|draft|compose|rewrite|improve|polish)\s+(?:me\s+)?(?:an?\s+)?(?:email|mail|message|letter|paragraph|article|blog|poem|story|code|python script)\b", message_lower)
+        )
+        explicit_ticket_action = bool(re.search(
+            r"\b(?:create|raise|submit|cancel|close|update|assign|search|find|list|show|check)\s+(?:an?\s+|my\s+|the\s+)?(?:new\s+)?tickets?\b",
+            message_lower,
+        ))
+        if (direct_chat and not explicit_ticket_action and not re.search(r"tickets?", message_lower) and not re.search(
+                r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I)):
+            return {"intent": "GENERAL_CHAT", "missing_fields": []}
 
         # DARPAN SUBCATEGORY ANALYTICS ROUTE V2
         # Resolve unique category names even when user omits department.
@@ -344,6 +363,38 @@ class AgentOrchestrator:
                 "missing_fields": [],
             }
 
+        # DARPAN EXPLICIT TICKET COMMAND ROUTE V1
+        # Avoid truncated model JSON for unambiguous requests to create a ticket.
+        # Only explicit ticket commands starting the message are handled here.
+        explicit_ticket_command = bool(
+            re.match(r"^\s*(?:please\s+)?(?:create|raise|submit|log|open|file)\b", message_lower)
+            and re.search(r"\btickets?\b", message_lower)
+        )
+        if explicit_ticket_command and not ticket_number_matches:
+            # Infer only when the domain is explicit; otherwise let the form
+            # ask for department. Request type remains employee-selected.
+            explicit_dept = None
+            if re.search(
+                r"\b(?:laptop|desktop|computer|keyboard|mouse|monitor|printer|"
+                r"wi-?fi|internet|network|hardware|software|sap|odoo)\b",
+                message_lower,
+            ) or re.search(r"\bit\s+(?:department\s+)?tickets?\b", message_lower):
+                explicit_dept = "IT Department"
+            return {
+                "intent": "CREATE_TICKET",
+                "department": explicit_dept,
+                "request_type": None,
+                "category": None,
+                "description": user_message.strip(),
+                "location": None,
+                "ticket_number": None,
+                "ticket_query": None,
+                "search_query": None,
+                "search_scope": None,
+                "priority": None,
+                "missing_fields": [],
+            }
+
         system_prompt = """
         You are a JSON information extraction engine for Darpan, a company employee assistant.
 
@@ -596,6 +647,8 @@ class AgentOrchestrator:
         → OTHER
 
         "What can you do?"
+         General informational questions and writing assistance belong to OTHER.
+         Distinguish explaining SAP from requesting SAP service support.
         → OTHER
 
         ==================================================
@@ -1254,7 +1307,15 @@ class AgentOrchestrator:
             )
             print("\nRAW LLM RESPONSE:")
             print(response)
-            result = self._parse_json(response)
+            try:
+                result = self._parse_json(response)
+            except (ValueError, TypeError, json.JSONDecodeError):
+                # A truncated local-model JSON reply is NOT permission to
+                # invent a ticket. Let the user retry or answer conversationally.
+                if re.search(r"\b(?:ticket|service request|incident request)\b", message_lower) and re.search(r"\b(?:create|raise|submit|open|make|log)\b", message_lower):
+                    result = {"intent": "CREATE_TICKET", "department": None, "description": None, "missing_fields": []}
+                else:
+                    return {"intent": "GENERAL_CHAT", "missing_fields": []}
 
         # ---------------------------------------------------------
         # Ensure new fields always exist
@@ -1305,7 +1366,10 @@ class AgentOrchestrator:
             original_message = user_message.strip()
 
             if original_message:
-                result["description"] = original_message
+                command_only = bool(re.fullmatch(
+                    r"(?:please\s+)?(?:create|raise|submit|open|make|log|file)\s+(?:me\s+)?(?:an?\s+)?(?:new\s+)?(?:it\s+|hr\s+|admin\s+)?(?:service\s+|incident\s+)?(?:ticket|request)(?:\s+(?:for|in)\s+(?:it|hr|admin))?[.!?]*",
+                    original_message.casefold(), re.I))
+                result["description"] = None if command_only else original_message
 
         elif "request_type" not in result:
             result["request_type"] = None

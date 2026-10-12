@@ -2504,3 +2504,371 @@ body.dark-mode .ai-thinking-dots span {
         animation: none;
     }
 }
+/* DARPAN RICH AI ANSWERS V1 */
+.ai-message .darpan-rich-answer{line-height:1.65;overflow-wrap:anywhere;max-width:100%}
+.ai-message .darpan-rich-answer p{margin:0 0 12px;white-space:normal}
+.ai-message .darpan-rich-answer p:last-child{margin-bottom:0}
+.ai-message .darpan-rich-answer h4{font-size:1.04rem;font-weight:700;line-height:1.4;margin:16px 0 8px}
+.ai-message .darpan-rich-answer h4:first-child{margin-top:0}
+.ai-message .darpan-rich-answer ul,.ai-message .darpan-rich-answer ol{padding-left:24px;margin:8px 0 14px;list-style-position:outside}
+.ai-message .darpan-rich-answer ul{list-style-type:disc}
+.ai-message .darpan-rich-answer ol{list-style-type:decimal}
+.ai-message .darpan-rich-answer li{display:list-item;margin:6px 0}
+.ai-message .darpan-rich-answer strong{font-weight:700}
+.ai-message .darpan-rich-answer code{font-family:Consolas,monospace;font-size:.88em;padding:2px 5px;border-radius:4px;background:rgba(127,127,127,.14)}
+.ai-message .darpan-rich-answer pre{overflow-x:auto;padding:12px;border-radius:10px;background:rgba(127,127,127,.13);margin:10px 0}
+.ai-message .darpan-rich-answer pre code{padding:0;background:none;white-space:pre}
+
+
+/* DARPAN WORKSPACE DASHBOARD V1 — does not restyle existing sidebar/topbar */
+.darpan-workspace-tabs{display:flex;gap:6px;padding:12px 32px 0;background:var(--darpan-shell,transparent);flex-shrink:0}
+.darpan-workspace-tab{font:inherit;font-size:13px;font-weight:700;letter-spacing:.1px;border:1px solid transparent;background:transparent;color:#75829b;padding:11px 18px;cursor:pointer;border-radius:12px 12px 0 0;transition:background .18s,color .18s}
+.darpan-workspace-tab:hover{background:#e9effb;color:#225ad9}
+.darpan-workspace-tab.active{color:#225be4;border-bottom:2px solid #2563eb;background:rgba(37,99,235,.07)}
+.darpan-chat-view{flex:1;min-height:0;display:flex;flex-direction:column}
+.darpan-chat-view[hidden],.darpan-dashboard[hidden]{display:none!important}
+.darpan-dashboard{flex:1;overflow:auto;min-height:0;background:#f5f7fc;padding:28px 38px 48px;color:#172844}
+.darpan-dash-content{max-width:1190px;margin:0 auto}
+.darpan-dash-eyebrow{font-size:10px;font-weight:800;letter-spacing:2px;color:#8390a9;margin-bottom:14px}
+.darpan-dash-intro{display:flex;gap:16px;justify-content:space-between;align-items:center;margin-bottom:24px}
+.darpan-dash-intro h2{font-size:clamp(24px,3vw,34px);line-height:1.15;letter-spacing:-.9px;margin:0 0 8px;color:#14233e}
+.darpan-dash-intro p{color:#78859d;font-size:14px;margin:0}
+.darpan-refresh{border:1px solid #dfe5f1;border-radius:11px;background:#fff;color:#475a77;padding:11px 16px;cursor:pointer;font-weight:700;white-space:nowrap}
+.darpan-refresh:hover{background:#edf3ff}
+.darpan-hero{display:flex;align-items:center;text-align:left;gap:16px;width:100%;background:linear-gradient(105deg,#fff,#fafdff);border:1px solid #dfe6f2;border-radius:18px;box-shadow:0 9px 23px rgba(29,48,91,.055);padding:20px 22px;cursor:pointer;color:#182c4e}
+.darpan-hero:hover{border-color:#8dafef;transform:translateY(-1px)}
+.darpan-hero-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:14px;color:#fff;background:#2563eb;font-size:25px;box-shadow:0 6px 15px #2563eb36;flex-shrink:0}
+.darpan-hero-copy{display:grid;gap:6px}.darpan-hero-copy strong{font-size:16px}.darpan-hero-copy small{font-size:13px;color:#7d8aa2}.darpan-hero-arrow{margin-left:auto;display:grid;place-items:center;background:#edf3ff;color:#2563eb;width:40px;height:40px;border-radius:50%;font-size:20px}
+.darpan-dash-section-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:28px 0 14px}.darpan-dash-section-header h3{margin:0;font-size:15px}.darpan-dash-section-header span{color:#8390a6;font-size:12px}
+.darpan-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.darpan-kpi{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid #e2e8f4;border-radius:16px;padding:20px 18px;box-shadow:0 5px 16px #172d5209;min-height:150px}
+.darpan-kpi-icon{color:#5175cf;font-size:19px}.darpan-kpi-icon.amber{color:#dd8b15}.darpan-kpi-icon.green{color:#139673}.darpan-kpi-label{font-size:13px;color:#64738d;font-weight:650}.darpan-kpi strong{font-size:31px;line-height:1;font-weight:800;color:#19345d;font-variant-numeric:tabular-nums}.darpan-kpi small{font-size:11px;color:#929cb0}
+.darpan-dashboard-columns{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,1fr);gap:17px;margin-top:22px}
+.darpan-dashboard-panel{background:#fff;border:1px solid #e2e8f4;border-radius:17px;padding:22px;min-width:0;box-shadow:0 5px 16px #172d5209}
+.darpan-panel-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:15px}.darpan-panel-heading h3{margin:0 0 5px;font-size:16px;color:#182a47}.darpan-panel-heading p{margin:0;color:#8c98ac;font-size:12px}
+.darpan-subtle-link{color:#2563eb;background:transparent;border:0;cursor:pointer;font-size:12px;font-weight:750;white-space:nowrap}
+.darpan-recent-row{padding:13px 0;display:flex;gap:13px;align-items:center;border-top:1px solid #eef1f7}.darpan-recent-icon{display:grid;place-items:center;height:36px;width:36px;border-radius:11px;background:#f0f4fc;color:#4171d2;flex-shrink:0}.darpan-recent-main{min-width:0;flex:1}.darpan-recent-main strong{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:13px;color:#23344f}.darpan-recent-main small{display:block;margin-top:5px;color:#8997ac;font-size:11px}.darpan-ticket-pill{font-size:10px;font-weight:750;color:#4a6f9f;background:#f0f5ff;border-radius:30px;padding:6px 8px;white-space:nowrap}.darpan-ticket-pill.done{color:#16846b;background:#e6f8ef}.darpan-ticket-pill.wait{color:#ad721e;background:#fff5df}
+.darpan-quick-action{width:100%;display:flex;align-items:center;gap:12px;background:transparent;border:0;border-top:1px solid #edf1f7;text-align:left;padding:15px 0;cursor:pointer;color:#23344f}.darpan-quick-action:hover strong{color:#2563eb}.darpan-quick-action>span:first-child{height:39px;width:39px;display:grid;place-items:center;border-radius:11px;background:#edf3ff;color:#2563eb;font-size:19px}.darpan-quick-action>span:nth-child(2){display:grid;gap:4px;flex:1}.darpan-quick-action strong{font-size:13px}.darpan-quick-action small{color:#8a97ab;font-size:11px}.darpan-quick-action b{color:#92a3c3;font-size:17px}.darpan-dash-footer{font-size:11px;color:#8391a7;margin-top:20px}.darpan-empty{text-align:center;color:#8290a6;padding:32px 12px;font-size:13px}
+body.dark-mode .darpan-dashboard{background:#0f172a;color:#e6ecfa}body.dark-mode .darpan-dash-intro h2,body.dark-mode .darpan-panel-heading h3,body.dark-mode .darpan-kpi strong{color:#edf3ff}body.dark-mode .darpan-kpi,body.dark-mode .darpan-dashboard-panel,body.dark-mode .darpan-hero,body.dark-mode .darpan-refresh{background:#172337;border-color:#344259;color:#edf3ff}body.dark-mode .darpan-recent-main strong{color:#e6ecfa}body.dark-mode .darpan-workspace-tab.active{background:#1c3156;color:#9fc0ff}body.dark-mode .darpan-recent-row,body.dark-mode .darpan-quick-action{border-color:#344259}body.dark-mode .darpan-quick-action{color:#edf3ff}
+@media(max-width:1050px){.darpan-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.darpan-dashboard-columns{grid-template-columns:1fr}}
+@media(max-width:680px){.darpan-dashboard{padding:19px 16px 30px}.darpan-workspace-tabs{padding:9px 16px 0}.darpan-dash-intro{align-items:flex-start}.darpan-dash-intro h2{font-size:23px}.darpan-refresh span{display:none}.darpan-kpi-grid{gap:9px}.darpan-kpi{padding:15px 12px;min-height:130px}.darpan-hero{padding:14px}.darpan-hero-icon{width:42px;height:42px}.darpan-dashboard-panel{padding:17px}}
+
+/* VISHKHA AI WORKSPACE V2 — additive, preserves native menu behaviors */
+.chat-header{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.chat-header>.darpan-workspace-tabs{flex:0 1 auto;margin:0;padding:0;background:transparent;align-self:stretch;align-items:center}
+.darpan-workspace-tab{border-radius:11px;padding:11px 17px;font-size:13px;white-space:nowrap}
+.darpan-workspace-tab.active{border-bottom:0;box-shadow:inset 0 0 0 1px #bcd0fa}
+#darpan-application-selector[hidden],.chat-history-section[hidden],.darpan-dashboard-side[hidden],#new-chat-button[hidden],#collapsed-new-chat[hidden],#collapsed-recent-chats[hidden]{display:none!important}
+.darpan-source-indicator{display:inline-flex;align-items:center;gap:6px;color:#2056b8;font-weight:800}
+.darpan-mini-source{font-size:10px;letter-spacing:.6px;font-weight:800;color:#1d5ddb;background:#eaf1ff;border-radius:6px;padding:4px 7px;vertical-align:middle}
+.darpan-dashboard-side{display:flex;flex-direction:column;gap:6px;margin-top:12px;min-height:0}
+.darpan-side-action{background:transparent;color:#56647b;border:1px solid transparent;border-radius:11px;padding:13px 15px;font:inherit;font-weight:600;text-align:left;cursor:pointer;display:flex;gap:12px;align-items:center}
+.darpan-side-action:hover,.darpan-side-action.active{background:#eaf0ff;color:#275be1}
+.darpan-side-connector{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;padding:15px 9px;margin-top:18px;color:#516581;border-top:1px solid #e3e9f4}
+.darpan-app-dot{width:8px;height:8px;border-radius:50%;background:#22a06b}
+.darpan-side-connector small{font-size:10px;color:#16835b;margin-left:16px}
+.darpan-history-group{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#8b98ac;padding:16px 12px 6px;text-transform:uppercase}
+body.darpan-view-dashboard #sidebar .chat-history-section,body.darpan-view-dashboard #sidebar .new-chat-button{display:none!important}
+body.darpan-view-ai #darpan-dashboard-side{display:none!important}
+.sidebar.collapsed .darpan-dashboard-side{display:none!important}
+body.dark-mode .darpan-side-action{color:#b6c4db}
+body.dark-mode .darpan-side-action.active,body.dark-mode .darpan-side-action:hover{background:#243654;color:#bcd5ff}
+body.dark-mode .darpan-side-connector{border-color:#344259;color:#b6c4db}
+body.dark-mode .darpan-mini-source{background:#243654;color:#bcd5ff}
+body.dark-mode .darpan-source-indicator{color:#aac8ff}
+@media(max-width:760px){.chat-header{gap:6px;flex-wrap:wrap}.chat-header>.darpan-workspace-tabs{width:auto;flex:1}.darpan-workspace-tab{padding:9px 10px;font-size:12px}.header-actions{gap:5px}}
+
+/* Vishakha AI V3: customer-supplied brand asset (optional). */
+.brand-identity{display:flex;align-items:center;gap:10px;margin-bottom:12px;min-width:0}
+.brand-identity img{width:39px;height:39px;object-fit:contain;flex-shrink:0}
+.brand-identity .brand-title{font-size:21px;line-height:1.25}
+.brand-identity .brand-subtitle{font-size:11px;letter-spacing:.07em}
+.collapsed-brand img{width:34px;height:34px;object-fit:contain}
+.collapsed-brand:has(img:not([hidden])){background:transparent}
+.sidebar.collapsed .brand-identity{display:none}
+.application-dropdown-item[data-application="general"]{border-bottom:1px solid rgba(130,151,180,.16);margin-bottom:6px}
+.darpan-dash-content .darpan-mini-source{font-size:10px;letter-spacing:.05em}
+
+
+/* Vishakha brand assets: full wordmark when expanded, symbol when collapsed. */
+.sidebar .brand-identity {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 58px;
+    margin-bottom: 14px;
+}
+.sidebar .brand-identity .vishakha-logo-full {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 60px;
+    object-fit: contain;
+    object-position: left center;
+}
+.sidebar .brand-identity .vishakha-logo-full[hidden],
+.sidebar .brand-identity-fallback[hidden] {
+    display: none !important;
+}
+.sidebar .collapsed-brand {
+    background: transparent;
+    width: 48px;
+    height: 48px;
+    padding: 3px;
+}
+.sidebar .collapsed-brand img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+.sidebar .collapsed-brand img[hidden] { display: none !important; }
+.sidebar .collapsed-brand span:not([hidden]) { color: #2563eb; }
+.sidebar.collapsed .brand-identity { display: none !important; }
+
+/* Vishakha AI multiline composer and voice input */
+.chat-input-wrapper { align-items: flex-end; gap: 4px; }
+#message-input {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    max-height: 176px;
+    height: 44px;
+    box-sizing: border-box;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.55;
+    font-family: inherit;
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+.voice-input-button {
+    display: inline-flex;
+    flex: 0 0 42px;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+.voice-input-button:hover { background: #eff6ff; color: #2563eb; }
+.voice-input-button.recording { background: #fee2e2; color: #dc2626; animation: vishakha-mic-pulse 1.3s infinite; }
+.voice-input-button:disabled { cursor: not-allowed; opacity: .4; }
+.send-button { flex: 0 0 42px; }
+#voice-input-status:not(:empty) { display: inline-block; margin-left: 9px; color: #2563eb; }
+@keyframes vishakha-mic-pulse { 50% { box-shadow: 0 0 0 5px rgba(239,68,68,.13); } }
+body.dark-mode .voice-input-button { color: #cbd5e1; }
+body.dark-mode .voice-input-button:hover { background: #334155; color: #93c5fd; }
+body.dark-mode .voice-input-button.recording { background: #7f1d1d; color: #fecaca; }
+@media (max-width: 600px) { .chat-input-wrapper { gap: 2px; } #message-input { padding: 9px 8px; } }
+
+
+/* Vishakha AI composer polish: compact at rest, grows as multiline text is entered. */
+.chat-input-wrapper {
+    border-radius: 17px;
+    padding: 6px 7px;
+    gap: 7px;
+    transition: border-color .22s ease, box-shadow .25s ease, background-color .22s ease;
+}
+.chat-input-wrapper:focus-within {
+    border-color: #7a9df8;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, .09);
+}
+#message-input {
+    min-height: 42px;
+    height: 42px;
+    max-height: 224px;
+    padding: 10px 11px;
+    line-height: 22px;
+    transition: background-color .2s ease;
+    overflow-y: auto;
+}
+/* User-authored paragraphs and Shift+Enter newlines are meaningful; retain them. */
+.user-message .message-bubble,
+.user-message .message-bubble .vishakha-user-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+.user-message .message-bubble .vishakha-user-text { margin: 0; }
+/* Restored conversations from older versions may not have the new text class. */
+.user-message .message-bubble p { white-space: pre-wrap; }
+.voice-input-button {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    border-radius: 13px;
+    transition: transform .2s ease, background-color .2s ease, color .2s ease;
+}
+.voice-input-button:hover:not(:disabled) { transform: translateY(-1px); }
+.voice-input-button.recording {
+    animation: none;
+    background: #fee2e2;
+    color: #d12b3b;
+}
+.voice-input-button.recording::before,
+.voice-input-button.recording::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border: 2px solid rgba(225, 61, 71, .5);
+    border-radius: 16px;
+    pointer-events: none;
+    animation: vishakha-mic-ripple 1.8s ease-out infinite;
+}
+.voice-input-button.recording::after { animation-delay: .9s; }
+.voice-input-button.recording svg { animation: vishakha-mic-breathe 1s ease-in-out infinite alternate; }
+@keyframes vishakha-mic-ripple {
+    0% { transform: scale(1); opacity: .8; }
+    100% { transform: scale(1.48); opacity: 0; }
+}
+@keyframes vishakha-mic-breathe {
+    from { transform: scale(1); }
+    to { transform: scale(1.12); }
+}
+body.dark-mode .chat-input-wrapper:focus-within {
+    border-color: #7297f9;
+    box-shadow: 0 0 0 4px rgba(126, 163, 255, .12);
+}
+body.dark-mode .voice-input-button.recording::before,
+body.dark-mode .voice-input-button.recording::after { border-color: rgba(255, 148, 153, .6); }
+@media (prefers-reduced-motion: reduce) {
+    .voice-input-button.recording::before,
+    .voice-input-button.recording::after,
+    .voice-input-button.recording svg { animation: none; }
+    .chat-input-wrapper { transition: none; }
+}
+
+/* Vishakha AI v4 sidebar, search and voice composer */
+.brand-identity {border:0;background:transparent;cursor:pointer;text-align:left;width:100%;font:inherit}
+.brand-identity:hover {opacity:.88}
+.collapsed-brand {display:flex;align-items:center;justify-content:center;cursor:pointer;border:0}
+.vishakha-history-tools {padding:10px 14px 6px}
+.vishakha-search-field {border:1px solid rgba(126,146,177,.26);border-radius:12px;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(127,149,186,.07);color:inherit}
+.vishakha-search-field:focus-within {border-color:#5287f1;box-shadow:0 0 0 3px rgba(66,119,238,.12)}
+.vishakha-search-field input {background:transparent;border:0;outline:0;min-width:0;width:100%;height:38px;font:inherit;font-size:13px;color:inherit}
+.vishakha-search-field input::placeholder {color:#8290a5}
+.sidebar.collapsed .vishakha-history-tools {display:none}
+.chat-options-menu .pin-chat-button {display:block;width:100%;text-align:left;background:transparent;color:inherit;border:0;padding:10px 14px;cursor:pointer;font:inherit}
+.chat-options-menu .pin-chat-button:hover {background:rgba(113,137,178,.13)}
+.vishakha-voice-wave {display:none;align-items:center;justify-content:center;flex:1;gap:4px;height:38px;overflow:hidden;padding:0 8px}
+.vishakha-voice-wave span {width:3px;min-width:2px;height:5px;border-radius:6px;background:#638af5;animation:vishakha-voice-bars .8s ease-in-out infinite alternate;transform-origin:center}
+.vishakha-voice-wave span:nth-child(5n+1) {animation-duration:.65s;animation-delay:-.3s}
+.vishakha-voice-wave span:nth-child(5n+2) {animation-duration:1.05s;animation-delay:-.5s}
+.vishakha-voice-wave span:nth-child(5n+3) {animation-duration:.9s;animation-delay:-.7s}
+.vishakha-voice-wave span:nth-child(5n+4) {animation-duration:1.2s;animation-delay:-.2s}
+.vishakha-voice-wave span:nth-child(5n) {animation-duration:.75s;animation-delay:-.6s}
+@keyframes vishakha-voice-bars {from{height:4px;opacity:.55}to{height:28px;opacity:1}}
+.chat-input-wrapper.vishakha-listening #message-input {display:none}
+.chat-input-wrapper.vishakha-listening .vishakha-voice-wave {display:flex}
+.vishakha-voice-stop {background:rgba(125,131,141,.18);border:0;border-radius:50%;font-size:13px;color:inherit;width:33px;height:33px;cursor:pointer}
+.vishakha-voice-stop[hidden] {display:none!important}
+.chat-input-wrapper.vishakha-listening {border-color:#4879f1;box-shadow:0 0 0 4px rgba(72,121,241,.13)}
+@media(prefers-reduced-motion:reduce){.vishakha-voice-wave span{animation:none;height:9px}}
+
+/* Vishakha AI V5 — normalized chat menu typography */
+.chat-options-menu { width: 152px; border-radius: 12px; padding: 6px; }
+.chat-options-menu button,
+.chat-options-menu .pin-chat-button {
+    box-sizing: border-box; display: block; width: 100%;
+    font-family: inherit !important; font-size: 13px !important;
+    font-weight: 500 !important; line-height: 1.45 !important;
+    letter-spacing: normal !important; text-align: left;
+    padding: 10px 12px !important; border: none; border-radius: 8px;
+    background: transparent; color: #374151; cursor: pointer;
+}
+body.dark-mode .chat-options-menu button,
+body.dark-mode .chat-options-menu .pin-chat-button { color: #e2e8f0; }
+.chat-options-menu button:hover,
+.chat-options-menu .pin-chat-button:hover { background: rgba(113,137,178,.13); }
+.chat-options-menu .delete-chat-button,
+body.dark-mode .chat-options-menu .delete-chat-button { color: #ef4444 !important; }
+
+/* Live voice transcript remains visible in the composer while the waveform moves. */
+.chat-input-wrapper.vishakha-listening #message-input { display: block !important; flex: 1; min-width: 0; }
+.chat-input-wrapper.vishakha-listening .vishakha-voice-wave {
+    display: flex; flex: 0 0 65px; max-width: 65px;
+    padding: 0 5px; gap: 2px; height: 27px; pointer-events: none;
+}
+.chat-input-wrapper.vishakha-listening .vishakha-voice-wave span { width: 2px; }
+.chat-input-wrapper.vishakha-listening { box-shadow: 0 0 0 3px rgba(75,116,244,.14), 0 12px 28px rgba(50,82,170,.08); }
+.vishakha-voice-stop { flex-shrink: 0; transition: transform .2s ease, background .2s ease; }
+.vishakha-voice-stop:hover { transform: scale(1.08); background: rgba(125,131,141,.3); }
+
+/* Refined activity indicator — status messages, not purported tool progress. */
+.ai-thinking-bubble { position: relative; overflow: hidden; gap: 12px; border-radius: 16px 19px 19px 19px; min-height: 52px; padding: 12px 18px; box-shadow: 0 8px 30px rgba(32,69,135,.07); }
+.vishakha-thinking-orb { width: 23px; height: 23px; position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.vishakha-thinking-orb span { position: absolute; width: 8px; height: 8px; background: #4f79ed; border-radius: 50%; animation: vishakha-orbit 1.45s ease-in-out infinite; }
+.vishakha-thinking-orb span:nth-child(2) { animation-delay: -.48s; background: #7c63e6; }
+.vishakha-thinking-orb span:nth-child(3) { animation-delay: -.96s; background: #5cafe9; }
+@keyframes vishakha-orbit { 0%,100% { transform: translate(-7px,0) scale(.65); opacity:.45; } 50% { transform:translate(7px,0) scale(1.15); opacity:1; } }
+.ai-thinking-text { color: #50617b; font-size: 13px; font-weight: 600; }
+.vishakha-text-enter { animation: vishakha-think-words .35s ease-out; }
+@keyframes vishakha-think-words { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+.vishakha-thinking-progress { position:absolute; bottom:0; left:0; height:2px; width:45%; border-radius:2px; background:linear-gradient(90deg,transparent,#5f86f7,#9a72e5,transparent); animation:vishakha-think-sweep 2.4s ease-in-out infinite; }
+@keyframes vishakha-think-sweep { from {transform:translateX(-120%);} to {transform:translateX(340%);} }
+body.dark-mode .ai-thinking-text { color:#ccd8ef; }
+
+/* Compact, modern native date and datetime picker in SEP workflow. */
+.ai-options.vishakha-date-options { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.vishakha-date-picker-wrap { display:inline-flex; align-items:center; gap:4px; max-width:100%; min-height:40px; border:1px solid #cbd5e1; border-radius:12px; background:#fff; padding:3px 6px 3px 10px; transition:border-color .2s,box-shadow .2s; }
+.vishakha-date-picker-wrap:focus-within { border-color:#4c7cf0; box-shadow:0 0 0 3px rgba(76,124,240,.12); }
+.vishakha-date-picker-wrap .chat-text-question-input { flex:0 1 auto; width:auto; min-width:128px; max-width:215px; border:none; outline:none; padding:5px 2px; font-family:inherit; font-size:13px; background:transparent; color:inherit; box-shadow:none; }
+.vishakha-date-picker-wrap input[type="datetime-local"] { max-width:215px; }
+.vishakha-calendar-button { display:inline-flex; justify-content:center; align-items:center; flex-shrink:0; width:30px; height:30px; border:0; border-radius:9px; background:#eff4ff; color:#4069d7; cursor:pointer; transition:background .2s,transform .2s; }
+.vishakha-calendar-button:hover { background:#dfe9ff; transform:translateY(-1px); }
+.ai-options.vishakha-date-options .chat-text-question-submit { min-height:38px; border-radius:10px; padding:9px 13px; }
+body.dark-mode .vishakha-date-picker-wrap { background:#202d42; border-color:#485770; color:#e2e8f0; }
+body.dark-mode .vishakha-calendar-button {background:#304361;color:#a5c1ff;}
+@media(prefers-reduced-motion:reduce){.vishakha-thinking-orb span,.vishakha-thinking-progress,.vishakha-text-enter{animation:none!important}}
+
+
+/* Vishakha AI V6: real-audio responsive, expanded live dictation panel */
+.vishakha-dictation-panel[hidden] { display: none !important; }
+.vishakha-dictation-panel {
+    display: flex; flex-direction: column; gap: 8px;
+    margin: 9px 2px 3px; padding: 14px 19px 12px;
+    background: linear-gradient(135deg, rgba(52,102,230,.075), rgba(87,115,235,.03));
+    border: 1px solid rgba(80,123,226,.2); border-radius: 18px;
+    animation: vishakha-panel-arrive .2s ease-out;
+}
+.vishakha-dictation-heading { display:flex; align-items:center; gap:9px; font-size:12px; font-weight:600; line-height:1.4; color:#3862ac; }
+.vishakha-dictation-live-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#3e79f4; box-shadow:0 0 0 4px rgba(56,116,244,.14); }
+.vishakha-dictation-hint { font-size:11px; margin-left:auto; color:#7184a4; font-weight:400; }
+.vishakha-dictation-panel .vishakha-voice-wave {
+    display:flex; width:100%; max-width:none; height:72px;
+    padding:6px 0; gap:3px; flex:none; overflow:hidden;
+    align-items:flex-end; justify-content:center;
+    border-radius:12px; background:rgba(70,110,208,.04);
+}
+.vishakha-dictation-panel .vishakha-voice-wave span {
+    display:block; flex:1 1 0; max-width:7px; min-width:2px;
+    height:var(--voice-height, 6px); background:linear-gradient(180deg,#86adff,#3c65d8);
+    border-radius:9px 9px 3px 3px; transform-origin:bottom;
+    transition:height 68ms linear; animation:none;
+}
+.vishakha-dictation-panel .vishakha-dictation-footnote { color:#7787a2; font-size:11px; }
+.chat-input-wrapper.vishakha-listening #message-input { display:block !important; }
+.chat-input-wrapper.vishakha-listening .vishakha-voice-wave { display:none !important; }
+.vishakha-dictation-panel.vishakha-meter-fallback .vishakha-voice-wave span {
+    animation: vishakha-fallback-up .9s ease-in-out infinite alternate;
+    animation-delay: calc(var(--voice-index, 0) * -35ms);
+}
+@keyframes vishakha-fallback-up { from { height:6px; opacity:.65; } to { height:22px; opacity:1; } }
+@keyframes vishakha-panel-arrive { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+body.dark-mode .vishakha-dictation-panel { background:linear-gradient(135deg,rgba(49,78,148,.22),rgba(24,39,70,.12)); border-color:rgba(105,143,232,.35); }
+body.dark-mode .vishakha-dictation-heading { color:#a7c5ff; }
+body.dark-mode .vishakha-dictation-hint,body.dark-mode .vishakha-dictation-footnote { color:#a0aec4; }
+@media (prefers-reduced-motion: reduce) {
+    .vishakha-dictation-panel { animation:none; }
+    .vishakha-dictation-panel .vishakha-voice-wave span { animation:none !important; transition:none; }
+}

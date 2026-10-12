@@ -10,7 +10,13 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Vishakha AI Employee Assistant</title>
+    <title>Vishakha AI</title>
+
+    <!-- Vishakha brand favicons -->
+    <link rel="icon" type="image/x-icon" href="{% static 'images/FavIcons/favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/FavIcons/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/FavIcons/favicon-16x16.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/FavIcons/apple-icon-180x180.png' %}">
 
     <link rel="stylesheet"
           href="{% static 'css/main.css' %}">
@@ -91,11 +97,10 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
         <div class="collapsed-sidebar-nav">
 
-            <div
-                class="collapsed-brand"
-                title="Darpan AI">
-                AI
-            </div>
+            <button class="collapsed-brand" id="vishakha-expand-brand" type="button" title="Open sidebar" aria-label="Open sidebar">
+                <img src="{% static 'images/vishakha-logo-logo only.png' %}" alt="Vishakha logo" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+                <span hidden>V</span>
+            </button>
 
             <button
                 id="collapsed-new-chat"
@@ -123,13 +128,13 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
         <div class="brand">
 
-            <div class="brand-title">
-                Vishakha AI
-            </div>
-
-            <div class="brand-subtitle">
-                Employee Assistant
-            </div>
+            <button type="button" id="vishakha-home-brand" class="brand-identity" title="Go to dashboard" aria-label="Go to dashboard">
+                <img class="vishakha-logo-full" src="{% static 'images/vishakha-logo.png' %}" alt="Vishakha" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+                <div class="brand-identity-fallback" hidden>
+                    <div class="brand-title">Vishakha</div>
+                    <div class="brand-subtitle">Unified Workspace</div>
+                </div>
+            </button>
 
             <button
                 id="new-chat-button"
@@ -140,12 +145,25 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
         </div>
 
 
+        <div id="darpan-dashboard-side" class="darpan-dashboard-side" hidden>
+          <div class="menu-title">WORKSPACE</div>
+          <button type="button" class="darpan-side-action active" data-darpan-side="overview">▦ <span>Overview</span></button>
+          <button type="button" class="darpan-side-action" data-darpan-side="tickets">▤ <span>My tickets</span></button>
+          <button type="button" class="darpan-side-action" data-darpan-side="quick">⚡ <span>Quick actions</span></button>
+          <div class="darpan-side-connector"><span class="darpan-app-dot"></span><span>Service Excellence Portal</span><small>Connected</small></div>
+        </div>
         <!-- ================= RECENT CHATS ================= -->
 
+        <div class="vishakha-history-tools">
+            <label class="vishakha-search-field" for="vishakha-chat-search">
+                <span aria-hidden="true">⌕</span>
+                <input id="vishakha-chat-search" type="search" placeholder="Search chats" autocomplete="off" aria-label="Search chats in selected application">
+            </label>
+        </div>
         <div class="chat-history-section">
 
             <div class="menu-title">
-                RECENT CHATS
+                APPLICATION CHAT HISTORY
             </div>
 
             <div
@@ -172,13 +190,10 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
             <div>
 
-                <h1>
-                    AI Employee Assistant
-                </h1>
-
-                <p>
-                    How can I help you today?
-                </p>
+                <nav class="darpan-workspace-tabs" aria-label="Workspace views">
+                    <button id="darpan-tab-dashboard" class="darpan-workspace-tab active" type="button" aria-selected="true" aria-controls="darpan-dashboard">▦ <span>Dashboard</span></button>
+                    <button id="darpan-tab-ai" class="darpan-workspace-tab" type="button" aria-selected="false" aria-controls="darpan-chat-view">✦ <span>Vishakha AI</span></button>
+                </nav>
 
             </div>
 
@@ -187,7 +202,7 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
                 <!-- Application Selector -->
 
-                <div class="application-selector">
+                <div class="application-selector" id="darpan-application-selector">
 
                     <button
                         id="application-selector-button"
@@ -211,6 +226,8 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
                     <div
                         id="application-dropdown"
                         class="application-dropdown">
+
+                        <button class="application-dropdown-item" data-application="general" type="button"><span>✦</span><span class="application-dropdown-name">General</span><span class="application-active-mark">✓</span></button>
 
                         <button
                             class="application-dropdown-item active"
@@ -373,17 +390,6 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
                 </button>
 
-
-                <!-- AI Status -->
-
-                <div class="ai-status">
-
-                    <span class="status-dot"></span>
-
-                    AI Online
-
-                </div>
-
                 <!-- User Menu -->
 
                 <div class="user-menu">
@@ -496,8 +502,40 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
             </div>
 
         </header>
-
-
+        <section id="darpan-dashboard" class="darpan-dashboard" aria-label="Workplace dashboard">
+            <div class="darpan-dash-content">
+                <div class="darpan-dash-eyebrow">WORKSPACE OVERVIEW · <span class="darpan-source-indicator">🎫 SEP CONNECTED</span></div>
+                <div class="darpan-dash-intro">
+                    <div><h2>Welcome back, {{ request.user.first_name|default:request.user.username|escape }} <span aria-hidden="true">👋</span></h2>
+                    <p>Your connected workplace apps, tasks and insights in one place.</p></div>
+                    <button class="darpan-refresh" id="darpan-refresh-dashboard" type="button" title="Refresh dashboard">↻ <span>Refresh</span></button>
+                </div>
+                <button class="darpan-hero" id="darpan-hero-open-ai" type="button">
+                    <span class="darpan-hero-icon">✦</span><span class="darpan-hero-copy"><strong>Ask Vishakha AI</strong><small>Create a ticket, check its status or explore SEP analytics.</small></span><span class="darpan-hero-arrow">→</span>
+                </button>
+                <div class="darpan-dash-section-header" id="darpan-my-tickets-section"><h3>My tickets <span class="darpan-mini-source">SEP</span></h3><span id="darpan-metrics-status" role="status">Loading live SEP data…</span></div>
+                <div class="darpan-kpi-grid">
+                    <article class="darpan-kpi"><span class="darpan-kpi-icon">▤</span><span class="darpan-kpi-label">Total tickets</span><strong id="darpan-kpi-total">—</strong><small>All requests</small></article>
+                    <article class="darpan-kpi"><span class="darpan-kpi-icon blue">◷</span><span class="darpan-kpi-label">Non-closed tickets</span><strong id="darpan-kpi-active">—</strong><small>Active workflow states</small></article>
+                    <article class="darpan-kpi"><span class="darpan-kpi-icon amber">◉</span><span class="darpan-kpi-label">Pending tickets</span><strong id="darpan-kpi-pending">—</strong><small>Portal pending statuses</small></article>
+                    <article class="darpan-kpi"><span class="darpan-kpi-icon green">✓</span><span class="darpan-kpi-label">Resolved tickets</span><strong id="darpan-kpi-resolved">—</strong><small>Portal resolved status</small></article>
+                </div>
+                <div class="darpan-dashboard-columns">
+                    <section class="darpan-dashboard-panel darpan-recent-panel">
+                        <div class="darpan-panel-heading"><div><h3>Recent activity</h3><p>Your latest Service Excellence requests</p></div><button type="button" class="darpan-subtle-link" data-darpan-prompt="Show my tickets">View in AI →</button></div>
+                        <div id="darpan-recent-tickets" class="darpan-recent-tickets" aria-live="polite">Loading your tickets…</div>
+                    </section>
+                    <section class="darpan-dashboard-panel darpan-quick-panel" id="darpan-quick-actions-section">
+                        <div class="darpan-panel-heading"><div><h3>Quick actions</h3><p>Get started in one click</p></div></div>
+                        <button type="button" class="darpan-quick-action" data-darpan-prompt="Create a ticket"><span>＋</span><span><strong>Create a ticket</strong><small>Report an issue or request a service</small></span><b>→</b></button>
+                        <button type="button" class="darpan-quick-action" data-darpan-prompt="Show my open tickets"><span>◷</span><span><strong>My active tickets</strong><small>See requests that aren't closed</small></span><b>→</b></button>
+                        <button type="button" class="darpan-quick-action" data-darpan-prompt="Show top IT ticket categories"><span>▥</span><span><strong>Explore analytics</strong><small>Subject to reporting permissions</small></span><b>→</b></button>
+                    </section>
+                </div>
+                <p class="darpan-dash-footer">Currently connected: Service Excellence Portal (SEP). Other app metrics will appear when their integrations are ready. "Non-closed" includes all active/non-closed states. Figures are limited to your account.</p>
+            </div>
+        </section>
+        <div id="darpan-chat-view" class="darpan-chat-view" hidden>
         <!-- CHAT -->
 
         <section class="chat-area"
@@ -520,7 +558,7 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
                     </p>
 
                     <p>
-                        I'm your Darpan AI Employee Assistant.
+                        I'm your Vishakha AI Workspace.
                     </p>
 
                     <p>
@@ -529,8 +567,7 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
                     </p>
 
                     <p>
-                        Currently, the <strong>Ticketing</strong>
-                        application is available.
+                        Choose <strong>General</strong> for everyday questions, or <strong>Service Excellence Portal</strong> for tickets and SEP actions.
                     </p>
 
                 </div>
@@ -540,21 +577,7 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
             <!-- Suggestions -->
 
-            <div class="suggestions">
-
-                <button>
-                    Create a laptop repair ticket
-                </button>
-
-                <button>
-                    Report a network issue
-                </button>
-
-                <button>
-                    Check my ticket status
-                </button>
-
-            </div>
+            <div class="suggestions" aria-label="Suggested prompts"></div>
 
 
         </section>
@@ -566,14 +589,27 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
             <div class="chat-input-wrapper">
 
-                <input
-                    type="text"
+                <textarea
                     id="message-input"
-                    placeholder="Ask me to perform a task..."
-                    autocomplete="off"
+                    placeholder="Ask Vishakha AI..."
+                    rows="1"
+                    aria-label="Chat message"
+                    aria-describedby="composer-shortcut-help"
+                ></textarea>
+
+                <button
+                    type="button"
+                    id="voice-input-button"
+                    class="voice-input-button"
+                    title="Dictate a message"
+                    aria-label="Start voice input"
+                    aria-pressed="false"
                 >
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg>
+                </button>
 
 
+                <button type="button" class="vishakha-voice-stop" id="vishakha-voice-stop" title="Stop dictation" aria-label="Stop dictation" hidden>■</button>
                 <button
                     id="send-button"
                     class="send-button">
@@ -585,22 +621,34 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
             </div>
 
 
+            <section class="vishakha-dictation-panel" id="vishakha-dictation-panel" aria-label="Live voice dictation" hidden>
+                <div class="vishakha-dictation-heading">
+                    <span class="vishakha-dictation-live-dot" aria-hidden="true"></span>
+                    <span>Listening · Your words appear above</span>
+                    <span class="vishakha-dictation-hint">Speak naturally</span>
+                </div>
+                <div class="vishakha-voice-wave" id="vishakha-voice-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="vishakha-dictation-footnote">Dictation stops after you finish speaking. Review the text before sending.</div>
+            </section>
+
             <div class="input-help">
 
-                Darpan AI can perform tasks through
-                your company applications.
+                <span id="composer-shortcut-help">Enter to send · Shift + Enter for a new line · Microphone to dictate.</span>
+                <span id="voice-input-status" role="status" aria-live="polite"></span>
 
             </div>
 
         </div>
 
 
+        </div> <!-- /darpan-chat-view -->
     </main>
 
 </div>
 
 
 <script src="{% static 'js/chat.js' %}"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
 <script src="{% static 'js/category_analytics.js' %}"></script>
 
 </body>

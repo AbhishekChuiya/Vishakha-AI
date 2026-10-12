@@ -22,6 +22,7 @@ urlpatterns = [
     name="signup"
     ),
     path("", views.home, name="home"),
+    path("api/dashboard/", views.dashboard_summary, name="dashboard_summary"),
     path("api/chat/", views.chat, name="chat"),
     path("api/chat/state/", views.chat_state, name="chat_state"),
     path("api/chat/new/", views.new_chat, name="new_chat"),

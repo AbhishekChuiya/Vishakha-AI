@@ -204,7 +204,7 @@ def _user_chat_session_key(request):
 def _validated_chat_id(chat_id):
     import re
     value = str(chat_id or "").strip()
-    if not re.fullmatch(r"chat_[a-zA-Z0-9_-]{1,100}", value):
+    if not re.fullmatch(r"(?:chat|gen|sep)_[a-zA-Z0-9_-]{1,100}", value):
         raise ValueError("Invalid chat identifier")
     return value
 
@@ -373,6 +373,11 @@ def chat(request):
             "text"
         )
 
+        application = data.get("application", "ticketing")
+        if application not in ("general", "ticketing"):
+            return JsonResponse({"success": False, "error": "Application is not available"}, status=400)
+
+
         # ---------------------------------------------
         # Conversation ID
         # ---------------------------------------------
@@ -402,6 +407,29 @@ def chat(request):
         if not chat_id:
             return JsonResponse({"success": False, "error": "chat_id required"}, status=400)
         chat_id = _validated_chat_id(chat_id)
+
+        # General mode never loads ticket workflow or invokes SEP tools.
+        if application == "general":
+            from ai.llm.general_chat import respond_to_general_chat
+            history_key = f"vishakha_general_history_user_{request.user.pk}"
+            history_map = dict(request.session.get(history_key, {}))
+            prior_turns = history_map.get(chat_id, [])
+            result = respond_to_general_chat(
+                user_message=user_message,
+                chat_id=f"user_{request.user.pk}:general:{chat_id}",
+                requester_email=request.user.email or f"user_{request.user.pk}",
+                prior_messages=prior_turns,
+            )
+            if result.get("history") is not None:
+                history_map[chat_id] = result.pop("history")
+                # Bound session size to avoid excessive cookie/database session data.
+                if len(history_map) > 30:
+                    for stale in list(history_map)[:-30]:
+                        history_map.pop(stale, None)
+                request.session[history_key] = history_map
+                request.session.modified = True
+            return JsonResponse({"success": True, "type": result.get("type", "message"),
+                                 "message": result.get("message", ""), "response": result})
 
         # ---------------------------------------------
         # Get this user's workflow
@@ -457,8 +485,15 @@ def chat(request):
             try:
                 result = workflow.process_message(
                     user_message,
-                    chat_id=f"user_{request.user.pk}:{chat_id}"
+                    chat_id=f"user_{request.user.pk}:{chat_id}",
+                    application_mode="sep"
                 )
+
+            except ValueError as exc:
+                if "JSON" not in str(exc) and "LLM" not in str(exc):
+                    raise
+                result = {"type": "message", "message":
+                    "I couldn't interpret that as an SEP action. For general questions choose General; for SEP try ticket creation, search or status."}
 
             except LLMCancelled:
                 print(
@@ -930,6 +965,12 @@ def delete_chat(request):
         chat_id,
         None
     )
+    history_key = f"vishakha_general_history_user_{request.user.pk}"
+    history_map = dict(request.session.get(history_key, {}))
+    if chat_id in history_map:
+        history_map.pop(chat_id, None)
+        request.session[history_key] = history_map
+
 
 
     request.session[
@@ -1173,3 +1214,64 @@ def account_remove(request):
     response = redirect("account_chooser")
     response.delete_cookie(_remember_cookie_name(target_id), path="/", samesite="Lax")
     return response
+
+
+@login_required
+@require_GET
+def dashboard_summary(request):
+    """Requester-scoped SEP dashboard; never expose department-wide data here."""
+    from ai.tools.ticketing.ticketing_tool import TicketingTool
+    from ai.agent.ticket_statuses import TICKET_STATUS_IDS
+    email = (request.user.email or "").strip()
+    if not email:
+        return JsonResponse({"success": False, "error": "Your account needs a verified work email to retrieve your tickets."}, status=400)
+
+    key = "darpan_dashboard_v1_" + hashlib.sha256(
+        f"{request.user.pk}:{email.casefold()}".encode("utf-8")
+    ).hexdigest()
+    cached = cache.get(key)
+    if cached is not None:
+        return JsonResponse(cached)
+
+    tool = TicketingTool()
+    values = {}
+    errors = []
+    requests = {
+        "total": {"include_closed": True, "size": 6},
+        "active": {"include_closed": False, "size": 1},
+        "pending": {"include_closed": True, "status_ids": TICKET_STATUS_IDS["PENDING"], "size": 1},
+        "resolved": {"include_closed": True, "status_ids": TICKET_STATUS_IDS["RESOLVED"], "size": 1},
+    }
+    recent = []
+    for metric, params in requests.items():
+        try:
+            result = tool.get_my_tickets(requester_email=email, **params)
+            if not isinstance(result, dict) or result.get("totalElements") is None:
+                raise ValueError("Missing portal ticket count")
+            count = int(result["totalElements"])
+            if count < 0:
+                raise ValueError("Negative ticket count")
+            values[metric] = count
+            if metric == "total":
+                for ticket in result.get("content", [])[:6]:
+                    if not isinstance(ticket, dict):
+                        continue
+                    status = ticket.get("status") or {}
+                    status_name = status.get("status", "Unknown") if isinstance(status, dict) else str(status)
+                    recent.append({
+                        "number": str(ticket.get("ticketNumber") or ""),
+                        "title": str(ticket.get("title") or "Untitled ticket"),
+                        "status": str(status_name),
+                        "created_at": str(ticket.get("createdAt") or ""),
+                        "url": str(ticket.get("webUrl") or ""),
+                    })
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("SEP dashboard metric failed: %s", metric)
+            values[metric] = None
+            errors.append(metric)
+
+    payload = {"success": True, "metrics": values, "recent": recent, "partial": bool(errors), "failed_metrics": errors}
+    if not errors:
+        cache.set(key, payload, 60)
+    return JsonResponse(payload)

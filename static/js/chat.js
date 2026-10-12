@@ -6,6 +6,11 @@ const DARPAN_USER_ID = document.body.dataset.darpanUserId;
 if (!DARPAN_USER_ID || !/^\d+$/.test(DARPAN_USER_ID)) {
     throw new Error("Authenticated user identity missing from page");
 }
+// Current app is scoped to the authenticated account; old chats default to SEP.
+const VISH_APP_KEY = `vishakha_selected_app_user_${DARPAN_USER_ID}`;
+const VISH_ACTIVE_APP_KEY = app => `vishakha_active_chat_${app}_user_${DARPAN_USER_ID}`;
+let selectedVishakhaApp = localStorage.getItem(VISH_APP_KEY) === 'general' ? 'general' : 'ticketing';
+const applicationForChat = chat => chat && chat.application === 'general' ? 'general' : 'ticketing';
 const CHAT_HISTORY_KEY = `darpan_chat_history_user_${DARPAN_USER_ID}`;
 let activeChatRequestController = null;
 let isAIResponding = false;
@@ -39,11 +44,13 @@ function addUserMessage(message) {
 
     messageDiv.className = "message user-message";
 
-    messageDiv.innerHTML = `
-        <div class="message-bubble">
-            <p>${escapeHtml(message)}</p>
-        </div>
-    `;
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+    const text = document.createElement("p");
+    text.className = "vishakha-user-text";
+    text.textContent = message;
+    bubble.appendChild(text);
+    messageDiv.appendChild(bubble);
 
     chatMessages.appendChild(messageDiv);
     saveChatHistory();
@@ -56,6 +63,49 @@ function addUserMessage(message) {
    AI MESSAGE
 ========================================================= */
 
+// DARPAN SAFE RICH AI TEXT V1
+function darpanFormatInline(value) {
+    let text = escapeHtml(value);
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+    return text;
+}
+function darpanFormatMessage(message) {
+    const lines = String(message == null ? '' : message).replace(/\r\n?/g, '\n').split('\n');
+    const html = [];
+    let paragraph = [], list = null, codeLines = [], inCode = false;
+    function flushParagraph() {
+        if (paragraph.length) {
+            html.push('<p>' + paragraph.map(darpanFormatInline).join('<br>') + '</p>');
+            paragraph=[];
+        }
+    }
+    function closeList() { if (list) { html.push('</'+list+'>'); list=null; } }
+    for (const line of lines) {
+        if (/^\s*```/.test(line)) {
+            flushParagraph();closeList();
+            if (inCode) { html.push('<pre><code>'+escapeHtml(codeLines.join('\n'))+'</code></pre>');codeLines=[];inCode=false; }
+            else inCode=true;
+            continue;
+        }
+        if (inCode) { codeLines.push(line);continue; }
+        if (!line.trim()) { flushParagraph();closeList();continue; }
+        const heading=line.match(/^\s*#{1,3}\s+(.+)$/);
+        if(heading) {flushParagraph();closeList();html.push('<h4>'+darpanFormatInline(heading[1])+'</h4>');continue;}
+        const bullet=line.match(/^\s*[-*]\s+(.+)$/);
+        const numbered=line.match(/^\s*\d+[.)]\s+(.+)$/);
+        if(bullet||numbered){
+            flushParagraph();const kind=bullet?'ul':'ol';
+            if(list!==kind){closeList();html.push('<'+kind+'>');list=kind;}
+            html.push('<li>'+darpanFormatInline((bullet||numbered)[1])+'</li>');continue;
+        }
+        closeList();paragraph.push(line.trim());
+    }
+    if(inCode) html.push('<pre><code>'+escapeHtml(codeLines.join('\n'))+'</code></pre>');
+    flushParagraph();closeList();return html.join('');
+}
+
 function addAIMessage(message) {
 
     const messageDiv = document.createElement("div");
@@ -67,8 +117,8 @@ function addAIMessage(message) {
             AI
         </div>
 
-        <div class="message-bubble">
-            <p>${escapeHtml(message)}</p>
+        <div class="message-bubble darpan-rich-answer">
+            ${darpanFormatMessage(message)}
         </div>
     `;
 
@@ -176,7 +226,19 @@ function addTextInput(placeholder, field) {
 
     });
 
-    container.appendChild(input);
+    container.classList.add('vishakha-date-options');
+    const pickerWrap = document.createElement('div');
+    pickerWrap.className = 'vishakha-date-picker-wrap';
+    pickerWrap.appendChild(input);
+    const pickerButton = document.createElement('button');
+    pickerButton.type = 'button';
+    pickerButton.className = 'vishakha-calendar-button';
+    pickerButton.title = 'Open calendar';
+    pickerButton.setAttribute('aria-label', 'Open date and time picker');
+    pickerButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>';
+    pickerButton.addEventListener('click', (event) => { event.stopPropagation(); if (input.showPicker) { try { input.showPicker(); return; } catch (_) {} } input.focus(); input.click(); });
+    pickerWrap.appendChild(pickerButton);
+    container.appendChild(pickerWrap);
     container.appendChild(submitButton);
 
     chatMessages.appendChild(container);
@@ -582,74 +644,48 @@ function disableButtons(container) {
    LOADING
 ========================================================= */
 
+let vishakhaThinkingTimer = null;
+const VISHKHA_THINKING_MESSAGES = {
+    general: ["Thinking it through…", "Connecting the dots…", "Putting ideas together…", "Considering your question…", "Working on a response…", "Making sense of it…"],
+    sep: ["Working on your request…", "Checking records…", "Retrieving details…", "Processing your request…", "Looking into it…", "Getting things ready…"]
+};
 function addLoadingMessage() {
-
-    const messageDiv =
-        document.createElement("div");
-
-    messageDiv.id = "ai-loading";
-    messageDiv.className =
-        "message ai-message ai-thinking-message";
-
+    removeLoadingMessage();
+    const messageDiv = document.createElement('div');
+    messageDiv.id = 'ai-loading';
+    messageDiv.className = 'message ai-message ai-thinking-message';
+    // The animation represents activity, not verified backend progress.
     messageDiv.innerHTML = `
-        <div class="avatar ai-thinking-avatar">
-            AI
-        </div>
-
-        <div class="ai-thinking-bubble">
-
-            <div class="ai-thinking-content">
-
-                <span
-                    class="ai-thinking-text"
-                    id="ai-thinking-text"
-                >
-                    Thinking
-                </span>
-
-                <div class="ai-thinking-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-
-            </div>
-
-        </div>
-    `;
-
+        <div class="avatar ai-thinking-avatar" aria-hidden="true">✦</div>
+        <div class="ai-thinking-bubble" role="status" aria-live="off" aria-label="Vishakha AI is preparing a response">
+            <div class="vishakha-thinking-orb" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="ai-thinking-content"><span class="ai-thinking-text" id="ai-thinking-text">Working on your request…</span></div>
+            <div class="vishakha-thinking-progress" aria-hidden="true"></div>
+        </div>`;
     chatMessages.appendChild(messageDiv);
-
     scrollToBottom();
-
-
-    /*
-     * If processing takes longer, show the user
-     * that Darpan is still actively working.
-     */
-    setTimeout(function() {
-
-        const text =
-            document.getElementById(
-                "ai-thinking-text"
-            );
-
-        if (text) {
-            text.textContent =
-                "Working on your request";
-        }
-
-    }, 3500);
+    const isGeneral = selectedVishakhaApp === 'general';
+    const messages = isGeneral ? VISHKHA_THINKING_MESSAGES.general : VISHKHA_THINKING_MESSAGES.sep;
+    const text = document.getElementById('ai-thinking-text');
+    if (text) text.textContent = messages[0];
+    let index = 0;
+    vishakhaThinkingTimer = window.setInterval(() => {
+        const current = document.getElementById('ai-thinking-text');
+        if (!current) { window.clearInterval(vishakhaThinkingTimer); vishakhaThinkingTimer = null; return; }
+        index = (index + 1) % messages.length;
+        current.classList.remove('vishakha-text-enter');
+        void current.offsetWidth;
+        current.textContent = messages[index];
+        current.classList.add('vishakha-text-enter');
+    }, 3400);
 }
-
-
 function removeLoadingMessage() {
-
-    const loadingMessage =
-        document.getElementById("ai-loading");
-
+    if (vishakhaThinkingTimer !== null) {
+        window.clearInterval(vishakhaThinkingTimer);
+        vishakhaThinkingTimer = null;
+    }
+    const loadingMessage = document.getElementById('ai-loading');
     if (loadingMessage) {
-
         loadingMessage.remove();
         saveChatHistory();
     }
@@ -734,11 +770,13 @@ function saveChatHistory() {
 
         existingChat.updatedAt =
             now;
+        existingChat.application = selectedVishakhaApp;
 
     } else {
 
         chats.unshift({
             id: activeChatId,
+            application: selectedVishakhaApp,
             title: "New Chat",
             html: chatMessages.innerHTML,
             createdAt: now,
@@ -757,6 +795,7 @@ function saveChatHistory() {
         ACTIVE_CHAT_KEY,
         activeChatId
     );
+    localStorage.setItem(VISH_ACTIVE_APP_KEY(selectedVishakhaApp), activeChatId);
 }
 
 function openSavedChat(chatId) {
@@ -805,7 +844,7 @@ function openSavedChat(chatId) {
         ACTIVE_CHAT_KEY,
         activeChatId
     );
-
+    localStorage.setItem(VISH_ACTIVE_APP_KEY(selectedVishakhaApp), activeChatId);
 
     /*
      * Display selected conversation.
@@ -874,15 +913,32 @@ function renderRecentChats() {
     /*
      * Show most recently updated chats first.
      */
+    chats = chats.filter(chat => applicationForChat(chat) === selectedVishakhaApp);
+    const searchTerm = (document.getElementById('vishakha-chat-search')?.value || '').trim().toLocaleLowerCase();
+    if (searchTerm) {
+        chats = chats.filter(chat => (chat.title || '').toLocaleLowerCase().includes(searchTerm)
+            || (chat.html || '').replace(/<[^>]*>/g, ' ').toLocaleLowerCase().includes(searchTerm));
+    }
     chats.sort(function(a, b) {
-
-        return new Date(b.updatedAt) -
-               new Date(a.updatedAt);
-
+        const byPin = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+        return byPin || (new Date(b.updatedAt) - new Date(a.updatedAt));
     });
 
 
+let darpanLastChatGroup = null;
 chats.forEach(function(chat) {
+    const timestamp = new Date(chat.updatedAt || chat.createdAt || 0);
+    const startOfToday = new Date(); startOfToday.setHours(0,0,0,0);
+    const startOfYesterday = new Date(startOfToday); startOfYesterday.setDate(startOfYesterday.getDate()-1);
+    const group = chat.pinned ? 'Pinned' : timestamp >= startOfToday ? 'Today' : timestamp >= startOfYesterday ? 'Yesterday' : 'Older';
+    if (group !== darpanLastChatGroup) {
+        const heading = document.createElement('div');
+        heading.className = 'darpan-history-group';
+        heading.textContent = group;
+        recentChatsContainer.appendChild(heading);
+        darpanLastChatGroup = group;
+    }
+
 
     const row =
         document.createElement("div");
@@ -912,8 +968,7 @@ chats.forEach(function(chat) {
     button.className =
         "recent-chat-item";
 
-    button.textContent =
-        chat.title || "New Chat";
+    button.textContent = (chat.pinned ? '📌 ' : '') + (chat.title || "New Chat");
 
 
     button.addEventListener(
@@ -957,6 +1012,7 @@ chats.forEach(function(chat) {
         "chat-options-menu";
 
     menu.innerHTML = `
+        <button type="button" class="pin-chat-button">${chat.pinned ? 'Unpin chat' : 'Pin chat'}</button>
         <button
             type="button"
             class="rename-chat-button">
@@ -1017,6 +1073,14 @@ chats.forEach(function(chat) {
         }
     );
 
+
+    const pinButton = menu.querySelector('.pin-chat-button');
+    pinButton.addEventListener('click', function(event) {
+        event.stopPropagation();
+        chat.pinned = !Boolean(chat.pinned);
+        localStorage.setItem(CHAT_LIST_KEY, JSON.stringify(chats));
+        renderRecentChats();
+    });
 
     /* =========================
        RENAME
@@ -1241,7 +1305,7 @@ chats.forEach(function(chat) {
 
                     addAIMessage(
                         "Hello! 👋\n\n" +
-                        "I'm your Darpan AI Employee Assistant.\n\n" +
+                        "I'm your Vishakha AI Employee Assistant.\n\n" +
                         "I can help you perform tasks across your company applications.\n\n" +
                         "Currently, the Ticketing application is available."
                     );
@@ -1980,7 +2044,7 @@ async function sendMessage() {
 
 
     chatInput.value = "";
-
+    chatInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     await sendToBackend(
         message,
@@ -2048,7 +2112,8 @@ async function sendToBackend(
                     body: JSON.stringify({
                         message: message,
                         message_type: messageType,
-                        chat_id: activeChatId
+                        chat_id: activeChatId,
+                        application: selectedVishakhaApp
                     }),
                     signal: activeChatRequestController.signal
 
@@ -2127,6 +2192,10 @@ async function sendToBackend(
 ========================================================= */
 
 function handleAIResponse(result) {
+    if (result && result.workflow_interrupted) {
+        document.querySelectorAll(".ai-options, .ticket-confirmation").forEach(el => el.remove());
+        saveChatHistory();
+    }
 
     if (!result) {
 
@@ -2772,67 +2841,54 @@ function addTicketLink(url) {
 /* =========================================================
    SUGGESTION BUTTONS
 ========================================================= */
+// One delegated handler supports buttons inserted by New Chat, history restore,
+// and application switching. No per-button listeners (avoids duplicate submits).
+const VISH_GENERAL_SUGGESTIONS = [
+    'Explain what agentic AI is',
+    'Help me write a project update email',
+    'Summarize the advantages of automation'
+];
+const VISH_SEP_SUGGESTIONS = [
+    'Create a laptop repair ticket',
+    'Report a network issue',
+    'Check my ticket status'
+];
 function setupSuggestionButtons(container) {
-
-    const suggestionButtons =
-        container.querySelectorAll(
-            "button"
-        );
-
-    suggestionButtons.forEach(function(button) {
-
-        button.addEventListener(
-            "click",
-            function() {
-
-                const message =
-                    button.textContent.trim();
-
-                addUserMessage(
-                    message
-                );
-
-
-                /*
-                * If this is still a new conversation,
-                * use the selected suggestion as its title.
-                */
-                setAutomaticChatTitle(
-                    message
-                );
-
-
-                sendToBackend(
-                    message,
-                    "text"
-                );
-
-            }
-        );
-
+    // The container is handled through the delegated chat-area listener.
+    // Keep this function for compatibility with existing callers.
+    if (container) container.querySelectorAll('button').forEach(btn => btn.type = 'button');
+}
+function renderApplicationSuggestions(container) {
+    const target = container || document.createElement('div');
+    target.className = 'suggestions';
+    target.replaceChildren();
+    const prompts = selectedVishakhaApp === 'general'
+        ? VISH_GENERAL_SUGGESTIONS : VISH_SEP_SUGGESTIONS;
+    prompts.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = prompt;
+        target.appendChild(btn);
     });
-
+    return target;
 }
-
-
 function setupSuggestions() {
-
-    const suggestions =
-        document.querySelector(
-            ".suggestions"
-        );
-
-    if (!suggestions) {
-
-        return;
-
-    }
-
-    setupSuggestionButtons(
-        suggestions
-    );
-
+    const suggestions = document.querySelector('.suggestions');
+    if (suggestions) renderApplicationSuggestions(suggestions);
 }
+chatMessages.addEventListener('click', function(event) {
+    const button = event.target.closest('.suggestions button');
+    if (!button || !chatMessages.contains(button) || isAIResponding || button.disabled) return;
+    event.preventDefault();
+    const prompt = button.textContent.trim();
+    if (!prompt) return;
+    // A quick prompt is a normal chat message, not an option answer.
+    addUserMessage(prompt);
+    setAutomaticChatTitle(prompt);
+    chatInput.value = '';
+    button.closest('.suggestions')?.remove();
+    sendToBackend(prompt, 'text');
+});
 
 
 /* =========================================================
@@ -2891,15 +2947,11 @@ chatInput.addEventListener(
     "keydown",
     function(event) {
 
-        if (event.key === "Enter") {
-
+        // The text area inserts a newline for Shift+Enter.
+        // Avoid submitting while an IME is composing text.
+        if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
             event.preventDefault();
-
-            if (isAIResponding) {
-                return;
-            }
-
-            sendMessage();
+            if (!isAIResponding) sendMessage();
         }
 
     }
@@ -3066,8 +3118,8 @@ async function startNewChat() {
             * not reset the currently open chat.
             */
             activeChatId =
-                "chat_" +
-                Date.now().toString();
+                (selectedVishakhaApp === "general" ? "gen_" : "sep_") +
+                crypto.randomUUID();
 
             localStorage.setItem(
                 ACTIVE_CHAT_KEY,
@@ -3126,9 +3178,9 @@ async function startNewChat() {
 
         addAIMessage(
             "Hello! 👋\n\n" +
-            "I'm your Darpan AI Employee Assistant.\n\n" +
-            "I can help you perform tasks across your company applications.\n\n" +
-            "Currently, the Ticketing application is available."
+            (selectedVishakhaApp === "general"
+                ? "General mode: ask me anything, brainstorm, or draft writing. I won't perform company actions in this mode."
+                : "SEP mode: I can create tickets, check statuses, search requests, and show authorized analytics.")
         );
 
 
@@ -3140,19 +3192,7 @@ async function startNewChat() {
         suggestions.className =
             "suggestions";
 
-        suggestions.innerHTML = `
-            <button>
-                Create a laptop repair ticket
-            </button>
-
-            <button>
-                Report a network issue
-            </button>
-
-            <button>
-                Check my ticket status
-            </button>
-        `;
+        renderApplicationSuggestions(suggestions);
 
         chatMessages.appendChild(
             suggestions
@@ -3199,11 +3239,26 @@ async function startNewChat() {
 
 setupSuggestions();
 
-restoreChatHistory();
-
+// On first upgrade, keep existing untagged chats in SEP and never mix them with General.
+(function initializeApplicationChat() {
+    const allChats = (() => { try { return JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]'); } catch (_) { return []; } })();
+    const selectedId = localStorage.getItem(VISH_ACTIVE_APP_KEY(selectedVishakhaApp));
+    const matches = id => allChats.some(c => c.id === id && applicationForChat(c) === selectedVishakhaApp);
+    if (selectedId && matches(selectedId)) activeChatId = selectedId;
+    else if (!matches(activeChatId)) activeChatId = (selectedVishakhaApp === 'general' ? 'gen_' : 'sep_') + crypto.randomUUID();
+    localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    localStorage.setItem(VISH_ACTIVE_APP_KEY(selectedVishakhaApp), activeChatId);
+    // Do not import legacy SEP HTML into a brand-new General chat.
+    if (selectedVishakhaApp === 'general' && !matches(activeChatId)) localStorage.removeItem(CHAT_HISTORY_KEY);
+})();
+const vishakhaChatRestored = restoreChatHistory();
+if (selectedVishakhaApp === 'general' && !vishakhaChatRestored) {
+    chatMessages.replaceChildren();
+    addAIMessage('General mode is ready. Ask questions, get explanations, or draft writing.');
+    chatMessages.appendChild(renderApplicationSuggestions());
+}
 renderRecentChats();
-
-restoreConversationState();
+if (selectedVishakhaApp === 'ticketing') restoreConversationState();
 
 
 /* New Chat */
@@ -3553,13 +3608,61 @@ if (applicationSelectorButton && applicationDropdown) {
     );
 
 
-    // Do not close when clicking inside dropdown
-    applicationDropdown.addEventListener(
-        "click",
-        function(event) {
-            event.stopPropagation();
+    // Selected app determines both backend permission boundary and chat history.
+    function refreshApplicationSelector() {
+        const appButton = applicationDropdown.querySelector(`[data-application="${selectedVishakhaApp}"]`);
+        const icon = appButton?.querySelector('span:first-child')?.textContent || '✦';
+        const label = appButton?.querySelector('.application-dropdown-name')?.textContent || 'General';
+        const selectedName = applicationSelectorButton.querySelector('.selected-app-name');
+        const selectedIcon = applicationSelectorButton.querySelector('.selected-app-icon');
+        if (selectedName) selectedName.textContent = label.trim();
+        if (selectedIcon) selectedIcon.textContent = icon.trim();
+        applicationDropdown.querySelectorAll('[data-application]').forEach(button =>
+            button.classList.toggle('active', button.dataset.application === selectedVishakhaApp));
+        chatInput.placeholder = selectedVishakhaApp === 'general'
+            ? 'Ask anything in General...' : 'Ask about SEP tickets or actions...';
+    }
+    function switchApplication(nextApp) {
+        if (!['general', 'ticketing'].includes(nextApp) || nextApp === selectedVishakhaApp) return;
+        if (isAIResponding) { alert('Please stop the current response before switching applications.'); return; }
+        saveChatHistory();
+        selectedVishakhaApp = nextApp;
+        localStorage.setItem(VISH_APP_KEY, selectedVishakhaApp);
+        let chats = [];
+        try { chats = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]'); } catch (_) {}
+        const lastId = localStorage.getItem(VISH_ACTIVE_APP_KEY(nextApp));
+        const chosen = chats.find(c => c.id === lastId && applicationForChat(c) === nextApp)
+            || chats.filter(c => applicationForChat(c) === nextApp)
+                .sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+        activeChatId = chosen ? chosen.id : (nextApp === 'general' ? 'gen_' : 'sep_') + crypto.randomUUID();
+        localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+        localStorage.setItem(VISH_ACTIVE_APP_KEY(nextApp), activeChatId);
+        chatMessages.replaceChildren();
+        chatInput.value = '';
+        if (chosen) {
+            chatMessages.innerHTML = chosen.html || '';
+            restoreButtonEvents();
+            if (nextApp === 'ticketing') restoreConversationState();
+        } else {
+            addAIMessage(nextApp === 'general'
+                ? 'General mode is ready. Ask a question, learn something, or draft a message.'
+                : 'Service Excellence Portal is selected. I can help with tickets, status checks and analytics.');
+            chatMessages.appendChild(renderApplicationSuggestions());
         }
-    );
+        // Previously saved chats retain the suggestion buttons they had at the time.
+        // Replace suggestions only for empty/start chats so a mode cannot show
+        // another application's sample prompts.
+        refreshApplicationSelector();
+        renderRecentChats();
+        scrollToBottom();
+        applicationDropdown.classList.remove('open');
+    }
+    applicationDropdown.addEventListener('click', event => {
+        event.stopPropagation();
+        const item = event.target.closest('[data-application]');
+        if (item && !item.disabled) switchApplication(item.dataset.application);
+    });
+    refreshApplicationSelector();
 
 
     // Close when clicking anywhere outside
@@ -3877,3 +3980,208 @@ if (userMenuButton && userDropdown) {
     );
 
 }
+
+/* =========================================================
+   MULTILINE COMPOSER + OPTIONAL BROWSER VOICE DICTATION
+   No audio is sent to the Django ticketing API.
+   Recognition availability and processing depend on browser.
+========================================================= */
+(function setupVishakhaComposer() {
+    if (!chatInput) return;
+    function resizeComposer() {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(Math.max(chatInput.scrollHeight, 42), 224) + 'px';
+    }
+    chatInput.addEventListener('input', resizeComposer);
+    resizeComposer();
+
+    const mic = document.getElementById('voice-input-button');
+    const status = document.getElementById('voice-input-status');
+    if (!mic) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        mic.disabled = true;
+        mic.title = 'Voice input is not supported by this browser';
+        mic.setAttribute('aria-label', mic.title);
+        if (status) status.textContent = 'Voice input is unavailable in this browser.';
+        return;
+    }
+
+    let recognition;
+    let listening = false;
+    let confirmedText = '';
+    let baseText = '';
+    let audioStream = null;
+    let audioContext = null;
+    let analyser = null;
+    let audioSource = null;
+    let waveFrame = 0;
+    let meterToken = 0;
+    const voicePanel = document.getElementById('vishakha-dictation-panel');
+    const bars = Array.from(document.querySelectorAll('#vishakha-voice-wave span'));
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    bars.forEach((bar, i) => bar.style.setProperty('--voice-index', String(i)));
+
+    function updateDraft(previewText) {
+        const segment = [confirmedText, previewText].filter(Boolean).join(' ').trim();
+        const gap = baseText && segment && !/\s$/.test(baseText) ? ' ' : '';
+        chatInput.value = baseText + gap + segment;
+        chatInput.dispatchEvent(new Event('input', {bubbles: true}));
+        chatInput.scrollTop = chatInput.scrollHeight;
+    }
+
+    function stopAudioMeter() {
+        meterToken++;
+        if (waveFrame) cancelAnimationFrame(waveFrame);
+        waveFrame = 0;
+        if (audioStream) { audioStream.getTracks().forEach(track => track.stop()); audioStream = null; }
+        try { audioSource?.disconnect(); } catch (_) {}
+        audioSource = null;
+        analyser = null;
+        if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
+        bars.forEach(bar => bar.style.setProperty('--voice-height', '6px'));
+    }
+
+    async function startAudioMeter() {
+        const token = ++meterToken;
+        if (!navigator.mediaDevices?.getUserMedia || !bars.length) return;
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
+            if (!listening || token !== meterToken) { stream.getTracks().forEach(t => t.stop()); return; }
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) { stream.getTracks().forEach(t => t.stop()); return; }
+            audioStream = stream;
+            audioContext = new AudioContextClass();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = .7;
+            audioSource = audioContext.createMediaStreamSource(stream);
+            audioSource.connect(analyser);
+            const samples = new Uint8Array(analyser.frequencyBinCount);
+            let smooth = 0;
+            function draw() {
+                if (!listening || token !== meterToken || !analyser) return;
+                analyser.getByteFrequencyData(samples);
+                let sum = 0;
+                // Frequency range weighted toward human speech.
+                const lower = 2, upper = Math.min(samples.length, 95);
+                for (let i = lower; i < upper; i++) sum += samples[i];
+                const intensity = Math.min(1, (sum / (upper - lower)) / 74);
+                smooth = .62 * smooth + .38 * intensity;
+                bars.forEach((bar, i) => {
+                    const middle = (bars.length - 1) / 2;
+                    const envelope = .2 + .8 * Math.pow(Math.max(0, 1 - Math.abs(i - middle) / (middle + 1)), .75);
+                    const variation = .76 + .24 * Math.sin(i * 1.43 + performance.now() / 170);
+                    const height = 6 + Math.round(43 * smooth * envelope * variation);
+                    bar.style.setProperty('--voice-height', (prefersReducedMotion?.matches ? 6 + Math.round(25 * smooth * envelope) : height) + 'px');
+                });
+                waveFrame = requestAnimationFrame(draw);
+            }
+            draw();
+        } catch (_) {
+            // If level monitoring is denied/unavailable, speech recognition may still work.
+            // The panel remains visible and shows restrained fallback movement.
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            voicePanel?.classList.add('vishakha-meter-fallback');
+        }
+    }
+
+    function setListening(value) {
+        listening = value;
+        mic.classList.toggle('recording', value);
+        const wrapper = mic.closest('.chat-input-wrapper');
+        wrapper?.classList.toggle('vishakha-listening', value);
+        if (voicePanel) voicePanel.hidden = !value;
+        const stop = document.getElementById('vishakha-voice-stop');
+        if (stop) stop.hidden = !value;
+        mic.setAttribute('aria-pressed', String(value));
+        mic.setAttribute('aria-label', value ? 'Stop voice input' : 'Start voice input');
+        mic.title = value ? 'Stop dictation' : 'Dictate a message';
+        if (status) status.textContent = value ? 'Listening · live transcription' : '';
+        if (!value) {
+            stopAudioMeter();
+            voicePanel?.classList.remove('vishakha-meter-fallback');
+        }
+    }
+
+    mic.addEventListener('click', function () {
+        if (listening) { recognition?.stop(); return; }
+        try {
+            recognition = new SpeechRecognition();
+            recognition.lang = document.documentElement.lang || 'en-IN';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            baseText = chatInput.value;
+            confirmedText = '';
+            recognition.onresult = function (event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
+                    const text = event.results[i][0]?.transcript || '';
+                    if (event.results[i].isFinal) finalTranscript += text + ' ';
+                    else interimTranscript += text + ' ';
+                }
+                confirmedText = finalTranscript.trim();
+                updateDraft(interimTranscript.trim());
+                if (status) status.textContent = interimTranscript.trim() ? 'Transcribing as you speak…' : 'Speech captured';
+            };
+            recognition.onerror = function (event) {
+                const messages = {
+                    'not-allowed': 'Microphone permission denied.',
+                    'service-not-allowed': 'Speech recognition is not available.',
+                    'audio-capture': 'No microphone was detected.',
+                    'network': 'Voice recognition needs a connection in this browser.',
+                    'no-speech': 'No speech detected. Try again.'
+                };
+                if (status) status.textContent = messages[event.error] || 'Voice input could not continue.';
+            };
+            recognition.onend = function () {
+                setListening(false);
+                if (confirmedText && status) status.textContent = 'Dictation complete · review and send';
+            };
+            recognition.start();
+            setListening(true);
+            startAudioMeter();
+        } catch (error) {
+            setListening(false);
+            if (status) status.textContent = 'Unable to start microphone. Check browser permissions.';
+        }
+    });
+    // Stop dictating when switching apps, starting a new chat, or navigating.
+    document.addEventListener('click', function (event) {
+        if (!listening || event.target.closest('#voice-input-button')) return;
+        if (event.target.closest('#new-chat-button, [data-application], .new-chat-button, .recent-chat-item')) {
+            recognition?.stop();
+        }
+    }, true);
+    window.addEventListener('pagehide', () => { if (listening) recognition?.stop(); });
+})();
+
+/* Vishakha AI v4: sidebar branding and scoped chat search. */
+(function () {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    document.getElementById('vishakha-expand-brand')?.addEventListener('click', function () {
+        if (sidebar?.classList.contains('collapsed')) toggle?.click();
+    });
+    document.getElementById('vishakha-home-brand')?.addEventListener('click', function () {
+        document.getElementById('darpan-tab-dashboard')?.click();
+    });
+    const search = document.getElementById('vishakha-chat-search');
+    search?.addEventListener('input', function () { renderRecentChats(); });
+    // Dialog-free stop for voice dictation, using same existing microphone action.
+    document.getElementById('vishakha-voice-stop')?.addEventListener('click', function () {
+        document.getElementById('voice-input-button')?.click();
+    });
+})();
+
+// Restored chat HTML does not retain event listeners; reattach picker action via delegation.
+document.addEventListener('click', function(event) {
+    const button = event.target.closest('.vishakha-calendar-button');
+    if (!button || button.dataset.bound === '1') return;
+    const input = button.closest('.vishakha-date-picker-wrap')?.querySelector('input[type="date"],input[type="datetime-local"]');
+    if (!input) return;
+    if (input.showPicker) { try { input.showPicker(); return; } catch (_) {} }
+    input.focus();
+});
