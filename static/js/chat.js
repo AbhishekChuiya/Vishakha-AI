@@ -20,6 +20,97 @@ let isAIResponding = false;
 const CHAT_LIST_KEY = `darpan_chat_list_user_${DARPAN_USER_ID}`;
 const ACTIVE_CHAT_KEY = `darpan_active_chat_id_user_${DARPAN_USER_ID}`;
 
+// Phase 2: database is the durable copy. localStorage is a responsive cache.
+// Browser history is imported once (only when a chat is absent from the database).
+let vishakhaLibraryReady = false;
+let vishakhaLibrarySaving = Promise.resolve();
+const vishakhaPendingSaves = new Map();
+const vishakhaDeletedIds = new Set();
+const VISH_DB_IMPORTED_KEY = `vishakha_chat_db_imported_${DARPAN_USER_ID}`;
+
+function vishakhaPersistChat(chat) {
+    if (!vishakhaLibraryReady || !chat || vishakhaDeletedIds.has(chat.id)) return;
+    clearTimeout(vishakhaPendingSaves.get(chat.id));
+    const snapshot = {
+        chat_id: chat.id,
+        application: applicationForChat(chat),
+        title: chat.title || 'New Chat',
+        pinned: Boolean(chat.pinned),
+        html: chat.html || ''
+    };
+    const timer = setTimeout(function () {
+        vishakhaPendingSaves.delete(snapshot.chat_id);
+        if (vishakhaDeletedIds.has(snapshot.chat_id)) return;
+        vishakhaLibrarySaving = vishakhaLibrarySaving.catch(() => {}).then(async () => {
+            const response = await fetch('/api/chat/library/save/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify(snapshot)
+            });
+            if (!response.ok) throw new Error('Chat sync failed: ' + response.status);
+        }).catch(error => console.warn('Chat will remain in browser until sync succeeds:', error));
+    }, 250);
+    vishakhaPendingSaves.set(chat.id, timer);
+}
+
+async function vishakhaInitializeChatLibrary() {
+    try {
+        const response = await fetch('/api/chat/library/', {credentials: 'same-origin'});
+        if (!response.ok) throw new Error('Library endpoint unavailable');
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.chats)) throw new Error('Invalid library response');
+        const local = (() => { try { return JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]'); } catch (_) { return []; } })();
+        const serverIds = new Set(data.chats.map(c => c.id));
+        // One-time import only. Never resurrect chats deleted from the database.
+        const alreadyImported = localStorage.getItem(VISH_DB_IMPORTED_KEY) === 'yes';
+        const unsynced = alreadyImported ? [] : local.filter(c => c && c.id && !serverIds.has(c.id));
+        const merged = data.chats.concat(unsynced);
+        localStorage.setItem(CHAT_LIST_KEY, JSON.stringify(merged));
+        vishakhaLibraryReady = true;
+        // Restore current conversation from the server when available.
+        const restored = merged.find(c => c.id === activeChatId && applicationForChat(c) === selectedVishakhaApp);
+        if (restored && restored.html) {
+            chatMessages.innerHTML = vishakhaSafeSnapshot(restored.html);
+            restoreButtonEvents();
+            scrollToBottom();
+        }
+        renderRecentChats();
+        // Import legacy browser chats once, after confirming ownership server-side.
+        let allImported = true;
+        for (const chat of unsynced) {
+            try {
+                const saved = await fetch('/api/chat/library/save/', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({chat_id:chat.id, application:applicationForChat(chat),
+                        title:chat.title || 'New Chat', pinned:Boolean(chat.pinned), html:chat.html || ''})
+                });
+                if (!saved.ok) allImported = false;
+            } catch (_) { allImported = false; }
+        }
+        if (allImported) localStorage.setItem(VISH_DB_IMPORTED_KEY, 'yes');
+    } catch (error) {
+        console.warn('Server chat history is unavailable; browser history is retained:', error);
+        // No destructive local reset. Retry is possible on the next page load.
+    }
+}
+
+function vishakhaSafeSnapshot(html) {
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+    template.content.querySelectorAll('script,iframe,object,embed,form,base,meta,link').forEach(e => e.remove());
+    template.content.querySelectorAll('*').forEach(e => {
+        Array.from(e.attributes).forEach(attr => {
+            if (/^on/i.test(attr.name) || /^(?:javascript|data):/i.test(attr.value.trim())
+                && ['href','src','formaction'].includes(attr.name.toLowerCase())) {
+                e.removeAttribute(attr.name);
+            }
+        });
+    });
+    return template.innerHTML;
+}
+
 let activeChatId =
     localStorage.getItem(ACTIVE_CHAT_KEY);
 
@@ -226,19 +317,8 @@ function addTextInput(placeholder, field) {
 
     });
 
-    container.classList.add('vishakha-date-options');
-    const pickerWrap = document.createElement('div');
-    pickerWrap.className = 'vishakha-date-picker-wrap';
-    pickerWrap.appendChild(input);
-    const pickerButton = document.createElement('button');
-    pickerButton.type = 'button';
-    pickerButton.className = 'vishakha-calendar-button';
-    pickerButton.title = 'Open calendar';
-    pickerButton.setAttribute('aria-label', 'Open date and time picker');
-    pickerButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>';
-    pickerButton.addEventListener('click', (event) => { event.stopPropagation(); if (input.showPicker) { try { input.showPicker(); return; } catch (_) {} } input.focus(); input.click(); });
-    pickerWrap.appendChild(pickerButton);
-    container.appendChild(pickerWrap);
+    // Ordinary text answers must never receive a date picker.
+    container.appendChild(input);
     container.appendChild(submitButton);
 
     chatMessages.appendChild(container);
@@ -399,7 +479,28 @@ function addDateInput(field, inputType, placeholder) {
         }
     });
 
-    container.appendChild(input);
+    // Only actual date/datetime workflow questions get this calendar UI.
+    container.classList.add('vishakha-date-options');
+    const pickerWrap = document.createElement('div');
+    pickerWrap.className = 'vishakha-date-picker-wrap';
+    pickerWrap.appendChild(input);
+
+    const pickerButton = document.createElement('button');
+    pickerButton.type = 'button';
+    pickerButton.className = 'vishakha-calendar-button';
+    pickerButton.title = inputType === 'date' ? 'Choose date' : 'Choose date and time';
+    pickerButton.setAttribute('aria-label', pickerButton.title);
+    pickerButton.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>';
+    pickerButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        if (typeof input.showPicker === 'function') {
+            try { input.showPicker(); return; } catch (_) { /* browser fallback */ }
+        }
+        input.focus();
+        input.click();
+    });
+    pickerWrap.appendChild(pickerButton);
+    container.appendChild(pickerWrap);
     container.appendChild(submitButton);
 
     chatMessages.appendChild(container);
@@ -789,6 +890,7 @@ function saveChatHistory() {
         CHAT_LIST_KEY,
         JSON.stringify(chats)
     );
+    vishakhaPersistChat(chats.find(c => c.id === activeChatId));
 
 
     localStorage.setItem(
@@ -850,7 +952,7 @@ function openSavedChat(chatId) {
      * Display selected conversation.
      */
     chatMessages.innerHTML =
-        selectedChat.html || "";
+        vishakhaSafeSnapshot(selectedChat.html || "");
 
 
     /*
@@ -1078,7 +1180,11 @@ chats.forEach(function(chat) {
     pinButton.addEventListener('click', function(event) {
         event.stopPropagation();
         chat.pinned = !Boolean(chat.pinned);
-        localStorage.setItem(CHAT_LIST_KEY, JSON.stringify(chats));
+        const allChats = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]');
+        const storedChat = allChats.find(c => c.id === chat.id);
+        if (storedChat) storedChat.pinned = chat.pinned;
+        localStorage.setItem(CHAT_LIST_KEY, JSON.stringify(allChats));
+        vishakhaPersistChat(storedChat || chat);
         renderRecentChats();
     });
 
@@ -1126,10 +1232,14 @@ chats.forEach(function(chat) {
                 new Date().toISOString();
 
 
-            localStorage.setItem(
-                CHAT_LIST_KEY,
-                JSON.stringify(chats)
-            );
+            const allChats = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]');
+            const storedChat = allChats.find(c => c.id === chat.id);
+            if (storedChat) {
+                storedChat.title = chat.title;
+                storedChat.updatedAt = chat.updatedAt;
+            }
+            localStorage.setItem(CHAT_LIST_KEY, JSON.stringify(allChats));
+            vishakhaPersistChat(storedChat || chat);
 
 
             renderRecentChats();
@@ -1167,10 +1277,11 @@ chats.forEach(function(chat) {
             }
 
 
-            /*
-             * Delete this conversation's workflow
-             * from the Django session as well.
-             */
+            /* Cancel pending autosave before deletion to prevent resurrection. */
+            vishakhaDeletedIds.add(chat.id);
+            clearTimeout(vishakhaPendingSaves.get(chat.id));
+            vishakhaPendingSaves.delete(chat.id);
+            await vishakhaLibrarySaving.catch(() => {});
             try {
 
                 const response =
@@ -1197,6 +1308,7 @@ chats.forEach(function(chat) {
 
                 if (!data.success) {
 
+                    vishakhaDeletedIds.delete(chat.id);
                     alert(
                         "Could not delete this chat."
                     );
@@ -1218,8 +1330,9 @@ chats.forEach(function(chat) {
                 return;
             }
 
+            const allChatsForDeletion = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]');
             const updatedChats =
-                chats.filter(
+                allChatsForDeletion.filter(
                     function(savedChat) {
 
                         return (
@@ -2010,7 +2123,7 @@ function setAutomaticChatTitle(message) {
         CHAT_LIST_KEY,
         JSON.stringify(chats)
     );
-
+    vishakhaPersistChat(activeChat);
 
     renderRecentChats();
 }
@@ -3259,6 +3372,7 @@ if (selectedVishakhaApp === 'general' && !vishakhaChatRestored) {
 }
 renderRecentChats();
 if (selectedVishakhaApp === 'ticketing') restoreConversationState();
+vishakhaInitializeChatLibrary();
 
 
 /* New Chat */

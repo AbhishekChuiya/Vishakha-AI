@@ -17,6 +17,9 @@ from django.utils import timezone
 from django.db import transaction
 from django.views.decorators.http import require_http_methods
 from django.core.cache import cache
+from django.http import Http404
+from django.db import transaction
+from apps.assistant.chat_storage import (owned_chat, log_turns, list_chats, serialize)
 from django.utils.crypto import constant_time_compare
 from datetime import timedelta
 import secrets
@@ -231,6 +234,10 @@ def get_workflow(request, chat_id=None):
         state_data = assistant_chats.get(
             chat_id
         )
+        # Persistent state takes precedence after server restart or logout.
+        database_chat = owned_chat(request.user, chat_id)
+        if database_chat and database_chat.workflow_state:
+            state_data = database_chat.workflow_state
 
 
         # # TEMPORARY DEBUG
@@ -346,6 +353,9 @@ def save_workflow(
 
 
     request.session.modified = True
+    db_chat = owned_chat(request.user, chat_id, application="ticketing", create=True)
+    db_chat.workflow_state = workflow.state.to_dict()
+    db_chat.save(update_fields=["workflow_state", "updated_at"])
 
 
 # =========================================================
@@ -408,12 +418,18 @@ def chat(request):
             return JsonResponse({"success": False, "error": "chat_id required"}, status=400)
         chat_id = _validated_chat_id(chat_id)
 
+        # Verify ownership and app routing before invoking any tools or LLM.
+        conversation = owned_chat(request.user, chat_id, application=application, create=True)
+
         # General mode never loads ticket workflow or invokes SEP tools.
         if application == "general":
             from ai.llm.general_chat import respond_to_general_chat
             history_key = f"vishakha_general_history_user_{request.user.pk}"
             history_map = dict(request.session.get(history_key, {}))
-            prior_turns = history_map.get(chat_id, [])
+            prior_turns = [
+                {"role": turn.role, "content": turn.content}
+                for turn in reversed(list(conversation.messages.order_by("-id")[:10]))
+            ]
             result = respond_to_general_chat(
                 user_message=user_message,
                 chat_id=f"user_{request.user.pk}:general:{chat_id}",
@@ -428,6 +444,7 @@ def chat(request):
                         history_map.pop(stale, None)
                 request.session[history_key] = history_map
                 request.session.modified = True
+            log_turns(conversation, user_message, result)
             return JsonResponse({"success": True, "type": result.get("type", "message"),
                                  "message": result.get("message", ""), "response": result})
 
@@ -537,6 +554,7 @@ def chat(request):
             workflow,
             chat_id=chat_id
         )
+        log_turns(conversation, user_message, result)
 
 
         # ---------------------------------------------
@@ -552,6 +570,9 @@ def chat(request):
             }
         )
 
+
+    except Http404:
+        return JsonResponse({"success": False, "error": "Chat not found"}, status=404)
 
     except Exception as e:
 
@@ -864,6 +885,11 @@ def new_chat(request):
 
     if chat_id:
         chat_id = _validated_chat_id(chat_id)
+        application = data.get("application") or ("general" if chat_id.startswith("gen_") else "ticketing")
+        existing_chat = owned_chat(request.user, chat_id, application=application, create=False)
+        if existing_chat:
+            return JsonResponse({"success": False, "error": "Chat already exists"}, status=409)
+        owned_chat(request.user, chat_id, application=application, create=True)
 
         assistant_chats = request.session.get(
             _user_chat_session_key(request),
@@ -942,7 +968,9 @@ def delete_chat(request):
 
 
     chat_id = _validated_chat_id(chat_id)
-
+    db_chat = owned_chat(request.user, chat_id)
+    if db_chat:
+        db_chat.delete()
 
     # ---------------------------------------------
     # Remove only this conversation
@@ -995,7 +1023,7 @@ def delete_chat(request):
 
     return JsonResponse({
         "success": True,
-        "deleted": existed,
+        "deleted": bool(existed or db_chat),
         "chat_id": chat_id,
     })
 
@@ -1275,3 +1303,41 @@ def dashboard_summary(request):
     if not errors:
         cache.set(key, payload, 60)
     return JsonResponse(payload)
+
+
+# =========================================================
+# PHASE 2: PERSISTENT CHAT LIBRARY
+# =========================================================
+@require_GET
+@login_required
+def chat_library(request):
+    """Return only conversations belonging to the authenticated employee."""
+    return JsonResponse({"success": True, "chats": list_chats(request.user)})
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def chat_library_save(request):
+    """Upsert metadata/rendered chat snapshot (never workflow state)."""
+    try:
+        data = json.loads(request.body or '{}')
+        chat_id = _validated_chat_id(data.get('chat_id'))
+        application = data.get('application') or ('general' if chat_id.startswith('gen_') else 'ticketing')
+        if application not in ('general', 'ticketing'):
+            return JsonResponse({'success':False, 'error':'Invalid application'}, status=400)
+        title = str(data.get('title') or 'New Chat').strip()[:160]
+        html = data.get('html', '')
+        if not isinstance(html, str) or len(html) > 250000:
+            return JsonResponse({'success':False, 'error':'Chat snapshot too large'}, status=413)
+        with transaction.atomic():
+            conversation = owned_chat(request.user, chat_id, application=application, create=True)
+            conversation.title = title or 'New Chat'
+            conversation.pinned = bool(data.get('pinned', False))
+            conversation.rendered_html = html
+            conversation.save(update_fields=['title','pinned','rendered_html','updated_at'])
+        return JsonResponse({'success':True, 'chat': serialize(conversation)})
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        return JsonResponse({'success':False, 'error':str(exc)}, status=400)
+    except Http404:
+        return JsonResponse({'success':False, 'error':'Chat not found'}, status=404)

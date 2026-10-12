@@ -3,6 +3,7 @@ import re
 
 from ai.llm.client import LocalLLM
 from ai.agent.ticket_statuses import TICKET_STATUS_IDS
+from ai.agent.input_safety import meaningful_description
 
 class AgentOrchestrator:
 
@@ -21,9 +22,6 @@ class AgentOrchestrator:
         # -------------------------------------------------
 
         message_lower = user_message.lower().strip()
-        if re.match(r"^(?:who\s+(?:is|was|are)|what\s+(?:is|was|are)|tell me about|can you explain)\b", message_lower) and not re.search(r"\b(?:ticket|incident|service request|portal|my tickets|sep)\b", message_lower):
-            return {"intent": "GENERAL_CHAT", "missing_fields": []}
-
 
         # Clear conversational requests do not need JSON extraction. Do not
         # intercept an explicit ticket action or a specific ticket number.
@@ -1309,13 +1307,13 @@ class AgentOrchestrator:
             print(response)
             try:
                 result = self._parse_json(response)
-            except (ValueError, TypeError, json.JSONDecodeError):
-                # A truncated local-model JSON reply is NOT permission to
-                # invent a ticket. Let the user retry or answer conversationally.
-                if re.search(r"\b(?:ticket|service request|incident request)\b", message_lower) and re.search(r"\b(?:create|raise|submit|open|make|log)\b", message_lower):
-                    result = {"intent": "CREATE_TICKET", "department": None, "description": None, "missing_fields": []}
-                else:
-                    return {"intent": "GENERAL_CHAT", "missing_fields": []}
+                if not isinstance(result, dict):
+                    raise ValueError("Classifier did not return a JSON object")
+            except (ValueError, TypeError, KeyError) as exc:
+                # Never show the incomplete model response to the employee.
+                # Do not guess whether an ambiguous message creates a ticket.
+                print("INTENT CLASSIFIER UNAVAILABLE:", type(exc).__name__)
+                return {"intent": "UNRECOGNIZED", "missing_fields": []}
 
         # ---------------------------------------------------------
         # Ensure new fields always exist
@@ -1363,13 +1361,10 @@ class AgentOrchestrator:
             # Preserve the employee's original requirement as the
             # ticket description instead of allowing the LLM to
             # shorten, rewrite or drop it.
-            original_message = user_message.strip()
-
-            if original_message:
-                command_only = bool(re.fullmatch(
-                    r"(?:please\s+)?(?:create|raise|submit|open|make|log|file)\s+(?:me\s+)?(?:an?\s+)?(?:new\s+)?(?:it\s+|hr\s+|admin\s+)?(?:service\s+|incident\s+)?(?:ticket|request)(?:\s+(?:for|in)\s+(?:it|hr|admin))?[.!?]*",
-                    original_message.casefold(), re.I))
-                result["description"] = None if command_only else original_message
+            result["description"] = meaningful_description(user_message)
+            # Never accept category guesses from the intent extractor.
+            # A separate validated catalog classifier handles categories.
+            result["category"] = None
 
         elif "request_type" not in result:
             result["request_type"] = None
@@ -2068,7 +2063,10 @@ class AgentOrchestrator:
         print("\nREQUEST TYPE CLASSIFIER RAW RESPONSE:")
         print(response)
 
-        result = self._parse_json(response)
+        try:
+            result = self._parse_json(response)
+        except (ValueError, TypeError):
+            return None
 
         recommended_request_type = result.get(
             "request_type"
@@ -2629,7 +2627,10 @@ class AgentOrchestrator:
         print("\nCATEGORY CLASSIFIER RAW RESPONSE:")
         print(response)
 
-        result = self._parse_json(response)
+        try:
+            result = self._parse_json(response)
+        except (ValueError, TypeError):
+            return {"category": None, "subcategory": None}
 
         category = result.get("category")
         subcategory = result.get("subcategory")

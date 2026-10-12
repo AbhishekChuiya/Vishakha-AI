@@ -167,25 +167,11 @@ class TicketingTool:
         else:
             title = f"{category} - {description}"
 
-        # Build ticket description
-        full_description = (
-            f"Request Type: {request_type or 'Not specified'}\n"
-            f"Department: {department or 'Not specified'}\n"
-            f"Category: {category}\n"
-            f"Subcategory: {subcategory or 'Not specified'}\n"
-            f"Issue: {description}\n"
-            f"Location: {location}\n"
-            f"Priority: {priority}\n"
-            f"Resolver Group: {route['group name']}\n"
-            f"Resolver Group ID: {group_id}"
-        )
-
-        if request_type == "Incident Request":
-            if impact:
-                full_description += f"\nImpact: {impact}"
-
-            if start_date:
-                full_description += f"\nWhen did this start?: {start_date}"
+        # Structured fields already carry route/category metadata to SEP.
+        # Keep the portal description exactly as the employee authored it.
+        full_description = description.strip() if isinstance(description, str) else ""
+        if not full_description:
+            raise ValueError("A meaningful ticket description is required.")
 
         # Ticket type is now taken from Excel, not hardcoded
         result = self.client.create_ticket(

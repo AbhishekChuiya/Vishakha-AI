@@ -1,4 +1,5 @@
 from ai.agent.conversation import ConversationState
+from ai.agent.input_safety import meaningful_description
 from ai.agent.orchestrator import AgentOrchestrator
 from ai.tools.ticketing.ticketing_tool import TicketingTool
 from ai.tools.ticketing.routing import get_departments
@@ -300,31 +301,20 @@ class AgentWorkflow:
                 "message": "I couldn't retrieve your ticket status."
             }
                 
-    @staticmethod
-    def _has_real_ticket_description(value):
-        """Reject command-only descriptions; do not infer facts from a request label."""
-        import re
-        value = str(value or "").strip()
-        if not value:
-            return False
-        compact = re.sub(r"[.!?]+$", "", value.casefold()).strip()
-        if re.fullmatch(r"(?:please\s+)?(?:create|raise|submit|open|make|log|file)\s+(?:me\s+)?(?:an?\s+)?(?:new\s+)?(?:it\s+|hr\s+|admin\s+)?(?:service\s+|incident\s+)?(?:request|ticket)(?:\s+(?:for|in)\s+(?:it|hr|admin|the\s+it\s+department|the\s+hr\s+department))?", compact):
-            return False
-        if re.fullmatch(r"(?:please\s+)?(?:create|raise|submit|open|make)\s+(?:an?\s+)?(?:new\s+)?(?:(?:it|hr|admin)\s+)?(?:ticket|request)\s+for\s+(?:laptop|hardware|software|sap|hr|it|admin)(?:\s+(?:issue|repair|problem))?", compact):
-            return False
-        return True
-
     def process_message(self, user_message, chat_id=None, application_mode="sep"):
-        # Clearly general questions have no business in SEP mode. Avoid
-        # depending on the local JSON classifier for these simple cases.
+
+        # SEP requests are handled here. General conversations are routed
+        # separately by the authenticated view, not this ticket workflow.
         import re
-        question = str(user_message or "").strip()
+        text_for_mode = str(user_message or "").strip()
+        if application_mode != "sep":
+            return {"type": "message", "message":
+                    "Select General in the application menu for general conversations."}
         if (not self.state.current_question
-            and re.match(r"^(?:who is|who was|what is|what are|explain|define|tell me about|write an? email|draft an? email)\b", question, re.I)
-            and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status)\b", question, re.I)):
+                and re.match(r"^(?:who is|who was|what is|what are|explain|define|tell me about|write an? email|draft an? email)\b", text_for_mode, re.I)
+                and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status)\b", text_for_mode, re.I)):
             return {"type": "message", "message":
                     "That looks like a general question. Select General from the application dropdown and ask me there."}
-
 
         # ----------------------------------------------
         # HANDLE ANSWER TO CURRENT QUESTION
@@ -360,7 +350,7 @@ class AgentWorkflow:
                     answer = self.handle_ticket_analytics(candidate)
                 elif intent in ("OTHER", "GENERAL_CHAT", None):
                     answer = {"type": "message", "message":
-                        "Service Excellence mode handles tickets and SEP reports. Select General for other questions."}
+                        "SEP mode handles tickets and SEP reports. Select General for other questions."}
                 else:
                     self.state.update_from_agent(candidate)
                     if self.state.intent == "CREATE_TICKET":
@@ -392,6 +382,12 @@ class AgentWorkflow:
         if agent_result.get("intent") in ("OTHER", "GENERAL_CHAT", None):
             return {"type": "message", "message":
                     "SEP mode is for Service Excellence tickets, ticket statuses and analytics. Select General for other questions."}
+
+        if agent_result.get("intent") == "UNRECOGNIZED":
+            return {"type": "message", "message": (
+                "I couldn't understand that request reliably. "
+                "Please rephrase it, or choose a clear ticket action such as "
+                "'Create a ticket' or 'Show my tickets'.")}
 
         self.state.update_from_agent(agent_result)
 
@@ -589,14 +585,17 @@ class AgentWorkflow:
                 "options": valid_request_types,
             }
 
-        # An action-only phrase is not a description. Ask before predicting a
-        # category or recommending a request type. Never fill in user facts.
-        if not self._has_real_ticket_description(self.state.description):
-            self.state.description = None
+        # Ask for the actual issue BEFORE categorization or mismatch checks.
+        # A bare command such as "Create a ticket" is never a description.
+        self.state.description = meaningful_description(self.state.description)
+        if not self.state.description:
             self.state.current_question = "description"
-            return {"type": "question", "field": "description",
-                    "message": "Please describe the issue or service you actually need. I'll use your description to suggest a category.",
-                    "input_type": "text", "placeholder": "Describe your requirement..."}
+            return {
+                "type": "question", "field": "description",
+                "message": "Please describe the actual issue or service you need.",
+                "input_type": "text",
+                "placeholder": "Describe the issue or requirement...",
+            }
 
         # ----------------------------------------------
         # AI CATEGORY + SUBCATEGORY CLASSIFICATION
@@ -642,7 +641,7 @@ class AgentWorkflow:
             # Run AI classification only when:
             # 1. We have a description
             # 2. We have valid mapped combinations
-            if self._has_real_ticket_description(self.state.description) and filtered_categories:
+            if self.state.description and filtered_categories:
 
                 classification = self.orchestrator.classify_category(
                     description=self.state.description,
@@ -1479,10 +1478,10 @@ class AgentWorkflow:
 
             recommended_request_type = (
                 self.orchestrator.classify_request_type(
-                    description=self.state.description,
+                    description=meaningful_description(self.state.description),
                     department=self.state.department,
                     allowed_request_types=valid_request_types,
-                ) if self._has_real_ticket_description(self.state.description) else None
+                )
             )
 
             print(
@@ -1811,7 +1810,7 @@ class AgentWorkflow:
 
             description = option.strip()
 
-            if not description or description.lower() == "other":
+            if not meaningful_description(description) or description.lower() == "other":
 
                 return {
                     "type": "question",
@@ -1826,10 +1825,6 @@ class AgentWorkflow:
                     ),
                 }
 
-            if not self._has_real_ticket_description(description):
-                return {"type": "question", "field": "description",
-                        "message": "Please describe the actual issue or requirement, rather than just asking to create a ticket.",
-                        "input_type": "text", "placeholder": "Describe your requirement..."}
             self.state.description = description
             self.state.current_question = None
 
@@ -4552,6 +4547,16 @@ class AgentWorkflow:
             }           
 
     def confirm_ticket(self):
+
+        if not meaningful_description(self.state.description):
+            self.state.description = None
+            self.state.current_question = "description"
+            return {
+                "type": "question", "field": "description",
+                "message": "Please describe the actual issue or service before submitting.",
+                "input_type": "text",
+                "placeholder": "Describe the issue or requirement...",
+            }
 
         if not self.state.is_complete():
 

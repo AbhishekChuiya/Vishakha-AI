@@ -129,7 +129,10 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
         <div class="brand">
 
             <button type="button" id="vishakha-home-brand" class="brand-identity" title="Go to dashboard" aria-label="Go to dashboard">
-                <img class="vishakha-logo-full" src="{% static 'images/vishakha-logo.png' %}" alt="Vishakha" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+                <span class="vishakha-theme-wordmark">
+                    <img class="vishakha-logo-full vishakha-logo-light" src="{% static 'images/vishakha-logo.png' %}" alt="Vishakha" onerror="this.style.display='none'">
+                    <img class="vishakha-logo-full vishakha-logo-dark" src="{% static 'images/vishakha-logo2.png' %}" alt="Vishakha" onerror="this.style.display='none'">
+                </span>
                 <div class="brand-identity-fallback" hidden>
                     <div class="brand-title">Vishakha</div>
                     <div class="brand-subtitle">Unified Workspace</div>
