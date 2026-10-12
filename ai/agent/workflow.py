@@ -360,6 +360,27 @@ class AgentWorkflow:
         if not email or email not in allowed:
             return {"type": "message", "message": "You don't have permission to view department-wide ticket analytics."}
 
+        # DARPAN SUBCATEGORY ANALYTICS HANDLER V1
+        # This code is inside handle_ticket_analytics, AFTER its email allowlist.
+        if agent_result.get("analytics_view") == "SUBCATEGORY_RANKING":
+            category = agent_result.get("analytics_category")
+            if not category:
+                return {"type": "message", "message":
+                        f"Please specify a {department} category for subcategory analysis. "
+                        f"Available categories: {', '.join(__import__('ai.agent.catalog', fromlist=['CATEGORIES']).CATEGORIES.get(department, {}))}."}
+            try:
+                from ai.analytics.category_analytics import get_subcategory_ranking
+                report = get_subcategory_ranking(
+                    self.ticketing, department, config["ticket_type_ids"], category,
+                    sort_by=agent_result.get("analytics_sort", "total"),
+                    limit=agent_result.get("analytics_limit", 10),
+                )
+                return {"type": "category_analytics", "analytics": report,
+                        "message": f"{department} / {category} subcategory ranking"}
+            except Exception as exc:
+                print("SUBCATEGORY ANALYTICS ERROR:", type(exc).__name__, str(exc))
+                return {"type": "error", "message": "Subcategory analytics could not be retrieved. Check the server logs."}
+
         if agent_result.get("analytics_view") == "CATEGORY_RANKING":
             try:
                 from ai.analytics.category_analytics import get_category_ranking

@@ -13,10 +13,18 @@ from ai.agent.catalog import CATEGORIES, SUBCATEGORY_REQUEST_TYPES
 
 logger = logging.getLogger(__name__)
 
+# Service Excellence ticket type IDs from the current department search configuration.
+# IDs belong to PORTAL TICKET TYPES, not departments or request-specific groups.
 TYPE_LABELS = {
-    9: "Incident Request", 11: "Service Request",
-    53: "Incident Request", 52: "Service Request",
-    56: "Incident Request", 55: "Service Request",
+    6: "Service Request", 7: "Request For Information",
+    8: "Incident Request", 9: "Incident Request",
+    11: "Service Request", 12: "Incident Request",
+    14: "Change Management", 16: "Service Request",
+    50: "Service Request", 51: "Service Request",
+    52: "Service Request", 53: "Incident Request",
+    54: "Service Request", 55: "Service Request",
+    56: "Incident Request", 59: "Change Management",
+    60: "Service Request", 61: "Customer Complaint",
 }
 
 # Tune conservatively to avoid overloading the internal portal.
@@ -101,7 +109,7 @@ def get_category_ranking(tool, department, ticket_type_ids, sort_by="total", for
     Existing callers need no changes; default cache behavior remains enabled.
     The supplied TicketingTool should allow independent concurrent read calls.
     """
-    if department not in {"IT Department", "HR Department", "Admin"}:
+    if department not in CATEGORIES or department not in SUBCATEGORY_REQUEST_TYPES:
         raise ValueError("Department not supported for category reporting")
     if sort_by not in {"total", "non_closed"}:
         sort_by = "total"
@@ -210,4 +218,121 @@ def get_category_ranking(tool, department, ticket_type_ids, sort_by="total", for
     }
     if not unresolved:
         cache.set(key, report, REPORT_TTL_SECONDS)
+    return report
+
+
+# Rank the actual portal subcategory IDs within ONE category at a time.
+# A whole-department subcategory scan can cause hundreds of portal calls, so
+# it is deliberately disallowed here. Call only after workflow authorization.
+def get_subcategory_ranking(
+    tool, department, ticket_type_ids, category, sort_by="total",
+    force_refresh=False, limit=10,
+):
+    if department not in CATEGORIES or department not in SUBCATEGORY_REQUEST_TYPES:
+        raise ValueError("Department not configured for subcategory reporting")
+    catalog = CATEGORIES[department]
+    category = next((name for name in catalog if name.casefold() == str(category).strip().casefold()), None)
+    if category is None:
+        raise ValueError("Unknown department category")
+    if sort_by not in {"total", "non_closed"}:
+        sort_by = "total"
+    type_ids = tuple(dict.fromkeys(int(value) for value in ticket_type_ids))
+    limit = min(max(int(limit), 1), 50)
+    report_key = _safe_cache_key("sub_report", department, category, sort_by, limit, *type_ids)
+    if not force_refresh:
+        existing = cache.get(report_key)
+        if existing is not None:
+            return existing
+
+    mappings = SUBCATEGORY_REQUEST_TYPES[department].get(category, {})
+    rows = []
+    tasks = []
+    unresolved = []
+    for subcategory in catalog[category]:
+        applicable = [(type_id, TYPE_LABELS[type_id]) for type_id in type_ids
+                      if type_id in TYPE_LABELS and TYPE_LABELS[type_id] in mappings.get(subcategory, [])]
+        if not applicable:
+            continue
+        row = {"category": f"{category} / {subcategory}", "subcategory": subcategory,
+               "total": 0, "non_closed": 0, "complete": False,
+               "ticket_types": 0, "by_request_type": {}, "_expected": len(applicable)}
+        rows.append(row)
+        for type_id, label in applicable:
+            try:
+                # Exact subcategory matching: no fallback to category-only counts.
+                result = tool.resolve_category_subcategory(
+                    ticket_type_id=type_id, category_name=category,
+                    subcategory_name=subcategory,
+                )
+                if not isinstance(result, dict) or result.get("category_id") is None or result.get("subcategory_id") is None:
+                    raise ValueError("Resolver omitted category or subcategory ID")
+                if result.get("category_name") and str(result["category_name"]).strip().casefold() != category.casefold():
+                    raise ValueError("Resolver returned a different category")
+                if result.get("subcategory_name") and str(result["subcategory_name"]).strip().casefold() != subcategory.casefold():
+                    raise ValueError("Resolver returned a different subcategory")
+                tasks.append((row, type_id, label, int(result["category_id"]), int(result["subcategory_id"])))
+            except Exception as exc:
+                unresolved.append(f"{category} / {subcategory} / {label} (type {type_id}): resolution failed")
+                logger.warning("Darpan subcategory resolution failed: %s / %s / %s: %s", category, subcategory, label, exc)
+
+    def count_one(type_id, category_id, subcategory_id, include_closed):
+        key = _safe_cache_key("sub_count", type_id, category_id, subcategory_id, int(include_closed))
+        if not force_refresh:
+            existing = cache.get(key)
+            if existing is not None:
+                return int(existing)
+        response = tool.get_all_tickets(
+            ticket_type_id=type_id, category_id=category_id,
+            subcategory_id=subcategory_id, include_closed=include_closed, size=1,
+        )
+        if not isinstance(response, dict) or response.get("totalElements") is None:
+            raise ValueError("Subcategory count API did not return totalElements")
+        value = int(response["totalElements"])
+        if value < 0:
+            raise ValueError("Negative count returned")
+        cache.set(key, value, COUNT_TTL_SECONDS)
+        return value
+
+    outcomes = {}
+    if tasks:
+        with ThreadPoolExecutor(max_workers=min(MAX_COUNT_WORKERS, len(tasks) * 2)) as pool:
+            futures = {}
+            for row, type_id, label, cat_id, sub_id in tasks:
+                for include_closed in (True, False):
+                    f = pool.submit(count_one, type_id, cat_id, sub_id, include_closed)
+                    futures[f] = (row["subcategory"], type_id, include_closed)
+            for future in as_completed(futures):
+                subcategory, type_id, include_closed = futures[future]
+                try:
+                    outcomes.setdefault((subcategory, type_id), {})[include_closed] = future.result()
+                except Exception:
+                    outcomes.setdefault((subcategory, type_id), {})[include_closed] = None
+                    logger.exception("Subcategory count failed: %s / %s / %s", category, subcategory, type_id)
+
+    routes_counted = 0
+    for row, type_id, label, cat_id, sub_id in tasks:
+        values = outcomes.get((row["subcategory"], type_id), {})
+        total, active = values.get(True), values.get(False)
+        if total is None or active is None or active > total:
+            unresolved.append(f"{category} / {row['subcategory']} / {label} (type {type_id}): counting failed")
+            continue
+        row["total"] += total
+        row["non_closed"] += active
+        row["ticket_types"] += 1
+        row["by_request_type"][label] = {"total": total, "non_closed": active}
+        routes_counted += 1
+
+    for row in rows:
+        row["complete"] = row["ticket_types"] == row.pop("_expected")
+    rows.sort(key=lambda row: (-row[sort_by], row["subcategory"].casefold()))
+    report = {
+        "department": department, "category": category, "sort_by": sort_by,
+        "report_level": "subcategory", "categories": rows[:limit],
+        "categories_counted": len(rows), "complete": not unresolved,
+        "unresolved": unresolved, "routes_counted": routes_counted,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "note": "Counts use exact portal category and subcategory IDs; partial routes are not treated as zero.",
+    }
+    if not unresolved:
+        cache.set(report_key, report, REPORT_TTL_SECONDS)
     return report

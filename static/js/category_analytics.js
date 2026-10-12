@@ -12,15 +12,15 @@
         wrapper.className = "darpan-analytics-report darpan-category-report";
         wrapper.style.cssText = "max-width:680px;width:calc(100% - 52px);box-sizing:border-box;margin:12px 0 22px 48px;padding:22px;border-radius:16px;border:1px solid #64748b55";
         const heading = document.createElement("h3");
-        heading.textContent = (data.department || "Department") + " — Category ranking";
+        heading.textContent = (data.department || "Department") + (data.report_level === "subcategory" ? " / " + data.category + " — Subcategory ranking" : " — Category ranking");
         heading.style.margin = "0 0 8px";
         const sub = document.createElement("p");
-        sub.textContent = "Sorted by " + (data.sort_by === "non_closed" ? "non-closed tickets" : "total tickets") + " · " + (data.categories_counted || 0) + " categories";
+        sub.textContent = "Sorted by " + (data.sort_by === "non_closed" ? "non-closed tickets" : "total tickets") + " · " + (data.categories_counted || 0) + (data.report_level === "subcategory" ? " subcategories" : " categories") + (data.report_level === "subcategory" ? " (showing " + (data.categories || []).length + ")" : "");
         sub.style.cssText = "font-size:12px;opacity:.75;margin:0 0 14px";
         wrapper.append(heading, sub);
         if (!data.complete) {
             const warn = document.createElement("p");
-            warn.textContent = "Incomplete report: " + (data.unresolved || []).length + " category routes failed. Rankings may change after retrying.";
+            warn.textContent = "Incomplete report: " + (data.unresolved || []).length + (data.report_level === "subcategory" ? " subcategory" : " category") + " routes failed. Rankings may change after retrying.";
             warn.style.cssText = "color:#d97706;font-weight:600;font-size:13px";
             wrapper.appendChild(warn);
         }
@@ -33,10 +33,18 @@
             const line = document.createElement("div");
             line.style.cssText = "display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px";
             const name = document.createElement("strong");
-            name.textContent = (i + 1) + ". " + r.category + (r.complete ? "" : " (partial)");
+            name.textContent = (i + 1) + ". " + (data.report_level === "subcategory" ? r.subcategory : r.category) + (r.complete ? "" : " (partial)");
             const counts = document.createElement("span");
             counts.textContent = fmt(r.total) + " total · " + fmt(r.non_closed) + " non-closed";
             line.append(name, counts);
+            if (data.report_level === "subcategory" && r.by_request_type) {
+                const breakdown = document.createElement("small");
+                breakdown.style.cssText = "display:block;opacity:.75;margin-top:5px";
+                breakdown.textContent = Object.entries(r.by_request_type).map(([label, v]) =>
+                    label + ": " + fmt(v.total) + " total / " + fmt(v.non_closed) + " non-closed"
+                ).join(" · ");
+                row.appendChild(breakdown);
+            }
             const track = document.createElement("div");
             track.style.cssText = "height:7px;border-radius:8px;background:#64748b35;margin-top:9px;overflow:hidden";
             const bar = document.createElement("div");
@@ -47,7 +55,7 @@
         });
         if (!rows.length) {
             const empty = document.createElement("p");
-            empty.textContent = "No mapped categories are available for this report.";
+            empty.textContent = "No mapped items are available for this report.";
             wrapper.appendChild(empty);
         }
         const foot = document.createElement("p");
