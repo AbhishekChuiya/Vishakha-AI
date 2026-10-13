@@ -2,6 +2,8 @@ import os
 import requests
 from dotenv import load_dotenv
 import json
+import re
+import unicodedata
 load_dotenv()
 
 
@@ -92,8 +94,7 @@ class TicketingClient:
                 location
             )
 
-        print("AUTHENTICATOR REQUESTER: ", requester)
-        print("AUTHENTICATOR ACTOR: ", actor)
+        # Do not log employee identities or ticket payloads.
 
         # 1. Create the payload FIRST
         payload = {
@@ -144,10 +145,7 @@ class TicketingClient:
         if ticket_custom_fields:
             payload["customFields"] = ticket_custom_fields
 
-        # 3. Print payload AFTER creating it
-        print("\n========== TICKET API PAYLOAD ==========")
-        print(json.dumps(payload, indent=4))
-        print("========================================\n")
+        # Do not print ticket descriptions, custom fields, or requester details.
 
         # 4. Send API request
         response = requests.post(
@@ -157,10 +155,7 @@ class TicketingClient:
             timeout=30,
         )
 
-        print("\n========== TICKET API RESPONSE ==========")
-        print("Status:", response.status_code)
-        print(response.text)
-        print("=========================================\n")
+        # Avoid logging raw SEP responses that may contain employee information.
 
         response.raise_for_status()
 
@@ -219,6 +214,66 @@ class TicketingClient:
         )
 
 
+    @staticmethod
+    def _canonical_lookup_name(value):
+        """Normalize equivalent AND/& spelling, not arbitrary similar names."""
+        text = unicodedata.normalize("NFKC", str(value or "")).casefold()
+        text = text.replace("&", " and ")
+        return " ".join(re.findall(r"[\w]+", text))
+
+    def _lookup_subcategory_without_search(self, category_id, name):
+        """SEP's search misses aliases such as 'and' versus '&'.
+
+        Fetch all active subcategories of this category and accept ONLY a
+        unique canonical exact name. Never guess an ID.
+        """
+        url = f"{self.base_url}/api/itsm/v1/lookup/subcategories"
+        headers = {
+            "Authorization": f"Bearer {self.pat}",
+            "Accept": "application/json",
+        }
+        target = self._canonical_lookup_name(name)
+        matches = []
+        page = 0
+        while True:
+            response = requests.get(
+                url,
+                headers=headers,
+                params={
+                    "categoryId": int(category_id),
+                    "includeInactive": "false",
+                    "size": 100,
+                    "page": page,
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            body = response.json()
+            if not isinstance(body, dict) or not isinstance(body.get("content"), list):
+                raise ValueError("SEP returned an unexpected subcategory lookup response.")
+            matches.extend(item for item in body["content"]
+                           if isinstance(item, dict)
+                           and self._canonical_lookup_name(item.get("name")) == target)
+            total_pages = body.get("totalPages")
+            if total_pages is not None:
+                if page + 1 >= int(total_pages):
+                    break
+            elif len(body["content"]) < 100:
+                break
+            page += 1
+            if page >= 100:
+                raise ValueError("SEP subcategory lookup exceeded safe page limit.")
+        ids = {str(item.get("id")) for item in matches}
+        if len(ids) == 1:
+            return matches[0]
+        if matches:
+            raise ValueError(f"Ambiguous SEP subcategory '{name}' in category {category_id}.")
+        raise ValueError(
+            f"SEP subcategory '{name}' was not found under category {category_id}. "
+            "Please check the available subcategories in SEP."
+        )
+
+
     def get_category(self, ticket_type_id, category_name):
         return self._lookup_exact_name(
             endpoint="categories",
@@ -231,14 +286,20 @@ class TicketingClient:
 
 
     def get_subcategory(self, category_id, subcategory_name):
-        return self._lookup_exact_name(
-            endpoint="subcategories",
-            name=subcategory_name,
-            params={
-                "categoryId": int(category_id),
-                "includeInactive": "false",
-            },
-        )
+        try:
+            return self._lookup_exact_name(
+                endpoint="subcategories",
+                name=subcategory_name,
+                params={
+                    "categoryId": int(category_id),
+                    "includeInactive": "false",
+                },
+            )
+        except ValueError as exc:
+            # Fallback only for a normal lookup miss, not for other errors.
+            if not str(exc).startswith("Exact subcategories match not found"):
+                raise
+            return self._lookup_subcategory_without_search(category_id, subcategory_name)
 
     def resolve_category_subcategory(
         self,

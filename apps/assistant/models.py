@@ -48,3 +48,16 @@ class ChatMessage(models.Model):
     class Meta:
         ordering = ["id"]
         indexes = [models.Index(fields=["conversation", "id"], name="vish_chat_msg_seq_idx")]
+
+
+class SepTicketSubmission(models.Model):
+    """Persistent, unique claim for one SEP create attempt; never blindly retry uncertain requests."""
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name="sep_submissions")
+    fingerprint = models.CharField(max_length=64)
+    status = models.CharField(max_length=16, default="pending")
+    result = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["conversation", "fingerprint"], name="vish_sep_once_per_request")]

@@ -24,6 +24,8 @@ from django.utils.crypto import constant_time_compare
 from datetime import timedelta
 import secrets
 import hashlib
+from django.db.utils import IntegrityError
+from .models import SepTicketSubmission
 from .models import RememberedAccount
 
 from ai.llm.cancellation import (
@@ -358,6 +360,84 @@ def save_workflow(
     db_chat.save(update_fields=["workflow_state", "updated_at"])
 
 
+def _confirm_sep_ticket_once(conversation, workflow):
+    """Prevent duplicate SEP POSTs for the same complete ticket payload.
+
+    Claim is committed before the network call. Unknown outcomes remain blocked
+    until manually reconciled with SEP; never automatically POST again.
+    """
+    from ai.agent.input_safety import meaningful_description
+    if not meaningful_description(workflow.state.description) or not workflow.state.is_complete():
+        return workflow.confirm_ticket()  # validation path; no external POST
+
+    snapshot = workflow.state.to_dict()
+    fingerprint = hashlib.sha256(
+        json.dumps(snapshot, sort_keys=True, default=str, ensure_ascii=False).encode('utf-8')
+    ).hexdigest()
+    try:
+        with transaction.atomic():
+            attempt, created = SepTicketSubmission.objects.get_or_create(
+                conversation=conversation, fingerprint=fingerprint,
+                defaults={"status": "pending"},
+            )
+    except IntegrityError:
+        attempt = SepTicketSubmission.objects.get(conversation=conversation, fingerprint=fingerprint)
+        created = False
+
+    if not created:
+        if attempt.status == "success":
+            # The SEP call succeeded previously; return its original ticket number.
+            workflow.state.reset()
+            return dict(attempt.result)
+        return {"type": "message", "message":
+                "This ticket request was already submitted or is being processed. "
+                "Check My Tickets in SEP before trying again. The system will not create a duplicate automatically."}
+
+    try:
+        result = workflow.confirm_ticket()
+    except Exception:
+        # Submission may have reached SEP. Keep claim pending for reconciliation.
+        attempt.status = "needs_review"
+        attempt.save(update_fields=["status", "updated_at"])
+        raise
+    # A failed lookup is a deterministic PRE-SUBMISSION validation error:
+    # the SEP create endpoint was never called. Do not classify it as a
+    # potentially-created ticket, and do not consume the one-time claim.
+    # Only identify the exact lookup error emitted by SEPClient._lookup_exact_name.
+    details = str(result.get("details") or "") if isinstance(result, dict) else ""
+    is_lookup_failure = (
+        isinstance(result, dict)
+        and result.get("type") == "error"
+        and details.startswith("Exact ")
+        and " match not found for " in details
+        and ". API returned:" in details
+    )
+    if is_lookup_failure:
+        attempt.delete()  # No SEP creation POST occurred, so a future corrected request is safe.
+        return {
+            "type": "error",
+            "message": (
+                "The selected SEP category or subcategory could not be resolved. "
+                "No ticket was submitted. Please verify the category/subcategory "
+                "available in SEP before confirming again."
+            ),
+            "details": details,
+            "options": ["Confirm & Create Ticket", "Cancel"],
+        }
+
+    if result.get("type") == "success" and result.get("ticket_number"):
+        attempt.status = "success"
+        attempt.result = result
+    else:
+        # A non-success response does not prove SEP rejected the create.
+        attempt.status = "needs_review"
+        attempt.result = {"type": "message", "message": "Ticket result requires verification in SEP."}
+        result = {"type": "message", "message":
+                  "SEP did not confirm ticket creation. Check My Tickets or contact IT before retrying."}
+    attempt.save(update_fields=["status", "result", "updated_at"])
+    return result
+
+
 # =========================================================
 # CHAT API
 # =========================================================
@@ -485,7 +565,7 @@ def chat(request):
 
             if user_message == "Confirm & Create Ticket":
 
-                result = workflow.confirm_ticket()
+                result = _confirm_sep_ticket_once(conversation, workflow)
 
             elif user_message == "Cancel":
 
