@@ -1238,7 +1238,9 @@ class AgentOrchestrator:
         # Read-only list requests can use the same deterministic
         # department/status/keyword normalization as count requests.
         is_fast_list_query = bool(
-            re.match(r"^(?:show|list|find|search|display)\b", message_lower)
+            (re.match(r"^(?:please\s+)?(?:show|list|find|search|display|view|give|provide|get|fetch|pull\s+up)\b", message_lower)
+             or re.match(r"^(?:please\s+)?(?:i\s+(?:want|would\s+like|need)\s+to\s+(?:see|view|check|look\s+at)|can\s+you\s+(?:show|give|list|display|get|fetch)|could\s+you\s+(?:show|give|list|display|get|fetch))\b", message_lower)
+             or re.search(r"\b(?:tickets?\s+(?:i\s+(?:raised|created|submitted|have)|assigned\s+to\s+me)|what\s+tickets?\s+(?:have\s+i|did\s+i))\b", message_lower))
             and re.search(r"\btickets?\b", message_lower)
             and not ticket_number_match
             and not has_write_intent
@@ -1903,11 +1905,15 @@ class AgentOrchestrator:
             remove_phrases = [
                 "how many", "do i have", "are there", "is there",
                 "of my", "for me", "show me", "show all", "show my",
-                "show", "list all", "list my", "list", "find all",
+                "show", "can you", "could you", "would you", "you",
+                "give me", "get me", "give", "get", "provide me", "provide",
+                "fetch me", "fetch", "view", "pull up", "what", "which", "did",
+                "want to see", "would like to see", "list all", "list my", "list", "find all",
                 "find my", "find", "search for", "search", "display",
                 "all", "my", "tickets", "ticket", "count", "there",
                 "please", "the", "a", "an", "of", "are", "is", "do",
-                "i", "have", "me", "open", "active", "canceled",
+                "i", "have", "me", "mine", "mine's", "raised", "created",
+                "submitted", "assigned", "to", "see", "open", "active", "canceled",
             ]
             for name in TICKET_STATUS_IDS:
                 remove_phrases.append(name.lower().replace("_", " "))
