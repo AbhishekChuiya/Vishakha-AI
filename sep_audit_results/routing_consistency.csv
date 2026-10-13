@@ -1,0 +1,4 @@
+﻿department,request_type,location,issue,group,group_id,ticket_type_id
+Admin,Service Request,HO Shantigram,CONFLICT,"('Admin - HO - SR', '16', '11') | ('Admin_HO_SR', '61', '11')",,
+IT Department,Incident Request,All,CONFLICT,"('B1 INC', '42', '56') | ('Corporate Munim INC', '46', '56') | ('FI CO INC', '36', '56') | ('INFRA COMBINED INC', '56', '56') | ('Odoo/Procuregenie INC', '48', '56') | ('SAP BASIS INC', '33', '56') | ('SAP MDM INC', '35', '56') | ('SAP MM INC', '38', '56') | ('SAP PP QM PM INC', '40', '56') | ('SAP SD INC', '44', '56')",,
+IT Department,Service Request,All,CONFLICT,"('B1 SR', '41', '55') | ('Corporate Munim SR', '45', '55') | ('FI CO SR', '62', '55') | ('INFRA COMBINED SR', '55', '55') | ('Odoo/Procuregenie SR', '47', '55') | ('SAP BASIS SR', '32', '55') | ('SAP MDM SR', '34', '55') | ('SAP MM SR', '37', '55') | ('SAP PP QM PM SR', '39', '55') | ('SAP SD SR', '43', '55')",,

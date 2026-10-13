@@ -80,9 +80,9 @@ CATEGORIES = {
             "Router",
             "WAN",
             "WIFI",
-            "Firewall",
+            "Firewall issue",
             "Storage (Database Restore)",
-            "Storage",
+            "Storage issue",
             "VPN",
         ],
 
@@ -145,7 +145,7 @@ CATEGORIES = {
             "Others",
         ],
 
-        "Business Card": [
+        "Business Cards & Stationery": [
             "Visiting card",
         ],
     },

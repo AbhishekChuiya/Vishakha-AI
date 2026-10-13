@@ -1,0 +1,82 @@
+﻿department,request_type,kind,category,subcategory,darpan_value,diagnosis,candidate,candidate_id,similarity,notes
+Admin,Service Request,category,Business Card,,Business Card,REVIEW_CANDIDATE,Business Cards & Stationery,139,0.619,Suggestion only; verify manually before changing the catalog
+Admin,Service Request,category,Business Card,,Business Card,REVIEW_CANDIDATE,Courier Facility,19,0.345,Suggestion only; verify manually before changing the catalog
+Admin,Service Request,category,Business Card,,Business Card,REVIEW_CANDIDATE,Stationery Request,78,0.323,Suggestion only; verify manually before changing the catalog
+Admin,Service Request,category,Business Card,,Business Card,REVIEW_CANDIDATE,Conference Room Booking,17,0.167,Suggestion only; verify manually before changing the catalog
+Admin,Service Request,category,Business Card,,Business Card,REVIEW_CANDIDATE,Fleet Management,16,0.138,Suggestion only; verify manually before changing the catalog
+Branding,Service Request,subcategory,Print & Production,Business Cards & Stationery,Business Cards & Stationery,ONLY_IN_INACTIVE_QUERY,Business Cards & Stationery,528,1.000,Check active flag and SEP configuration; do not auto-enable
+HR Department,Incident Request,subcategory,Employee Relations,Code of Conduct Violation,Code of Conduct Violation,REVIEW_CANDIDATE,Code of conduct Voilation,773,0.960,Suggestion only; verify manually before changing the catalog
+HR Department,Incident Request,subcategory,Employee Relations,Code of Conduct Violation,Code of Conduct Violation,REVIEW_CANDIDATE,Grievance Logging,772,0.238,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Printer Tonner,654,0.963,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Printer and Scanner,655,0.688,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Projector,657,0.545,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Adapter Powercord,648,0.533,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,UPS and Battery,661,0.357,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Email -Deligation access,668,0.957,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Generic Mail ID Creation-Deletion,662,0.536,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Email ID Creation-Consultant Contract Employee,665,0.493,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Mail ID Password Reset & unlock,669,0.429,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,AD ID Creation-Deactivate,667,0.417,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,Firewall issue,702,0.727,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,FileServer Access,697,0.400,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,WAN,700,0.364,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,WIFI,701,0.333,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,Router,699,0.286,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Storage ( Database Restore ),703,0.452,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Storage issue,704,0.700,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Switch Configure-Issue,693,0.345,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,FileServer Access,697,0.333,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Router,699,0.308,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,MalwareVirus Infection,710,0.978,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Antivirus Update,709,0.410,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Login attempt from disable account,711,0.281,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,IP-URL Whitelist-Blocking,715,0.250,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Phishing-Suspicious Email,713,0.250,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Login attempt from disable account,711,0.986,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Unauthorized Access,708,0.296,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Bio-Matrix,714,0.267,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Phishing-Suspicious Email,713,0.233,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Account compromise (Password),712,0.226,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,Video Conferance,762,0.938,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,IP Phone,764,0.417,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,Analog Phone,765,0.357,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,EPABX Services,763,0.267,Suggestion only; verify manually before changing the catalog
+IT Department,Incident Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,Phone Handset-Receiver,766,0.211,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Printer Tonner,636,0.963,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Printer and Scanner,637,0.688,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Projector,639,0.545,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,Adapter Powercord,630,0.533,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Hardware,Printer Toner,Printer Toner,REVIEW_CANDIDATE,UPS and Battery,643,0.357,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Email -Deligation access,676,0.957,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Generic Mail ID Creation-Deletion,670,0.536,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Email ID Creation-Consultant Contract Employee,673,0.493,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,Mail ID Password Reset & unlock,677,0.429,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Messaging Server,Email-Delegation Access,Email-Delegation Access,REVIEW_CANDIDATE,AD ID Creation-Deactivate,675,0.417,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,Firewall issue,688,0.727,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,FileServer Access,683,0.400,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,WAN,686,0.364,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,WIFI,687,0.333,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Firewall,Firewall,REVIEW_CANDIDATE,Router,685,0.286,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Storage ( Database Restore ),689,0.452,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Storage issue,690,0.700,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Switch Configure-Issue,679,0.345,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,FileServer Access,683,0.333,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Network,Storage,Storage,REVIEW_CANDIDATE,Router,685,0.308,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,MalwareVirus Infection,719,0.978,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Antivirus Update,718,0.410,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Login attempt from disable account,720,0.281,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,IP-URL Whitelist-Blocking,724,0.250,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Malware/Virus Infection,Malware/Virus Infection,REVIEW_CANDIDATE,Phishing-Suspicious Email,722,0.250,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Login attempt from disable account,720,0.986,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Unauthorized Access,717,0.296,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Bio-Matrix,723,0.267,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Phishing-Suspicious Email,722,0.233,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Security,Login Attempt From Disabled Account,Login Attempt From Disabled Account,REVIEW_CANDIDATE,Account compromise (Password),721,0.226,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,Video Conferance,767,0.938,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,IP Phone,769,0.417,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,Analog Phone,770,0.357,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,EPABX Services,768,0.267,Suggestion only; verify manually before changing the catalog
+IT Department,Service Request,subcategory,Voice Infrastructure Management,Video Conference,Video Conference,REVIEW_CANDIDATE,phone Handset-Receiver,771,0.211,Suggestion only; verify manually before changing the catalog
+Safety,Service Request,category,Safety Audits & Inspections,,Safety Audits & Inspections,REVIEW_CANDIDATE,Safety Audits & Inspection,13,0.982,Suggestion only; verify manually before changing the catalog
+Safety,Service Request,category,Safety Audits & Inspections,,Safety Audits & Inspections,REVIEW_CANDIDATE,Training & Awareness,11,0.392,Suggestion only; verify manually before changing the catalog
+Safety,Service Request,category,Safety Audits & Inspections,,Safety Audits & Inspections,REVIEW_CANDIDATE,PPE Compliance,12,0.279,Suggestion only; verify manually before changing the catalog
