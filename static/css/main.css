@@ -3126,3 +3126,169 @@ body.darpan-view-dashboard #sidebar .vishakha-history-tools{display:none!importa
   body.darpan-view-ai #sidebar.sidebar .darpan-dashboard-side,
   body.darpan-view-ai #sidebar.sidebar.collapsed .darpan-dashboard-side{display:none!important;}
 }
+
+/* Darpan UX: side-by-side compact New Chat + Search, responsive */
+#sidebar .vishakha-history-tools{display:flex;align-items:stretch;gap:7px;padding:9px 10px;}
+#sidebar .vishakha-history-tools .new-chat-button{flex:0 0 auto;width:auto;margin:0;padding:0 10px;border-radius:9px;white-space:nowrap;font-size:12px;min-height:35px;}
+#sidebar .vishakha-history-tools .vishakha-search-field{flex:1 1 0;min-width:0;margin:0;padding:0 8px;}
+#sidebar .vishakha-history-tools .vishakha-search-field input{height:35px;font-size:12px;}
+#sidebar .darpan-connector-link{text-decoration:none;cursor:pointer;border-radius:10px;transition:background .16s ease,transform .16s ease;}
+#sidebar .darpan-connector-link:hover{background:rgba(50,106,219,.09);transform:translateY(-1px);}
+body.dark-mode #sidebar .darpan-connector-link:hover{background:rgba(116,156,239,.14);}
+body.darpan-view-dashboard #sidebar .vishakha-history-tools{display:none!important;}
+#sidebar.sidebar.collapsed .vishakha-history-tools{display:none!important;}
+@media(max-width:700px){#sidebar.sidebar .vishakha-history-tools{display:flex!important;}body.darpan-view-dashboard #sidebar.sidebar .vishakha-history-tools{display:none!important;}}
+
+/* Darpan internal SEP workspace and compact sidebar controls (October update) */
+.darpan-action-icon{width:18px;height:18px;display:block;flex:none}
+#sidebar .vishakha-history-tools{align-items:center}
+#sidebar .vishakha-history-tools .new-chat-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:0 11px}
+#sidebar .darpan-search-toggle{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(126,146,177,.3);border-radius:10px;background:transparent;color:inherit;cursor:pointer;transition:background .18s,border-color .18s}
+#sidebar .darpan-search-toggle:hover,#sidebar .darpan-search-toggle[aria-expanded=true]{background:rgba(58,110,221,.12);border-color:rgba(58,110,221,.4)}
+#sidebar .vishakha-history-tools .vishakha-search-field{display:none!important}
+#sidebar .vishakha-history-tools.darpan-search-open{flex-wrap:wrap}
+#sidebar .vishakha-history-tools.darpan-search-open .vishakha-search-field{display:flex!important;flex:1 0 100%;order:3}
+#sidebar .collapsed-sidebar-nav .collapsed-nav-button .darpan-action-icon{width:19px;height:19px}
+#sidebar .darpan-side-connector{border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;cursor:pointer;font-family:inherit;background:transparent}
+#sidebar .darpan-side-connector:hover{background:rgba(50,106,219,.09)}
+#darpan-sep-workspace[hidden]{display:none!important}
+.darpan-sep-workspace{height:100%;min-width:0;overflow:auto;box-sizing:border-box;background:#f3f6fc;color:#12233d}
+.darpan-sep-content{width:min(100%,1120px);box-sizing:border-box;margin:0 auto;padding:32px 24px 45px}
+.darpan-sep-back{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#294d80;font-size:13px;font-weight:600;cursor:pointer;padding:8px 0;margin-bottom:22px}
+.darpan-sep-back:hover{color:#2563eb}
+.darpan-sep-hero{display:flex;align-items:center;gap:20px;padding:30px;border-radius:20px;background:linear-gradient(105deg,#eef3ff 0%,#fff 62%,#ccdafa 100%);border:1px solid #e0e7f6}
+.darpan-sep-hero-symbol{display:grid;place-items:center;width:70px;height:70px;border-radius:17px;background:#2563eb;color:white;font-size:33px;box-shadow:0 9px 22px #2563eb22;flex:none}
+.darpan-sep-hero-text{flex:1;min-width:0}
+.darpan-sep-eyebrow{color:#2563eb;letter-spacing:.22em;font-size:10px;font-weight:700}
+.darpan-sep-hero h2{font-size:26px;margin:5px 0;color:#102246}
+.darpan-sep-hero p{font-size:14px;color:#52637b;margin:0}
+.darpan-sep-ask{display:flex;gap:10px;align-items:center;justify-content:center;background:#2563eb;color:#fff;border:0;border-radius:13px;font-weight:700;font-size:14px;padding:15px 18px;cursor:pointer;box-shadow:0 5px 15px #2563eb30;white-space:nowrap}
+.darpan-sep-ask:hover{background:#1d4ed8}
+.darpan-sep-suggestions{display:flex;flex-wrap:wrap;gap:10px;margin:23px 0 27px}
+.darpan-sep-suggestions button{border:1px solid #dfe6f0;border-radius:50px;padding:9px 15px;background:#fff;color:#294364;cursor:pointer;font-size:12px}
+.darpan-sep-suggestions button:hover{border-color:#88a9ea;color:#1d4ed8}
+.darpan-sep-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.darpan-sep-kpi{display:flex;flex-direction:column;gap:5px;padding:21px;border:1px solid #e0e7f0;background:#fff;border-radius:18px;box-shadow:0 7px 17px #1624470b}
+.darpan-sep-kpi small{font-size:10px;letter-spacing:.14em;color:#7e8fa9;font-weight:700}
+.darpan-sep-kpi strong{font-size:31px;line-height:1.25;color:#2563eb}
+.darpan-sep-kpi span{font-size:12px;color:#52637b}
+.darpan-sep-lower{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:23px}
+.darpan-sep-panel{padding:24px;border:1px solid #e0e7f0;background:#fff;border-radius:18px;min-width:0}
+.darpan-sep-panel h3{font-size:15px;margin:0 0 5px;color:#112342}
+.darpan-sep-panel>p{font-size:12px;color:#7c8ba3;margin:0 0 16px}
+.darpan-sep-panel>button{display:flex;align-items:center;gap:10px;width:100%;border:1px solid #e2e8f3;border-radius:11px;background:#fff;padding:12px 15px;margin:9px 0;text-align:left;color:#203957;cursor:pointer}
+.darpan-sep-panel>button span{flex:1}
+.darpan-sep-panel>button:hover{background:#eff5ff}
+.darpan-sep-status{font-size:12px;color:#65758d;margin:20px 2px}
+body.dark-mode .darpan-sep-workspace{background:#111827;color:#e3eaf6}
+body.dark-mode .darpan-sep-hero{background:linear-gradient(105deg,#1b2b48,#202a3b 70%,#2e4679);border-color:#32435e}
+body.dark-mode .darpan-sep-hero h2,body.dark-mode .darpan-sep-panel h3{color:#edf3ff}
+body.dark-mode .darpan-sep-hero p,body.dark-mode .darpan-sep-kpi span{color:#aabbd4}
+body.dark-mode .darpan-sep-kpi,body.dark-mode .darpan-sep-panel,body.dark-mode .darpan-sep-panel>button,body.dark-mode .darpan-sep-suggestions button{background:#1e293b;color:#e2ebfa;border-color:#34445d}
+body.dark-mode .darpan-sep-panel>button:hover{background:#2b3d59}
+body.dark-mode .darpan-sep-back{color:#9bbbf2}
+@media(max-width:850px){.darpan-sep-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.darpan-sep-lower{grid-template-columns:1fr}}
+@media(max-width:700px){.darpan-sep-content{padding:20px 14px 40px}.darpan-sep-hero{padding:17px;gap:12px;flex-wrap:wrap}.darpan-sep-hero-symbol{height:48px;width:48px;font-size:24px}.darpan-sep-hero h2{font-size:19px}.darpan-sep-hero p{font-size:12px}.darpan-sep-ask{width:100%}.darpan-sep-kpis{gap:9px}.darpan-sep-kpi{padding:14px}.darpan-sep-kpi strong{font-size:26px}.darpan-sep-panel{padding:16px}}
+
+@media(max-width:700px){#sidebar .vishakha-history-tools,#sidebar.sidebar.collapsed .vishakha-history-tools{display:flex!important}body.darpan-view-dashboard #sidebar .vishakha-history-tools,body.darpan-view-dashboard #sidebar.sidebar.collapsed .vishakha-history-tools{display:none!important}#sidebar.sidebar.collapsed .vishakha-history-tools.darpan-search-open .vishakha-search-field{display:flex!important}#sidebar.sidebar.collapsed .vishakha-history-tools .new-chat-button{display:flex!important}}
+
+/* Darpan usability refinement — October 2026 */
+.application-dropdown-item .application-active-mark{display:none!important}
+#sidebar .vishakha-history-tools{gap:10px;padding:12px 12px 10px;align-items:center}
+#sidebar .vishakha-history-tools .new-chat-button{min-height:41px;border-radius:12px;padding:0 14px;gap:10px;font-size:13px;font-weight:600;box-shadow:0 3px 9px rgba(37,99,235,.12);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+#sidebar .vishakha-history-tools .new-chat-button:hover{transform:translateY(-1px);box-shadow:0 6px 15px rgba(37,99,235,.18)}
+#sidebar .darpan-search-toggle{flex:0 0 41px;width:41px;height:41px;border-radius:12px;background:rgba(117,139,178,.08);transition:background .18s ease,transform .18s ease,border-color .18s ease}
+#sidebar .darpan-search-toggle:hover{transform:translateY(-1px)}
+#sidebar .vishakha-history-tools.darpan-search-open .vishakha-search-field{background:rgba(116,146,195,.07);border:1px solid rgba(116,146,195,.19);border-radius:12px;min-height:43px;padding:0 12px;transition:border-color .18s ease,background .18s ease}
+#sidebar .vishakha-history-tools.darpan-search-open .vishakha-search-field:focus-within{border-color:#5289e7;background:rgba(86,140,226,.07)}
+#sidebar .vishakha-history-tools.darpan-search-open .vishakha-search-field input{width:100%;height:41px;font-size:13px;background:transparent;border:0;outline:0;box-shadow:none}
+#sidebar.sidebar.collapsed .vishakha-history-tools{display:flex!important;flex-direction:column;padding:9px 4px;gap:9px}
+#sidebar.sidebar.collapsed .vishakha-history-tools .new-chat-button{width:42px;height:42px;min-height:42px;padding:0;margin:0}
+#sidebar.sidebar.collapsed .vishakha-history-tools .darpan-new-label{display:none}
+#sidebar.sidebar.collapsed .vishakha-history-tools .darpan-search-toggle{width:42px;flex-basis:42px;height:42px}
+#sidebar.sidebar.collapsed .vishakha-history-tools .vishakha-search-field{display:none!important}
+body.darpan-view-dashboard #sidebar .vishakha-history-tools,body.darpan-view-dashboard #sidebar.sidebar.collapsed .vishakha-history-tools{display:none!important}
+.darpan-sep-section-note{display:flex;flex-direction:column;gap:5px;margin:12px 0 15px;color:#283d5e}
+.darpan-sep-section-note strong{font-size:16px}
+.darpan-sep-section-note span{font-size:12px;color:#64748b}
+body.dark-mode .darpan-sep-section-note{color:#e9effb}
+body.dark-mode .darpan-sep-section-note span{color:#a9bcd7}
+@media(max-width:700px){#sidebar.sidebar.collapsed .vishakha-history-tools{flex-direction:row;padding:10px}#sidebar.sidebar.collapsed .vishakha-history-tools .darpan-new-label{display:inline}#sidebar.sidebar.collapsed .vishakha-history-tools .new-chat-button{width:auto;padding:0 12px}}
+
+/* Collapsed sidebar already has dedicated icon buttons; avoid duplicated toolbars. */
+#sidebar.sidebar.collapsed .vishakha-history-tools{display:none!important}
+@media(max-width:700px){#sidebar.sidebar.collapsed .vishakha-history-tools{display:flex!important}}
+
+
+/* October follow-up polish: in-app confirm modal, cleaner sidebar and selected connector */
+#collapsed-search-chat[hidden],#collapsed-new-chat[hidden],#collapsed-recent-chats[hidden]{display:none!important}
+body.darpan-view-dashboard #collapsed-search-chat,body.darpan-view-sep #collapsed-search-chat{display:none!important}
+#sidebar .brand{padding-bottom:4px;margin-bottom:0}
+#sidebar .vishakha-history-tools{gap:8px;padding:8px 12px 8px;align-items:center;margin-top:2px}
+#sidebar .vishakha-history-tools .new-chat-button{flex:1 1 auto;justify-content:center;min-height:44px;padding:0 16px;font-size:13px}
+#sidebar .darpan-search-toggle{flex:0 0 44px;width:44px;height:44px;border-radius:12px}
+#sidebar .menu-title{margin-top:6px}
+#sidebar .darpan-dashboard-side{padding-top:2px}
+#sidebar .darpan-connector-link.active{background:rgba(37,99,235,.14);border:1px solid rgba(37,99,235,.38);box-shadow:0 0 0 1px rgba(37,99,235,.09) inset}
+body.dark-mode #sidebar .darpan-connector-link.active{background:rgba(96,165,250,.16);border-color:rgba(96,165,250,.42)}
+
+.darpan-modal-open{overflow:hidden}
+.darpan-modal{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:20px}
+.darpan-modal[hidden]{display:none!important}
+.darpan-modal__backdrop{position:absolute;inset:0;background:rgba(10,17,32,.58);backdrop-filter:blur(6px)}
+.darpan-modal__dialog{position:relative;width:min(460px,calc(100vw - 28px));border-radius:22px;padding:22px 22px 18px;background:#fff;border:1px solid rgba(132,150,182,.25);box-shadow:0 24px 55px rgba(15,23,42,.25);animation:darpanModalIn .18s ease-out}
+.darpan-modal__icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;font-size:22px;box-shadow:0 10px 22px rgba(37,99,235,.25);margin-bottom:14px}
+.darpan-modal__body h3{margin:0 0 8px;font-size:22px;line-height:1.25;color:#10213f}
+.darpan-modal__body p{margin:0;color:#52627d;font-size:14px;line-height:1.6}
+.darpan-modal__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.darpan-modal__btn{border:0;border-radius:14px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,color .16s ease}
+.darpan-modal__btn:hover{transform:translateY(-1px)}
+.darpan-modal__btn--ghost{background:#eef3fb;color:#16325d}
+.darpan-modal__btn--primary{background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;box-shadow:0 10px 24px rgba(79,70,229,.22)}
+body.dark-mode .darpan-modal__dialog{background:#111b2d;border-color:#324359;box-shadow:0 26px 58px rgba(0,0,0,.45)}
+body.dark-mode .darpan-modal__body h3{color:#eff5ff}
+body.dark-mode .darpan-modal__body p{color:#afbdd4}
+body.dark-mode .darpan-modal__btn--ghost{background:#1d2a42;color:#e6edfa}
+@keyframes darpanModalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+
+/* Unified composer actions and accessible touch dictation stop */
+.chat-input-wrapper .vishakha-voice-stop {
+    display:inline-flex;align-items:center;justify-content:center;
+    flex:0 0 42px;width:42px;height:42px;min-width:42px;min-height:42px;
+    padding:0;margin:0;border:0;border-radius:12px;
+    background:#fee2e2;color:#bd2135;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+    transition:background .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.chat-input-wrapper .vishakha-voice-stop[hidden]{display:none!important}
+.chat-input-wrapper .vishakha-voice-stop svg{display:block;flex-shrink:0}
+.chat-input-wrapper .vishakha-voice-stop:hover {background:#fecaca;transform:translateY(-1px)}
+.chat-input-wrapper .vishakha-voice-stop:active {transform:scale(.93)}
+.chat-input-wrapper .vishakha-voice-stop:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+body.dark-mode .chat-input-wrapper .vishakha-voice-stop {background:#65303b;color:#ffd7dc}
+@media(max-width:700px){
+  .chat-input-wrapper .vishakha-voice-stop,.chat-input-wrapper .voice-input-button,.chat-input-wrapper .send-button{
+    flex:0 0 40px;width:40px;height:40px;min-width:40px;min-height:40px;
+    align-self:center;
+  }
+  .chat-input-wrapper .vishakha-voice-stop{border-radius:12px}
+  .chat-input-wrapper:has(.vishakha-voice-stop:not([hidden])) #message-input{min-width:0;flex:1 1 auto}
+}
+@media(max-width:380px){
+ .chat-input-wrapper .vishakha-voice-stop,.chat-input-wrapper .voice-input-button,.chat-input-wrapper .send-button{
+   flex-basis:36px;width:36px;height:36px;min-width:36px;min-height:36px;
+ }
+}
+/* In-app non-blocking alerts */
+.darpan-toast-region{position:fixed;z-index:2100;right:18px;top:18px;max-width:min(390px,calc(100vw - 24px));display:flex;flex-direction:column;gap:9px;pointer-events:none}
+.darpan-toast{display:flex;align-items:center;gap:10px;min-width:0;padding:12px 14px;border-radius:14px;border:1px solid #cbd9f0;background:#fff;color:#1a2a44;box-shadow:0 14px 32px rgba(15,23,42,.16);font-size:13px;line-height:1.45;pointer-events:auto;animation:darpanToastIn .2s ease both}
+.darpan-toast-symbol{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#dbeafe;color:#2563eb;font-weight:800}
+.darpan-toast-error .darpan-toast-symbol{background:#fee2e2;color:#c02636}
+.darpan-toast>span:nth-child(2){min-width:0;flex:1}
+.darpan-toast button{background:transparent;border:0;color:inherit;opacity:.6;font-size:22px;cursor:pointer}
+.darpan-toast button:hover{opacity:1}
+body.dark-mode .darpan-toast{background:#1b2a42;color:#eff5ff;border-color:#385077}
+@keyframes darpanToastIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:700px){.darpan-toast-region{top:12px;right:12px;left:12px;max-width:none}}
+@media(prefers-reduced-motion:reduce){.darpan-toast{animation:none}.chat-input-wrapper .vishakha-voice-stop{transition:none}}

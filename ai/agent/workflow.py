@@ -312,7 +312,7 @@ class AgentWorkflow:
                     "Select General in the application menu for general conversations."}
         if (not self.state.current_question
                 and re.match(r"^(?:who is|who was|what is|what are|explain|define|tell me about|write an? email|draft an? email)\b", text_for_mode, re.I)
-                and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status)\b", text_for_mode, re.I)):
+                and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status|[A-Z][A-Z0-9]{1,15}-\d{2,})\b", text_for_mode, re.I)):
             return {"type": "message", "message":
                     "That looks like a general question. Select General from the application dropdown and ask me there."}
 
@@ -338,6 +338,8 @@ class AgentWorkflow:
                 or re.match(r"^(?:please\s+)?(?:explain|define|teach|translate|what is|what are|how does|why does|write an? email|draft an? email|write a letter|draft a letter)\b", lower)
                 or re.fullmatch(r"(?:hi+|hello|hey|how are you|thank you|thanks)[!.? ]*", lower)
             )
+            if re.search(r'\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b', text, re.I) and re.search(r'\b(?:who|assigned|status|details?|check)\b', lower):
+                new_command = True
             if not new_command:
                 return self.handle_option(user_message)
             candidate = self.orchestrator.understand_request(

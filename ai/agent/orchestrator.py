@@ -22,6 +22,119 @@ class AgentOrchestrator:
         # -------------------------------------------------
 
         message_lower = user_message.lower().strip()
+        # Short employee shorthand should be understood before asking the LLM.
+        # Do not turn a possessive pronoun into a keyword search.
+        if re.fullmatch(r"(?:my|meri|mere|mera)\s+(?:all\s+)?(?:tickets?|ticket\s+status|requests?)\s*[?!.]*", message_lower) or re.fullmatch(r"(?:tickets?|requests?)\s+(?:of\s+)?mine\s*[?!.]*", message_lower) or re.fullmatch(r"(?:check|show|give|tell)\s+(?:me\s+)?my\s+ticket\s+status\s*[?!.]*", message_lower):
+            return {'intent':'SEARCH_TICKETS', 'ticket_number':None,
+                    'ticket_query':None, 'search_query':None, 'search_scope':'MY_TICKETS',
+                    'ticket_count_only':False, 'missing_fields':[]}
+        if re.fullmatch(r"(?:open|pending|resolved|closed|active)\s+(?:my\s+)?tickets?\s*[?!.]*", message_lower):
+            status_word = message_lower.split()[0].upper()
+            return {'intent':'SEARCH_TICKETS', 'ticket_number':None,
+                    'ticket_query':None, 'search_query':None, 'search_scope':'MY_TICKETS',
+                    'ticket_status_filter':status_word, 'ticket_count_only':False,
+                    'missing_fields':[]}
+        if re.fullmatch(r"(?:ticket|tickets|help with tickets|ticket help|help me with tickets)\s*[?!.]*", message_lower):
+            # User has not identified an action. Ask an actionable question,
+            # never guess whether the user intends a write operation.
+            return {'intent':'SEARCH_TICKETS', 'ticket_number':None, 'ticket_query':None, 'search_query':None, 'search_scope':'MY_TICKETS', 'ticket_count_only':False, 'missing_fields':[]}
+        if re.fullmatch(r"(?:who\s+is\s+assigned\s+to\s+my\s+tickets?|who\s+is\s+assigned\s+to\s+my\s+ticket|my\s+ticket\s+assignee|my\s+ticket\s+owner)\s*[?!.]*", message_lower):
+            return {'intent':'SEARCH_TICKETS', 'ticket_number':None, 'ticket_query':'ASSIGNED_TO', 'search_query':None, 'search_scope':'MY_TICKETS', 'ticket_count_only':False, 'missing_fields':[]}
+        # DARPAN UX ROUTES: deterministic read-only requests and clear ticket creation.
+        # Use the existing workflow for authorization and API access; never guess IDs.
+        import unicodedata
+        original_text = str(user_message or '').strip()
+        message_lower = unicodedata.normalize('NFKC', original_text).casefold().strip()
+        # Common Hindi/English/Hinglish SEP instructions. This does not claim
+        # universal translation: unsupported text still reaches normal classifier.
+        hindi = bool(re.search(r'[\u0900-\u097f]', message_lower))
+        if hindi or re.search(r'\b(?:dikhao|dikha[o]?|batao|bataiye|mera|meri|mere|ticket\s+ka|banao|karo|karna|karna\s+hai|bhejo|kitne|stithi|banaye|banado|create)\b', message_lower):
+            has_ticket = bool(re.search(r'ticket|tickets|टिकट', message_lower))
+            if has_ticket:
+                if re.search(r'(?:बनाओ|बनाना|बनाइए|नया|बनादो|create|raise|banao|banado|banana|karna\s+hai|karna)', message_lower):
+                    message_lower = 'create a ticket' + (' for admin' if re.search(r'admin|एडमिन', message_lower) else ' for it' if re.search(r'\bit\b|आईटी', message_lower) else '')
+                elif re.search(r'(?:स्थिति|स्टेटस|status|stithi|दिखाओ|दिखाएं|दिखाइए|बताओ|batao|dikhao|kitne|कितने|mere|meri|मेरा|मेरे)', message_lower):
+                    ticket_ref = re.search(r'\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b', original_text, re.I)
+                    message_lower = ('check ticket ' + ticket_ref.group().upper() + ' status') if ticket_ref else 'show my tickets'
+
+        if re.search(r'\b(?:laptop|desktop|network|internet|wifi|wi-fi|printer|mouse|keyboard)\b', message_lower) and re.search(r'ticket|tickets|टिकट', original_text, re.I) and re.search(r'\b(?:create|raise|karna|banana|banado|banao)\b', message_lower):
+            return {'intent':'CREATE_TICKET', 'department':'IT Department',
+                    'request_type':None,'category':None,'description':original_text,
+                    'location':None,'priority':None,'ticket_number':None,'missing_fields':[]}
+
+        # Complete common multilingual intents without contacting the LLM.
+        if (hindi or re.search(r'\b(?:dikhao|batao|bataiye|mera|meri|mere|banao|banado)\b', original_text, re.I)) and re.search(r'ticket|टिकट', original_text, re.I):
+            if message_lower.startswith('show my tickets'):
+                return {'intent':'SEARCH_TICKETS', 'ticket_number':None, 'ticket_query':None,
+                        'search_query':None, 'search_scope':'MY_TICKETS',
+                        'ticket_count_only':False, 'missing_fields':[]}
+            if message_lower.startswith('create a ticket'):
+                department = ('Admin' if 'for admin' in message_lower else
+                              'IT Department' if 'for it' in message_lower else None)
+                return {'intent':'CREATE_TICKET', 'department':department,
+                        'request_type':None,'category':None,'description':original_text,
+                        'location':None,'priority':None,'ticket_number':None,'missing_fields':[]}
+
+        numbered = re.search(r'\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b', original_text, re.I)
+        no_write = not re.search(r'\b(?:create|raise|submit|delete|change|update|modify|close|cancel|reassign|approve|reject)\b', message_lower)
+        # Handle ID-based requests BEFORE fallback/general-chat detection.
+        if numbered and no_write and re.search(r'\b(?:who|assigned|assignee|responsible|handling|working|status|detail|show|check|what|when|raised|created|requester|owner)\b', message_lower):
+            if re.search(r'\b(?:assigned|assignee|responsible|handling|working|owner)\b', message_lower):
+                query_type = 'ASSIGNED_TO'
+            elif re.search(r'\b(?:raised by|created by|requester|who raised|who created)\b', message_lower):
+                query_type = 'REQUESTER'
+            elif re.search(r'\b(?:when|created on|created date)\b', message_lower):
+                query_type = 'CREATED_DATE'
+            elif re.search(r'\b(?:status|progress|state)\b', message_lower):
+                query_type = 'STATUS'
+            else:
+                query_type = 'DETAILS'
+            return {'intent':'CHECK_TICKET_STATUS', 'ticket_number':numbered.group().upper(),
+                    'ticket_query':query_type, 'missing_fields':[]}
+
+        # 'Show top 10 IT Application' means a ranking of subcategories of
+        # the Application category, not 971 individual matching tickets.
+        if no_write and re.search(r'\b(?:top|highest|most|ranking|rank)\s*(?:\d{1,2})?\b', message_lower) and re.search(r'\b(?:it|it department)\b', message_lower):
+            from ai.agent.catalog import CATEGORIES
+            cats = CATEGORIES.get('IT Department', {})
+            category = next((name for name in cats if re.search(r'(?<!\w)' + re.escape(name.casefold()) + r'(?!\w)', message_lower)), None)
+            if category:
+                limit_match = re.search(r'\btop\s+(\d{1,2})\b', message_lower)
+                return {'intent':'ANALYZE_TICKETS', 'analytics_department':'IT Department',
+                        'analytics_view':'SUBCATEGORY_RANKING', 'analytics_category':category,
+                        'analytics_limit':min(50, int(limit_match.group(1))) if limit_match else 10,
+                        'analytics_sort':'total', 'missing_fields':[]}
+
+        if no_write and re.search(r'\b(?:summary|overview|analytics|statistics|summarize|summarise|report)\b', message_lower) and re.search(r'\b(?:it|it department)\b', message_lower):
+            return {'intent':'ANALYZE_TICKETS', 'analytics_department':'IT Department',
+                    'analytics_view':'OVERVIEW', 'missing_fields':[]}
+
+        # If a known IT category is mentioned in a ranking request, default to
+        # subcategory ranking even when the user omits the word 'subcategories'.
+        if no_write and re.search(r'\b(?:top|highest|most|rank|ranking)\s*(?:\d{1,2})?\b', message_lower) and re.search(r'\b(?:it|it department)\b', message_lower):
+            from ai.agent.catalog import CATEGORIES
+            cats = CATEGORIES.get('IT Department', {})
+            named_category = next((name for name in cats if re.search(r'(?<!\w)' + re.escape(name.casefold()) + r'(?!\w)', message_lower)), None)
+            if named_category:
+                top_match = re.search(r'\btop\s+(\d{1,2})\b', message_lower)
+                return {'intent':'ANALYZE_TICKETS', 'analytics_department':'IT Department',
+                        'analytics_view':'SUBCATEGORY_RANKING', 'analytics_category':named_category,
+                        'analytics_limit':min(50, int(top_match.group(1))) if top_match else 10,
+                        'analytics_sort':'total', 'missing_fields':[]}
+
+        # An explicit department in a CREATE command should always be honored.
+        create_match = re.match(r'^\s*(?:please\s+)?(?:create|raise|open|submit|log|file)\s+(?:an?\s+|new\s+|my\s+)*(?:(admin|administration|it|hr|safety|security|branding|finance)\s+(?:department\s+)?)?(?:ticket|request)\b', message_lower)
+        if create_match:
+            dept_key = (create_match.group(1) or '').lower()
+            departments = {'admin':'Admin', 'administration':'Admin', 'it':'IT Department', 'hr':'HR Department', 'safety':'Safety', 'security':'Security','branding':'Branding','finance':'Finance'}
+            if not dept_key:
+                suffix = message_lower[create_match.end():]
+                for k in departments:
+                    if re.search(r'\b(?:for|in|to)\s+(?:the\s+)?' + k + r'\b', suffix):
+                        dept_key = k; break
+            return {'intent':'CREATE_TICKET', 'department': departments.get(dept_key),
+                    'request_type':None,'category':None,'description':(original_text if message_lower[create_match.end():].strip() else None),
+                    'location':None, 'priority':None,'ticket_number':None,'missing_fields':[]}
 
         # Clear conversational requests do not need JSON extraction. Do not
         # intercept an explicit ticket action or a specific ticket number.

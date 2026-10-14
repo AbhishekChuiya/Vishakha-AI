@@ -3,30 +3,38 @@
   'use strict';
   const dash = document.getElementById('darpan-dashboard');
   const chat = document.getElementById('darpan-chat-view');
+  const sepWorkspace = document.getElementById('darpan-sep-workspace');
   const dashboardTab = document.getElementById('darpan-tab-dashboard');
   const aiTab = document.getElementById('darpan-tab-ai');
   if (!dash || !chat || !dashboardTab || !aiTab) return;
   let fetched = false;
   function show(view) {
     const isDashboard = view === 'dashboard';
-    dash.hidden = !isDashboard; chat.hidden = isDashboard;
-    document.body.classList.toggle('darpan-view-dashboard', isDashboard);
-    document.body.classList.toggle('darpan-view-ai', !isDashboard);
+    const isSepWorkspace = view === 'sep';
+    dash.hidden = !isDashboard; chat.hidden = view !== 'ai';
+    if (sepWorkspace) sepWorkspace.hidden = !isSepWorkspace;
+    document.body.classList.toggle('darpan-view-dashboard', isDashboard || isSepWorkspace);
+    document.body.classList.toggle('darpan-view-sep', isSepWorkspace);
+    document.body.classList.toggle('darpan-view-ai', view === 'ai');
     const history = document.querySelector('.chat-history-section');
     const dashboardSide = document.getElementById('darpan-dashboard-side');
     const appSelector = document.getElementById('darpan-application-selector');
-    if(history) history.hidden = isDashboard;
-    if(dashboardSide) dashboardSide.hidden = !isDashboard;
-    if(appSelector) appSelector.hidden = isDashboard;
-    document.getElementById('new-chat-button')?.toggleAttribute('hidden', isDashboard);
-    document.getElementById('collapsed-new-chat')?.toggleAttribute('hidden', isDashboard);
-    document.getElementById('collapsed-recent-chats')?.toggleAttribute('hidden', isDashboard);
-    dashboardTab.classList.toggle('active', isDashboard);
+    const connector = document.getElementById('darpan-open-sep-workspace');
+    if(history) history.hidden = isDashboard || isSepWorkspace;
+    if(dashboardSide) dashboardSide.hidden = !(isDashboard || isSepWorkspace);
+    if(appSelector) appSelector.hidden = isDashboard || isSepWorkspace;
+    if(connector) connector.classList.toggle('active', isSepWorkspace);
+    document.getElementById('new-chat-button')?.toggleAttribute('hidden', isDashboard || isSepWorkspace);
+    document.getElementById('collapsed-new-chat')?.toggleAttribute('hidden', isDashboard || isSepWorkspace);
+    document.getElementById('collapsed-search-chat')?.toggleAttribute('hidden', isDashboard || isSepWorkspace);
+    document.getElementById('collapsed-recent-chats')?.toggleAttribute('hidden', isDashboard || isSepWorkspace);
+    dashboardTab.classList.toggle('active', isDashboard || isSepWorkspace);
     aiTab.classList.toggle('active', !isDashboard);
-    dashboardTab.setAttribute('aria-selected', String(isDashboard));
+    document.querySelectorAll('[data-darpan-side]').forEach(item => { if (isSepWorkspace) item.classList.remove('active'); });
+    dashboardTab.setAttribute('aria-selected', String(isDashboard || isSepWorkspace));
     aiTab.setAttribute('aria-selected', String(!isDashboard));
-    if (isDashboard && !fetched) load();
-    if (!isDashboard) document.getElementById('message-input')?.focus();
+    if ((isDashboard || isSepWorkspace) && !fetched) load();
+    if (view === 'ai') document.getElementById('message-input')?.focus();
     try { sessionStorage.setItem('darpan_active_view', view); } catch (_) {}
   }
   const safeText = value => String(value == null ? '' : value);
@@ -55,13 +63,17 @@
       const data=await response.json();
       if(!response.ok || !data.success)throw new Error(data.error || 'Service Excellence is unavailable');
       const m=data.metrics || {};
-      for(const id of ['total','active','pending','resolved']) set('darpan-kpi-'+id, Number.isInteger(m[id]) ? m[id].toLocaleString() : '—');
+      for(const id of ['total','active','pending','resolved']) {const val=Number.isInteger(m[id]) ? m[id].toLocaleString() : '—';set('darpan-kpi-'+id,val);if(id!=='total')set('darpan-sep-'+id,val);}set('darpan-sep-recent-count',Array.isArray(data.recent) ? String(data.recent.length) : '—');
       const list=document.getElementById('darpan-recent-tickets');
       if(list){list.replaceChildren();if((data.recent||[]).length){for(const ticket of data.recent)list.appendChild(recentRow(ticket));}else{const p=document.createElement('div');p.className='darpan-empty';p.textContent=m.total===0?'You have no SEP tickets yet.':'No recent tickets available.';list.appendChild(p);}}
       if(status)status.textContent=data.partial?'Some SEP metrics are unavailable — retry':'Updated from Service Excellence';
+      const sepList=document.getElementById('darpan-sep-recent');if(sepList){sepList.replaceChildren();if((data.recent||[]).length){for(const ticket of data.recent)sepList.appendChild(recentRow(ticket));}else{sepList.textContent=m.total===0?'You have no SEP tickets yet.':'No recent tickets available.';}}
+      set('darpan-sep-status',data.partial?'Some SEP data is currently unavailable.':'Updated from your Service Excellence account.');
       fetched=!data.partial;
     } catch(e) {
       if(status)status.textContent='SEP dashboard temporarily unavailable';
+      set('darpan-sep-status','Service Excellence data is temporarily unavailable.');
+      set('darpan-sep-recent','Unable to load your recent tickets.');
       const list=document.getElementById('darpan-recent-tickets');if(list)list.textContent=e.message || 'Unable to load tickets';
     }
   }
@@ -78,6 +90,14 @@
     if(target) document.querySelector(target)?.scrollIntoView({behavior:'smooth',block:'start'});
   }));
   dashboardTab.addEventListener('click',()=>show('dashboard'));
+  document.getElementById('darpan-open-sep-workspace')?.addEventListener('click',()=>{show('sep');document.querySelector('.darpan-sep-workspace')?.scrollTo({top:0});});
+  document.getElementById('darpan-sep-back')?.addEventListener('click',()=>show('dashboard'));
+  document.querySelectorAll('[data-sep-workspace-prompt]').forEach(el=>el.addEventListener('click',()=>{
+    // Choose the SEP application before pre-filling its query.
+    const ticketOption=document.querySelector('[data-application="ticketing"]');
+    if (ticketOption && !ticketOption.classList.contains('active')) ticketOption.click();
+    promptAI(el.dataset.sepWorkspacePrompt);
+  }));
   aiTab.addEventListener('click',()=>show('ai'));
   document.getElementById('darpan-hero-open-ai')?.addEventListener('click',()=>show('ai'));
   document.getElementById('darpan-refresh-dashboard')?.addEventListener('click',()=>{fetched=false;load();});
@@ -87,5 +107,5 @@
   const list=document.getElementById('recent-chats');
   list?.addEventListener('click',()=>show('ai'));
   let initial='dashboard';try{initial=sessionStorage.getItem('darpan_active_view') || 'dashboard';}catch(_){}
-  show(initial==='ai'?'ai':'dashboard');
+  show(initial==='ai'?'ai':initial==='sep'?'sep':'dashboard');
 })();

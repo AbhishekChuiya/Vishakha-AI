@@ -1,8 +1,8 @@
 import json
+import re
 
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from ai.agent.conversation import ConversationState
 from ai.agent.workflow import AgentWorkflow
@@ -34,6 +34,32 @@ from ai.llm.cancellation import (
     unregister_request,
     LLMCancelled,
 )
+
+
+
+def _rewrite_general_followup_prompt(user_message, conversation):
+    """Help the General assistant preserve intent for simple follow-up tasks.
+
+    Example: user first asks for translation into Hindi, the AI asks for the
+    message, and the next user turn contains only the text to translate.
+    """
+    raw = str(user_message or '').strip()
+    if not raw or not conversation:
+        return user_message
+    try:
+        recent = list(conversation.messages.order_by('-id')[:6])
+    except Exception:
+        return user_message
+    last_user = next((m.content for m in recent if getattr(m, 'role', '') == 'user' and getattr(m, 'content', '').strip()), '')
+    last_assistant = next((m.content for m in recent if getattr(m, 'role', '') == 'assistant' and getattr(m, 'content', '').strip()), '')
+    context_blob = (str(last_user) + "\n" + str(last_assistant)).casefold()
+    if ('translate' in context_blob and 'hindi' in context_blob
+            and not re.search(r'\b(?:translate|translation|hindi|हिंदी|हिन्दी)\b', raw, re.I)):
+        return (
+            'Translate the following message into Hindi. Return only the Hindi '
+            'translation unless I explicitly ask for explanation.\n\n' + raw
+        )
+    return user_message
 
 def login_view(request):
 
@@ -82,6 +108,8 @@ def login_view(request):
 
 
 def signup_view(request):
+    if not settings.DARPAN_ALLOW_SELF_SIGNUP:
+        return HttpResponseForbidden('Self-registration is disabled. Contact your administrator.')
 
     # Already logged in
     if request.user.is_authenticated:
@@ -442,7 +470,6 @@ def _confirm_sep_ticket_once(conversation, workflow):
 # CHAT API
 # =========================================================
 
-@csrf_exempt
 @require_POST
 @login_required
 def chat(request):
@@ -510,8 +537,9 @@ def chat(request):
                 {"role": turn.role, "content": turn.content}
                 for turn in reversed(list(conversation.messages.order_by("-id")[:10]))
             ]
+            rewritten_message = _rewrite_general_followup_prompt(user_message, conversation)
             result = respond_to_general_chat(
-                user_message=user_message,
+                user_message=rewritten_message,
                 chat_id=f"user_{request.user.pk}:general:{chat_id}",
                 requester_email=request.user.email or f"user_{request.user.pk}",
                 prior_messages=prior_turns,
@@ -926,7 +954,6 @@ def chat_state(request):
         "active": False,
     })
 
-@csrf_exempt
 @require_POST
 @login_required
 def new_chat(request):
@@ -1009,7 +1036,6 @@ def new_chat(request):
         "chat_id": chat_id,
     })
 
-@csrf_exempt
 @require_POST
 @login_required
 def delete_chat(request):
@@ -1111,7 +1137,6 @@ def delete_chat(request):
 # STOP ACTIVE AI RESPONSE
 # =========================================================
 
-@csrf_exempt
 @require_POST
 @login_required
 def stop_chat(request):
@@ -1395,7 +1420,6 @@ def chat_library(request):
     return JsonResponse({"success": True, "chats": list_chats(request.user)})
 
 
-@csrf_exempt
 @require_POST
 @login_required
 def chat_library_save(request):
@@ -1413,7 +1437,14 @@ def chat_library_save(request):
         with transaction.atomic():
             conversation = owned_chat(request.user, chat_id, application=application, create=True)
             conversation.title = title or 'New Chat'
-            conversation.pinned = bool(data.get('pinned', False))
+            requested_pin = bool(data.get('pinned', False))
+            if requested_pin and not conversation.pinned:
+                from .models import ChatConversation
+                pinned_total = ChatConversation.objects.filter(user=request.user, application=application, pinned=True).exclude(pk=conversation.pk).count()
+                if pinned_total >= 5:
+                    return JsonResponse({'success': False,
+                        'error': 'Maximum 5 pinned chats per application. Unpin another chat in this application first.'}, status=409)
+            conversation.pinned = requested_pin
             conversation.rendered_html = html
             conversation.save(update_fields=['title','pinned','rendered_html','updated_at'])
         return JsonResponse({'success':True, 'chat': serialize(conversation)})

@@ -451,7 +451,7 @@ function addDateInput(field, inputType, placeholder) {
     if (field === "target_date") {
         input.addEventListener("change", function () {
             if (this.value && this.value < this.min) {
-                alert("Please select today or a future date.");
+                darpanNotify("Please select today or a future date.");
                 this.value = "";
             }
         });
@@ -471,7 +471,7 @@ function addDateInput(field, inputType, placeholder) {
 
                 if (selectedTime > now) {
 
-                    alert(
+                    darpanNotify(
                         "Incident start time cannot be in the future."
                     );
 
@@ -1216,6 +1216,15 @@ chats.forEach(function(chat) {
     const pinButton = menu.querySelector('.pin-chat-button');
     pinButton.addEventListener('click', function(event) {
         event.stopPropagation();
+        if (!chat.pinned) {
+            const pinnedCount = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]')
+                .filter(item => Boolean(item.pinned) && applicationForChat(item) === selectedVishakhaApp).length;
+            if (pinnedCount >= 5) {
+                darpanNotify('You can pin up to 5 chats in each application. Unpin a chat in this application first.');
+                menu.style.display = 'none';
+                return;
+            }
+        }
         chat.pinned = !Boolean(chat.pinned);
         const allChats = JSON.parse(localStorage.getItem(CHAT_LIST_KEY) || '[]');
         const storedChat = allChats.find(c => c.id === chat.id);
@@ -1302,10 +1311,11 @@ chats.forEach(function(chat) {
             event.stopPropagation();
 
 
-            const confirmed =
-                confirm(
-                    "Delete this chat?"
-                );
+            const confirmed = await showDarpanConfirmModal({
+                title: 'Delete this chat?',
+                message: 'This chat will be removed from your history for the current application.',
+                confirmLabel: 'Delete chat'
+            });
 
 
             if (!confirmed) {
@@ -1346,7 +1356,7 @@ chats.forEach(function(chat) {
                 if (!data.success) {
 
                     vishakhaDeletedIds.delete(chat.id);
-                    alert(
+                    darpanNotify(
                         "Could not delete this chat."
                     );
 
@@ -1360,7 +1370,7 @@ chats.forEach(function(chat) {
                     error
                 );
 
-                alert(
+                darpanNotify(
                     "Could not delete this chat."
                 );
 
@@ -1762,7 +1772,7 @@ function restoreButtonEvents() {
                             this.min
                         ) {
 
-                            alert(
+                            darpanNotify(
                                 "Please select today or a future date."
                             );
 
@@ -1876,7 +1886,7 @@ function restoreButtonEvents() {
                             now
                         ) {
 
-                            alert(
+                            darpanNotify(
                                 "Incident start time cannot be in the future."
                             );
 
@@ -2994,14 +3004,24 @@ function addTicketLink(url) {
 // One delegated handler supports buttons inserted by New Chat, history restore,
 // and application switching. No per-button listeners (avoids duplicate submits).
 const VISH_GENERAL_SUGGESTIONS = [
-    'Explain what agentic AI is',
-    'Help me write a project update email',
-    'Summarize the advantages of automation'
+    'Help me write a professional email',
+    'Explain how agentic AI works',
+    'Summarize the benefits of automation',
+    'Help me plan a meeting',
+    'Translate a message into Hindi',
+    'Prepare a project update'
 ];
 const VISH_SEP_SUGGESTIONS = [
-    'Create a laptop repair ticket',
-    'Report a network issue',
-    'Check my ticket status'
+    'Create a ticket',
+    'Show my tickets',
+    'Check my ticket status',
+    'Raise an Admin ticket',
+    'Show my open tickets',
+    'Show my resolved tickets',
+    'Give me summary of IT Department',
+    'Show top 10 IT Application',
+    'Create a Safety ticket',
+    'Who is assigned to my ticket?'
 ];
 function setupSuggestionButtons(container) {
     // The container is handled through the delegated chat-area listener.
@@ -3241,17 +3261,87 @@ async function restoreConversationState() {
 
 }
 
+
+
+// Non-blocking in-app feedback instead of browser alert dialogs.
+function darpanNotify(message, kind = 'info') {
+    let host = document.getElementById('darpan-toast-region');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'darpan-toast-region';
+        host.className = 'darpan-toast-region';
+        host.setAttribute('aria-live', 'polite');
+        host.setAttribute('aria-atomic', 'false');
+        document.body.appendChild(host);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'darpan-toast' + (kind === 'error' ? ' darpan-toast-error' : '');
+    const symbol = document.createElement('span');
+    symbol.className = 'darpan-toast-symbol';
+    symbol.textContent = kind === 'error' ? '!' : '✓';
+    const label = document.createElement('span');
+    label.textContent = String(message || '');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.textContent = '×';
+    close.addEventListener('click', () => toast.remove());
+    toast.append(symbol, label, close);
+    host.appendChild(toast);
+    const timer = window.setTimeout(() => toast.remove(), 4500);
+    toast.addEventListener('click', () => window.clearTimeout(timer), {once:true});
+    return toast;
+}
+
+function showDarpanConfirmModal(options = {}) {
+    const modal = document.getElementById('darpan-confirm-modal');
+    const title = document.getElementById('darpan-confirm-title');
+    const message = document.getElementById('darpan-confirm-message');
+    const ok = document.getElementById('darpan-confirm-ok');
+    if (!modal || !title || !message || !ok) {
+        return Promise.resolve(window.confirm((options.title || 'Please confirm') + '\n\n' + (options.message || 'Do you want to continue?')));
+    }
+    title.textContent = options.title || 'Please confirm';
+    message.textContent = options.message || 'Do you want to continue?';
+    ok.textContent = options.confirmLabel || 'Continue';
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('darpan-modal-open');
+    return new Promise(resolve => {
+        const cleanup = (value) => {
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('darpan-modal-open');
+            ok.removeEventListener('click', onOk);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+            resolve(value);
+        };
+        const onOk = () => cleanup(true);
+        const onBackdrop = (event) => {
+            if (event.target?.dataset?.modalClose === 'cancel') cleanup(false);
+        };
+        const onKey = (event) => {
+            if (event.key === 'Escape') cleanup(false);
+        };
+        ok.addEventListener('click', onOk);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+        requestAnimationFrame(() => ok.focus());
+    });
+}
+
 /* =========================================================
    NEW CHAT
 ========================================================= */
 
 async function startNewChat() {
 
-    const confirmed =
-        confirm(
-            "Start a new chat?\n\n" +
-            "The current conversation will be cleared."
-        );
+    const confirmed = await showDarpanConfirmModal({
+        title: 'Start a new chat?',
+        message: 'Your current conversation will be cleared from the screen and a fresh chat will open.',
+        confirmLabel: 'Start new chat'
+    });
 
     if (!confirmed) {
 
@@ -3299,9 +3389,7 @@ async function startNewChat() {
 
         if (!data.success) {
 
-            alert(
-                "Could not start a new chat."
-            );
+            addAIMessage('I could not start a new chat right now. Please try again.');
 
             return;
 
@@ -3376,7 +3464,7 @@ async function startNewChat() {
             error
         );
 
-        alert(
+        darpanNotify(
             "Could not start a new chat."
         );
 
@@ -3768,14 +3856,16 @@ if (applicationSelectorButton && applicationDropdown) {
         const selectedIcon = applicationSelectorButton.querySelector('.selected-app-icon');
         if (selectedName) selectedName.textContent = label.trim();
         if (selectedIcon) selectedIcon.textContent = icon.trim();
-        applicationDropdown.querySelectorAll('[data-application]').forEach(button =>
-            button.classList.toggle('active', button.dataset.application === selectedVishakhaApp));
+        applicationDropdown.querySelectorAll('[data-application]').forEach(button => {
+            button.classList.toggle('active', button.dataset.application === selectedVishakhaApp);
+            button.querySelectorAll('.application-active-mark').forEach(mark => mark.remove());
+        });
         chatInput.placeholder = selectedVishakhaApp === 'general'
             ? 'Ask anything in General...' : 'Ask about SEP tickets or actions...';
     }
     function switchApplication(nextApp) {
         if (!['general', 'ticketing'].includes(nextApp) || nextApp === selectedVishakhaApp) return;
-        if (isAIResponding) { alert('Please stop the current response before switching applications.'); return; }
+        if (isAIResponding) { addAIMessage('Please stop the current response before switching applications.'); return; }
         saveChatHistory();
         selectedVishakhaApp = nextApp;
         localStorage.setItem(VISH_APP_KEY, selectedVishakhaApp);
@@ -4152,9 +4242,12 @@ if (userMenuButton && userDropdown) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
         mic.disabled = true;
-        mic.title = 'Voice input is not supported by this browser';
+        const insecure = !window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+        mic.title = insecure
+            ? 'Voice recognition on this device requires HTTPS. Text chat still works.'
+            : 'Voice recognition is unavailable in this browser.';
         mic.setAttribute('aria-label', mic.title);
-        if (status) status.textContent = 'Voice input is unavailable in this browser.';
+        if (status) status.textContent = mic.title;
         return;
     }
 
@@ -4256,9 +4349,28 @@ if (userMenuButton && userDropdown) {
         }
     }
 
+    let stopping = false;
+    function stopDictation() {
+        if (!listening && !stopping) return;
+        if (stopping) return;
+        stopping = true;
+        // Stop the audio meter immediately, including on touch devices.
+        setListening(false);
+        if (status) status.textContent = 'Dictation stopped · review the text before sending';
+        try { recognition?.stop(); } catch (_) { /* recognition may already have ended */ }
+    }
+    const stopButton = document.getElementById('vishakha-voice-stop');
+    if (stopButton) {
+        stopButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            stopDictation();
+        });
+    }
     mic.addEventListener('click', function () {
-        if (listening) { recognition?.stop(); return; }
+        if (listening) { stopDictation(); return; }
         try {
+            stopping = false;
             recognition = new SpeechRecognition();
             recognition.lang = document.documentElement.lang || 'en-IN';
             recognition.continuous = false;
@@ -4288,6 +4400,7 @@ if (userMenuButton && userDropdown) {
                 if (status) status.textContent = messages[event.error] || 'Voice input could not continue.';
             };
             recognition.onend = function () {
+                stopping = false;
                 setListening(false);
                 if (confirmedText && status) status.textContent = 'Dictation complete · review and send';
             };
@@ -4303,10 +4416,10 @@ if (userMenuButton && userDropdown) {
     document.addEventListener('click', function (event) {
         if (!listening || event.target.closest('#voice-input-button')) return;
         if (event.target.closest('#new-chat-button, [data-application], .new-chat-button, .recent-chat-item')) {
-            recognition?.stop();
+            stopDictation();
         }
     }, true);
-    window.addEventListener('pagehide', () => { if (listening) recognition?.stop(); });
+    window.addEventListener('pagehide', () => { if (listening) stopDictation(); });
 })();
 
 /* Vishakha AI v4: sidebar branding and scoped chat search. */
@@ -4321,10 +4434,7 @@ if (userMenuButton && userDropdown) {
     });
     const search = document.getElementById('vishakha-chat-search');
     search?.addEventListener('input', function () { renderRecentChats(); });
-    // Dialog-free stop for voice dictation, using same existing microphone action.
-    document.getElementById('vishakha-voice-stop')?.addEventListener('click', function () {
-        document.getElementById('voice-input-button')?.click();
-    });
+    // Stop button is handled directly inside the voice controller above.
 })();
 
 // Restored chat HTML does not retain event listeners; reattach picker action via delegation.
@@ -4444,7 +4554,7 @@ document.addEventListener('click', function(event) {
             save.addEventListener('click', async function() {
                 const newText = textarea.value.trim();
                 if (!newText) { textarea.focus(); return; }
-                if (isAIResponding) { alert('Wait for the current response to finish first.'); return; }
+                if (isAIResponding) { darpanNotify('Wait for the current response to finish first.'); return; }
                 if (newText === oldText) { finish(); return; }
                 save.disabled = true;
                 cancel.disabled = true;
@@ -4470,7 +4580,7 @@ document.addEventListener('click', function(event) {
                     await sendToBackend(newText, 'text');
                 } catch (err) {
                     console.error('Edit & regenerate failed:', err);
-                    alert('Could not regenerate the edited message. Your original conversation was preserved.');
+                    darpanNotify('Could not regenerate the edited message. Your original conversation was preserved.');
                     save.disabled = false;
                     cancel.disabled = false;
                 }
@@ -4548,4 +4658,30 @@ document.addEventListener('click', function(event) {
     });
     if (media.addEventListener) media.addEventListener('change', () => closeMenu());
     else media.addListener(() => closeMenu());
+})();
+
+
+/* Compact chat actions: search icon expands a text field on demand. */
+(function setupDarpanSidebarActions() {
+  const side = document.getElementById('sidebar');
+  const tools = document.querySelector('.vishakha-history-tools');
+  const toggle = document.getElementById('darpan-search-toggle');
+  const collapsed = document.getElementById('collapsed-search-chat');
+  const field = document.getElementById('vishakha-chat-search');
+  if (!tools || !toggle || !field) return;
+  function setOpen(open) {
+    tools.classList.toggle('darpan-search-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) field.focus();
+    else {field.value = '';field.dispatchEvent(new Event('input', {bubbles:true}));}
+  }
+  toggle.addEventListener('click', () => setOpen(!tools.classList.contains('darpan-search-open')));
+  collapsed?.addEventListener('click', () => {
+    side?.classList.remove('collapsed');
+    try {localStorage.setItem('darpan_sidebar_collapsed','false');} catch (_) {}
+    document.getElementById('sidebar-toggle')?.setAttribute('title','Collapse sidebar');
+    document.getElementById('sidebar-toggle')?.setAttribute('aria-label','Collapse sidebar');
+    setOpen(true);
+  });
+  field.addEventListener('keydown', e => {if(e.key==='Escape'){e.preventDefault();setOpen(false);toggle.focus();}});
 })();
