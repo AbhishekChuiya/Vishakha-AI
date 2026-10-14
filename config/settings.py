@@ -146,5 +146,5 @@ DEFAULT_FROM_EMAIL = "Darpan AI <noreply@vishakha.com>"
 
 DARPAN_ANALYTICS_ALLOWED_EMAILS = [
     # Add company-approved reporting users here.
-    "abhishek.chuiya@vishakha.com",
+    "niranshu.mittal@vishakha.com",
 ]
