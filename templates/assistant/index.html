@@ -76,6 +76,8 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
 <div class="app-container">
 
+    <div id="darpan-mobile-overlay" class="darpan-mobile-overlay" hidden></div>
+
     <!-- ================= SIDEBAR ================= -->
 
     <aside
@@ -131,7 +133,7 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
             <button type="button" id="vishakha-home-brand" class="brand-identity" title="Go to dashboard" aria-label="Go to dashboard">
                 <span class="vishakha-theme-wordmark">
                     <img class="vishakha-logo-full vishakha-logo-light" src="{% static 'images/vishakha-logo.png' %}" alt="Vishakha" onerror="this.style.display='none'">
-                    <img class="vishakha-logo-full vishakha-logo-dark" src="{% static 'images/vishakha-logo2.png' %}" alt="Vishakha" onerror="this.style.display='none'">
+                    <img class="vishakha-logo-full vishakha-logo-dark" src="{% static 'images/vishakha-logo2-aligned.png' %}" alt="Vishakha" onerror="this.style.display='none'">
                 </span>
                 <div class="brand-identity-fallback" hidden>
                     <div class="brand-title">Vishakha</div>
@@ -190,6 +192,9 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
         <!-- HEADER -->
 
         <header class="chat-header">
+            <button id="darpan-mobile-menu" class="darpan-mobile-menu" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
 
             <div>
 

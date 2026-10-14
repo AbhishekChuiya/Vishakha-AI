@@ -17,6 +17,24 @@ function darpanNewChatUUID() {
     return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
 
+// Phase 4B: Django CSRF protection for every same-origin mutating request.
+function darpanCsrfToken() {
+    const cookie = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
+    return cookie ? decodeURIComponent(cookie.substring('csrftoken='.length)) : '';
+}
+function darpanSecureFetch(url, options = {}) {
+    const config = {...options};
+    const method = String(config.method || 'GET').toUpperCase();
+    const target = new URL(url, window.location.href);
+    if (target.origin === window.location.origin && !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+        const headers = new Headers(config.headers || {});
+        headers.set('X-CSRFToken', darpanCsrfToken());
+        config.headers = headers;
+        config.credentials = 'same-origin';
+    }
+    return window.fetch(url, config);
+}
+
 const chatInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const chatMessages = document.getElementById("chat-area");
@@ -61,7 +79,7 @@ function vishakhaPersistChat(chat) {
         vishakhaPendingSaves.delete(snapshot.chat_id);
         if (vishakhaDeletedIds.has(snapshot.chat_id)) return;
         vishakhaLibrarySaving = vishakhaLibrarySaving.catch(() => {}).then(async () => {
-            const response = await fetch('/api/chat/library/save/', {
+            const response = await darpanSecureFetch('/api/chat/library/save/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 credentials: 'same-origin',
@@ -75,7 +93,7 @@ function vishakhaPersistChat(chat) {
 
 async function vishakhaInitializeChatLibrary() {
     try {
-        const response = await fetch('/api/chat/library/', {credentials: 'same-origin'});
+        const response = await darpanSecureFetch('/api/chat/library/', {credentials: 'same-origin'});
         if (!response.ok) throw new Error('Library endpoint unavailable');
         const data = await response.json();
         if (!data.success || !Array.isArray(data.chats)) throw new Error('Invalid library response');
@@ -99,7 +117,7 @@ async function vishakhaInitializeChatLibrary() {
         let allImported = true;
         for (const chat of unsynced) {
             try {
-                const saved = await fetch('/api/chat/library/save/', {
+                const saved = await darpanSecureFetch('/api/chat/library/save/', {
                     method: 'POST', credentials: 'same-origin',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({chat_id:chat.id, application:applicationForChat(chat),
@@ -1304,7 +1322,7 @@ chats.forEach(function(chat) {
             try {
 
                 const response =
-                    await fetch(
+                    await darpanSecureFetch(
                         "/api/chat/delete/",
                         {
                             method: "POST",
@@ -2231,7 +2249,7 @@ async function sendToBackend(
         sendButton.classList.add("stop-response");
 
         const response =
-            await fetch(
+            await darpanSecureFetch(
                 "/api/chat/",
                 {
                     method: "POST",
@@ -3042,7 +3060,7 @@ sendButton.addEventListener(
             // Tell Django which chat was stopped
             try {
 
-                await fetch(
+                await darpanSecureFetch(
                     "/api/chat/stop/",
                     {
                         method: "POST",
@@ -3093,7 +3111,7 @@ async function restoreConversationState() {
     try {
 
         const response =
-            await fetch(
+            await darpanSecureFetch(
             "/api/chat/state/?chat_id=" +
             encodeURIComponent(
                 activeChatId
@@ -3259,7 +3277,7 @@ async function startNewChat() {
             );
 
         const response =
-            await fetch(
+            await darpanSecureFetch(
                 "/api/chat/new/",
                 {
                     method: "POST",
@@ -4318,3 +4336,216 @@ document.addEventListener('click', function(event) {
     if (input.showPicker) { try { input.showPicker(); return; } catch (_) {} }
     input.focus();
 });
+
+
+/* Darpan message actions: work for newly added AND restored chat messages.
+   Editing corrects the saved visible message; it does not replay SEP actions. */
+(function vishakhaInstallMessageActions() {
+    if (!chatMessages) return;
+    const ICONS = {
+        copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>',
+        edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg>'
+    };
+    function addActions(message) {
+        if (message.id === 'ai-loading' || message.classList.contains('ai-thinking-message') || message.querySelector(':scope > .vishakha-message-actions')) return;
+        const isUser = message.classList.contains('user-message');
+        const isAI = message.classList.contains('ai-message');
+        if (!isUser && !isAI) return;
+        const bubble = message.querySelector(':scope > .message-bubble');
+        if (!bubble || message.querySelector('.vishakha-message-editor')) return;
+        const actions = document.createElement('div');
+        actions.className = 'vishakha-message-actions';
+        const copy = document.createElement('button');
+        copy.type = 'button'; copy.className = 'vishakha-message-action';
+        copy.dataset.messageAction = 'copy';
+        copy.title = isUser ? 'Copy message' : 'Copy response';
+        copy.setAttribute('aria-label', copy.title);
+        copy.innerHTML = ICONS.copy + '<span>Copy</span>';
+        actions.appendChild(copy);
+        if (isUser) {
+            const edit = document.createElement('button');
+            edit.type = 'button'; edit.className = 'vishakha-message-action';
+            edit.dataset.messageAction = 'edit';
+            edit.title = 'Edit message'; edit.setAttribute('aria-label', edit.title);
+            edit.innerHTML = ICONS.edit + '<span>Edit</span>';
+            actions.appendChild(edit);
+        }
+        message.appendChild(actions);
+    }
+    function decorate() {
+        chatMessages.querySelectorAll('.message.user-message, .message.ai-message').forEach(addActions);
+    }
+    // Use event delegation: restored database snapshots don't preserve listeners.
+    chatMessages.addEventListener('click', async function(event) {
+        const button = event.target.closest('button[data-message-action]');
+        if (!button || !chatMessages.contains(button)) return;
+        const message = button.closest('.message');
+        const bubble = message?.querySelector(':scope > .message-bubble');
+        if (!message || !bubble) return;
+        if (button.dataset.messageAction === 'copy') {
+            // Clone just the response content. Never copy embedded action labels,
+            // change/select buttons, ticket form controls or the message toolbar.
+            const content = bubble.cloneNode(true);
+            content.querySelectorAll('button,input,select,textarea,.ai-options,.ticket-confirmation,.vishakha-message-actions,.vishakha-message-editor,[role="button"]').forEach(node => node.remove());
+            const text = message.classList.contains('user-message')
+                ? (content.querySelector('.vishakha-user-text')?.textContent || content.textContent || '').trim()
+                : (content.innerText || content.textContent || '').trim();
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    // Clipboard API is restricted on HTTP tablet/LAN browsers.
+                    const temporary = document.createElement('textarea');
+                    temporary.value = text; temporary.setAttribute('readonly','');
+                    temporary.style.cssText = 'position:fixed;left:-9999px;top:0';
+                    document.body.appendChild(temporary); temporary.select();
+                    if (!document.execCommand('copy')) throw new Error('Clipboard permission unavailable');
+                    temporary.remove();
+                }
+                clearTimeout(button._darpanCopyTimer);
+                button.classList.remove('vishakha-copied');
+                void button.offsetWidth; // restart the checkmark animation on repeated copies
+                button.classList.add('vishakha-copied');
+                button.innerHTML = ICONS.check + '<span>Copied!</span>';
+                button.setAttribute('aria-label', 'Copied to clipboard');
+                button._darpanCopyTimer = window.setTimeout(() => {
+                    if (!button.isConnected) return;
+                    button.classList.remove('vishakha-copied');
+                    button.innerHTML = ICONS.copy + '<span>Copy</span>';
+                    button.setAttribute('aria-label', 'Copy message');
+                }, 1750);
+            } catch (_) {
+                window.prompt('Copy this text:', text);
+            }
+            return;
+        }
+        if (button.dataset.messageAction === 'edit' && message.classList.contains('user-message')) {
+            if (message.querySelector('.vishakha-message-editor')) return;
+            const textEl = bubble.querySelector('.vishakha-user-text') || bubble.querySelector('p');
+            if (!textEl) return;
+            const oldText = textEl.textContent;
+            textEl.hidden = true;
+            const editor = document.createElement('div');
+            editor.className = 'vishakha-message-editor';
+            const textarea = document.createElement('textarea');
+            textarea.value = oldText; textarea.rows = 3;
+            textarea.setAttribute('aria-label','Edit your message');
+            const row = document.createElement('div'); row.className='vishakha-message-editor-buttons';
+            const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
+            const save = document.createElement('button'); save.type='button'; save.textContent='Save';
+            save.className='vishakha-message-editor-save';
+            row.append(cancel,save); editor.append(textarea,row); bubble.append(editor);
+            const actions = message.querySelector(':scope > .vishakha-message-actions');
+            if (actions) actions.hidden = true;
+            function finish() { editor.remove(); textEl.hidden=false; if (actions) actions.hidden=false; }
+            cancel.addEventListener('click',finish);
+            save.textContent = 'Save & regenerate';
+            save.addEventListener('click', async function() {
+                const newText = textarea.value.trim();
+                if (!newText) { textarea.focus(); return; }
+                if (isAIResponding) { alert('Wait for the current response to finish first.'); return; }
+                if (newText === oldText) { finish(); return; }
+                save.disabled = true;
+                cancel.disabled = true;
+                try {
+                    // Editing branches into a fresh chat. Reusing an earlier SEP
+                    // workflow ID could replay an action or use stale ticket fields.
+                    // Keep the original history intact for auditability.
+                    saveChatHistory();
+                    const nextChatId = (selectedVishakhaApp === 'general' ? 'gen_' : 'sep_') + darpanNewChatUUID();
+                    const response = await darpanSecureFetch('/api/chat/new/', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({chat_id:nextChatId})
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error('Could not initialize revised conversation');
+                    activeChatId = nextChatId;
+                    localStorage.setItem(ACTIVE_CHAT_KEY, nextChatId);
+                    localStorage.setItem(VISH_ACTIVE_APP_KEY(selectedVishakhaApp), nextChatId);
+                    chatMessages.innerHTML = '';
+                    addUserMessage(newText);
+                    setAutomaticChatTitle(newText);
+                    await sendToBackend(newText, 'text');
+                } catch (err) {
+                    console.error('Edit & regenerate failed:', err);
+                    alert('Could not regenerate the edited message. Your original conversation was preserved.');
+                    save.disabled = false;
+                    cancel.disabled = false;
+                }
+            });
+            textarea.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {e.preventDefault();finish();}
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {e.preventDefault();save.click();}
+            });
+            textarea.focus(); textarea.setSelectionRange(textarea.value.length,textarea.value.length);
+        }
+    });
+    const observer = new MutationObserver(() => decorate());
+    observer.observe(chatMessages, {childList:true,subtree:true});
+    decorate();
+})();
+
+
+/* Darpan mobile navigation: drawer does not alter desktop collapse preference. */
+(function darpanMobileNavigation() {
+    const sidebar = document.getElementById('sidebar');
+    const opener = document.getElementById('darpan-mobile-menu');
+    const overlay = document.getElementById('darpan-mobile-overlay');
+    const closeButton = document.getElementById('sidebar-toggle');
+    if (!sidebar || !opener || !overlay) return;
+    const media = window.matchMedia('(max-width: 700px)');
+    let restoreFocus = null;
+    function closeMenu(focusOpener = false) {
+        document.body.classList.remove('darpan-mobile-sidebar-open');
+        opener.setAttribute('aria-expanded', 'false');
+        opener.setAttribute('aria-label', 'Open navigation menu');
+        overlay.hidden = true;
+        sidebar.removeAttribute('aria-modal');
+        sidebar.removeAttribute('role');
+        if (focusOpener && media.matches) (restoreFocus || opener).focus();
+        restoreFocus = null;
+    }
+    function openMenu() {
+        if (!media.matches) return;
+        restoreFocus = document.activeElement;
+        // Ignore the stored desktop-only collapsed appearance in mobile drawer.
+        document.body.classList.add('darpan-mobile-sidebar-open');
+        opener.setAttribute('aria-expanded', 'true');
+        opener.setAttribute('aria-label', 'Close navigation menu');
+        overlay.hidden = false;
+        sidebar.setAttribute('role', 'dialog');
+        sidebar.setAttribute('aria-modal', 'true');
+        closeButton?.focus();
+    }
+    opener.addEventListener('click', () => {
+        document.body.classList.contains('darpan-mobile-sidebar-open') ? closeMenu(true) : openMenu();
+    });
+    overlay.addEventListener('click', () => closeMenu(true));
+    // Intercept the desktop collapse toggle only on phones.
+    closeButton?.addEventListener('click', event => {
+        if (!media.matches) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeMenu(true);
+    }, true);
+    sidebar.addEventListener('click', event => {
+        if (!media.matches || !event.target.closest('button, a')) return;
+        if (event.target.closest('#vishakha-chat-search, .vishakha-search-field')) return;
+        // Let app navigation and chat selection finish, then dismiss the drawer.
+        if (event.target.closest('#new-chat-button, #vishakha-home-brand, .recent-chat-item, .darpan-side-action, .chat-history-section button')) closeMenu();
+    });
+    document.addEventListener('keydown', event => {
+        if (!media.matches || !document.body.classList.contains('darpan-mobile-sidebar-open')) return;
+        if (event.key === 'Escape') { event.preventDefault(); closeMenu(true); }
+        if (event.key === 'Tab') {
+            const targets = Array.from(sidebar.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href]')).filter(el => el.getClientRects().length);
+            if (!targets.length) return;
+            if (event.shiftKey && document.activeElement === targets[0]) {event.preventDefault();targets[targets.length-1].focus();}
+            else if (!event.shiftKey && document.activeElement === targets[targets.length-1]) {event.preventDefault();targets[0].focus();}
+        }
+    });
+    if (media.addEventListener) media.addEventListener('change', () => closeMenu());
+    else media.addListener(() => closeMenu());
+})();

@@ -35,7 +35,7 @@ class AgentOrchestrator:
             r"\b(?:create|raise|submit|cancel|close|update|assign|search|find|list|show|check)\s+(?:an?\s+|my\s+|the\s+)?(?:new\s+)?tickets?\b",
             message_lower,
         ))
-        if (direct_chat and not explicit_ticket_action and not re.search(r"tickets?", message_lower) and not re.search(
+        if (direct_chat and not explicit_ticket_action and not re.search(r"\btickets?\b", message_lower) and not re.search(
                 r"\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b", user_message, re.I)):
             return {"intent": "GENERAL_CHAT", "missing_fields": []}
 
@@ -1235,6 +1235,24 @@ class AgentOrchestrator:
             }
         )
 
+        # A personal status request without a ticket number asks for the
+        # employee's existing tickets and their statuses. It is NOT a lookup
+        # for a particular ticket number and does not need the LLM.
+        # Keep explicit ticket-number requests on the detail route above.
+        is_status_update_request = bool(re.search(
+            r"\b(?:give|show|provide|fetch|get|any|what|check)\b.*"
+            r"\b(?:an?\s+)?updates?\s+(?:on|of|about|for)\s+(?:my|the)\s+tickets?\b",
+            message_lower,
+        ))
+        is_fast_personal_status_query = bool(
+            not ticket_number_match
+            and (not has_write_intent or is_status_update_request)
+            and re.search(r"\btickets?\b", message_lower)
+            and re.search(r"\b(?:my|mine)\b|\btickets?\s+i\s+(?:raised|created|submitted|have)\b", message_lower)
+            and re.search(r"\b(?:status|statuses|progress|updates?)\b", message_lower)
+            and re.search(r"\b(?:check|show|give|list|view|see|display|tell|what|how|track|fetch|get|provide|any)\b", message_lower)
+        )
+
         # Read-only list requests can use the same deterministic
         # department/status/keyword normalization as count requests.
         is_fast_list_query = bool(
@@ -1246,7 +1264,7 @@ class AgentOrchestrator:
             and not has_write_intent
         )
 
-        if is_fast_list_query:
+        if is_fast_list_query or is_fast_personal_status_query:
             print("\nFAST LIST ROUTE ACTIVATED")
             result = {
                 "intent": "SEARCH_TICKETS",
@@ -1911,7 +1929,9 @@ class AgentOrchestrator:
                 "want to see", "would like to see", "list all", "list my", "list", "find all",
                 "find my", "find", "search for", "search", "display",
                 "all", "my", "tickets", "ticket", "count", "there",
-                "please", "the", "a", "an", "of", "are", "is", "do",
+                "status", "statuses", "progress", "check", "checking",
+                "current", "latest", "updates", "update", "track",
+                "please", "the", "a", "an", "of", "on", "are", "is", "do",
                 "i", "have", "me", "mine", "mine's", "raised", "created",
                 "submitted", "assigned", "to", "see", "open", "active", "canceled",
             ]

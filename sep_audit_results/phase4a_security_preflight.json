@@ -1,0 +1,108 @@
+{
+  "findings": [
+    {
+      "code": "DEBUG_ON",
+      "severity": "HIGH",
+      "location": "config/settings.py",
+      "detail": "DEBUG set to True",
+      "action": "Use DEBUG=False on deployment."
+    },
+    {
+      "code": "HARDCODED_SECRET_KEY",
+      "severity": "CRITICAL",
+      "location": "config/settings.py",
+      "detail": "SECRET_KEY is a literal in source; value intentionally hidden",
+      "action": "Load a new production key from a protected environment variable and rotate before production."
+    },
+    {
+      "code": "NO_SSL_REDIRECT",
+      "severity": "HIGH",
+      "location": "config/settings.py",
+      "detail": "No HTTPS redirect setting found",
+      "action": "Enable HTTPS redirect once reverse-proxy TLS is configured."
+    },
+    {
+      "code": "INSECURE_COOKIES",
+      "severity": "HIGH",
+      "location": "config/settings.py",
+      "detail": "Secure cookie flags not both configured",
+      "action": "Enable both flags for HTTPS production; keep HTTP LAN development separate."
+    },
+    {
+      "code": "NO_HSTS",
+      "severity": "MEDIUM",
+      "location": "config/settings.py",
+      "detail": "HSTS not configured",
+      "action": "Enable gradually only after validating HTTPS on all production hostnames."
+    },
+    {
+      "code": "NO_STATIC_ROOT",
+      "severity": "MEDIUM",
+      "location": "config/settings.py",
+      "detail": "STATIC_ROOT not configured",
+      "action": "Configure collectstatic and web-server static serving."
+    },
+    {
+      "code": "SQLITE_PROD_REVIEW",
+      "severity": "MEDIUM",
+      "location": "config/settings.py",
+      "detail": "SQLite configured",
+      "action": "Plan backed-up PostgreSQL and migration testing before multi-user rollout."
+    },
+    {
+      "code": "CSRF_EXEMPT_POST",
+      "severity": "HIGH",
+      "location": "apps/assistant/views.py",
+      "detail": "5 CSRF exemptions detected",
+      "action": "Add CSRF tokens to same-origin JS POSTs and remove exemptions with tests."
+    },
+    {
+      "code": "PUBLIC_EMAIL_SIGNUP",
+      "severity": "HIGH",
+      "location": "apps/assistant/views.py",
+      "detail": "Sign-up code permits Gmail addresses",
+      "action": "Require managed company identity or admin-approved accounts for production."
+    },
+    {
+      "code": "OPEN_SIGNUP_REVIEW",
+      "severity": "MEDIUM",
+      "location": "apps/assistant/views.py",
+      "detail": "Self-registration route exists",
+      "action": "Review organization-approved registration, verification and onboarding controls."
+    },
+    {
+      "code": "RANDOMUUID_HTTP_REVIEW",
+      "severity": "MEDIUM",
+      "location": "static/js/chat.js",
+      "detail": "crypto.randomUUID() occurs in JS",
+      "action": "Verify secure-context fallback on tablet; avoid overwriting the working tablet fix."
+    },
+    {
+      "code": "JS_CSRF_HEADERS",
+      "severity": "HIGH",
+      "location": "static/js/chat.js",
+      "detail": "No CSRF request headers found",
+      "action": "Attach CSRF token to every mutating AJAX request before removing exemptions."
+    },
+    {
+      "code": "LIVE_AUTHORIZATION",
+      "severity": "VERIFY",
+      "location": "SEP API",
+      "detail": "Cannot prove requester and actor authorization from static inspection",
+      "action": "Test user-to-user isolation and server-derived actor identity against live SEP."
+    },
+    {
+      "code": "EXTERNAL_LLM_PRIVACY",
+      "severity": "VERIFY",
+      "location": "LLM and speech services",
+      "detail": "Production data boundary not established by static scan",
+      "action": "Confirm where prompts, transcripts and tickets are processed and retained."
+    }
+  ],
+  "counts": {
+    "HIGH": 6,
+    "CRITICAL": 1,
+    "MEDIUM": 5,
+    "VERIFY": 2
+  }
+}

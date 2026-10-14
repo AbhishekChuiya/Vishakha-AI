@@ -2886,6 +2886,35 @@ body.dark-mode .vishakha-dictation-hint,body.dark-mode .vishakha-dictation-footn
 body.dark-mode .sidebar .brand-identity .vishakha-logo-light { display: none; }
 body.dark-mode .sidebar .brand-identity .vishakha-logo-dark { display: block; }
 
+/* Unified, stable wordmark footprint for light/dark themes.
+   The white wordmark asset has been optically trimmed to match the black one. */
+.sidebar .brand-identity .vishakha-theme-wordmark {
+    position: relative;
+    box-sizing: border-box;
+    display: block;
+    flex: 0 1 212px;
+    width: min(212px, 100%);
+    max-width: 100%;
+    height: 48px;
+    min-height: 48px;
+    overflow: hidden;
+}
+.sidebar .brand-identity .vishakha-theme-wordmark .vishakha-logo-full {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain;
+    object-position: left center;
+}
+.sidebar .brand-identity .vishakha-theme-wordmark .vishakha-logo-light { display: block; }
+.sidebar .brand-identity .vishakha-theme-wordmark .vishakha-logo-dark { display: none; }
+body.dark-mode .sidebar .brand-identity .vishakha-theme-wordmark .vishakha-logo-light { display: none; }
+body.dark-mode .sidebar .brand-identity .vishakha-theme-wordmark .vishakha-logo-dark { display: block; }
+
 /* SEP workflow inputs: text stays text; actual calendar controls stay compact. */
 .ai-options:not(.vishakha-date-options) .chat-text-question-input[type="text"] {
     width: min(430px, 100%); min-width: 170px; flex: 0 1 430px;
@@ -2930,4 +2959,170 @@ body.dark-mode .ai-options.vishakha-date-options .vishakha-date-picker-wrap {
 body.dark-mode .ai-options.vishakha-date-options input { color-scheme:dark; }
 @media(max-width:560px){
     .ai-options.vishakha-date-options { max-width:calc(100% - 20px); margin-left:10px; }
+}
+
+/* Message actions — compact hover controls like modern AI chat UIs */
+.vishakha-message-actions{display:flex;align-items:center;gap:5px;margin:4px 4px 0;opacity:.65;transition:opacity .16s ease}
+.message.user-message .vishakha-message-actions{justify-content:flex-end}
+.message.ai-message .vishakha-message-actions{justify-content:flex-start;margin-left:46px}
+.message:hover .vishakha-message-actions,.message:focus-within .vishakha-message-actions{opacity:1}
+.vishakha-message-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;font:inherit;font-size:11px;font-weight:500;border:1px solid transparent;background:transparent;color:#6b7890;cursor:pointer;border-radius:8px;padding:5px 8px;min-height:28px}
+.vishakha-message-action:hover,.vishakha-message-action:focus-visible{background:rgba(110,135,175,.12);color:#254fb0;outline-offset:2px}
+.vishakha-message-action svg{width:15px;height:15px;flex-shrink:0}
+.vishakha-message-editor{display:flex;flex-direction:column;gap:9px;min-width:min(420px,70vw);color:#1e293b}
+.vishakha-message-editor textarea{width:100%;resize:vertical;min-height:85px;box-sizing:border-box;background:#fff;border:1px solid #b4c4dd;border-radius:9px;padding:10px 12px;color:#14233b;font:inherit;line-height:1.5}
+.vishakha-message-editor-buttons{display:flex;justify-content:flex-end;gap:7px}
+.vishakha-message-editor-buttons button{border:1px solid #c4d0e2;border-radius:8px;background:#fff;color:#233651;padding:7px 12px;cursor:pointer;font:inherit;font-size:12px}
+.vishakha-message-editor-buttons .vishakha-message-editor-save{background:#1d5ddb;color:#fff;border-color:#1d5ddb}
+body.dark-mode .vishakha-message-action{color:#aebed5}
+body.dark-mode .vishakha-message-action:hover{background:#2d4160;color:#dce8ff}
+body.dark-mode .vishakha-message-editor textarea{background:#19263b;color:#eff5ff;border-color:#405475}
+body.dark-mode .vishakha-message-editor-buttons button{background:#293950;color:#e5ecfa;border-color:#4a5d79}
+body.dark-mode .vishakha-message-editor-buttons .vishakha-message-editor-save{background:#2d65d4;border-color:#2d65d4}
+/* Search chats belongs to Vishakha AI only, not Dashboard. */
+body.darpan-view-dashboard #sidebar .vishakha-history-tools{display:none!important}
+@media(hover:none){.vishakha-message-actions{opacity:1}.vishakha-message-action{min-height:34px}}
+/* Keep action bar BELOW the message bubble (not beside it). */
+#chat-area .message.user-message,#chat-area .message.ai-message{position:relative;padding-bottom:31px}
+#chat-area .message .vishakha-message-actions{position:absolute;bottom:0;left:46px;margin:0}
+#chat-area .message.user-message .vishakha-message-actions{left:auto;right:0}
+#chat-area .message .vishakha-message-actions[hidden]{display:none!important}
+
+/* Message actions V2: fade/slide in on hover or keyboard focus. */
+@media (hover:hover) and (pointer:fine) {
+  #chat-area .message .vishakha-message-actions {
+    opacity:0; transform:translateY(-4px); pointer-events:none;
+    transition:opacity .2s ease, transform .2s cubic-bezier(.2,.8,.2,1);
+  }
+  #chat-area .message:hover .vishakha-message-actions,
+  #chat-area .message:focus-within .vishakha-message-actions {
+    opacity:1; transform:translateY(0); pointer-events:auto;
+  }
+}
+/* Touchscreens have no hover: keep controls visible and usable. */
+@media (hover:none), (pointer:coarse) {
+  #chat-area .message .vishakha-message-actions { opacity:1;transform:none;pointer-events:auto; }
+  #chat-area .message .vishakha-message-action {min-height:36px;}
+}
+#chat-area .vishakha-message-actions {transition:opacity .2s ease, transform .2s ease;}
+#chat-area .vishakha-message-action {transition:background .18s ease,color .18s ease,transform .18s ease;}
+#chat-area .vishakha-message-action.vishakha-copied {color:#168452;}
+#chat-area .vishakha-message-action.vishakha-copied svg {animation:vishakha-copy-check .36s cubic-bezier(.18,1.3,.3,1) both;}
+@keyframes vishakha-copy-check {
+  from {opacity:0;transform:scale(.55) rotate(-16deg)}
+  to {opacity:1;transform:scale(1) rotate(0)}
+}
+@media(prefers-reduced-motion:reduce) {
+  #chat-area .vishakha-message-actions,#chat-area .vishakha-message-action,
+  #chat-area .vishakha-message-action svg {transition:none!important;animation:none!important;}
+}
+
+
+/* DARPAN 4.2 — PHONE LAYOUT. Desktop/tablet visual rules remain unchanged. */
+.darpan-mobile-menu,.darpan-mobile-overlay { display:none; }
+@media (max-width:700px) {
+  html,body { width:100%; max-width:100%; overflow-x:hidden; }
+  body { -webkit-text-size-adjust:100%; }
+  .app-container { width:100%; height:100dvh; min-height:0; overflow:hidden; }
+  .main-content { min-width:0; width:100%; height:100%; overflow:hidden; }
+  #sidebar.sidebar, #sidebar.sidebar.collapsed {
+    box-sizing:border-box; display:flex!important; position:fixed!important;
+    top:0; bottom:0; left:0; z-index:1102;
+    width:min(84vw,320px)!important; max-width:320px; padding:19px 15px!important;
+    transform:translateX(-105%); visibility:hidden;
+    transition:transform .25s cubic-bezier(.2,.8,.2,1),visibility .25s;
+    box-shadow:12px 0 34px rgba(10,22,47,.17);
+    overflow-y:auto; overscroll-behavior:contain;
+  }
+  body.darpan-mobile-sidebar-open { overflow:hidden; }
+  body.darpan-mobile-sidebar-open #sidebar.sidebar,
+  body.darpan-mobile-sidebar-open #sidebar.sidebar.collapsed {
+    transform:translateX(0);visibility:visible;
+  }
+  /* Collapsed desktop sidebar state must not hide sections in the mobile drawer. */
+  #sidebar.sidebar.collapsed .brand-identity,
+  #sidebar.sidebar.collapsed .new-chat-button,
+  #sidebar.sidebar.collapsed .chat-history-section,
+  #sidebar.sidebar.collapsed .vishakha-history-tools,
+  #sidebar.sidebar.collapsed .darpan-dashboard-side {display:revert!important;}
+  #sidebar.sidebar.collapsed .brand-identity{display:flex!important;}
+  #sidebar.sidebar.collapsed .chat-history-section{display:block!important;}
+  #sidebar.sidebar.collapsed .vishakha-history-tools{display:block!important;}
+  #sidebar.sidebar.collapsed .darpan-dashboard-side:not([hidden]){display:flex!important;}
+  #sidebar.sidebar.collapsed .new-chat-button:not([hidden]){display:block!important;}
+  #sidebar.sidebar .collapsed-sidebar-nav{display:none!important;}
+  #sidebar.sidebar .sidebar-toggle{top:19px;right:13px;min-width:36px;width:36px;height:36px;border-radius:10px;transform:none!important;}
+  #sidebar.sidebar .brand{padding-right:38px;}
+  .darpan-mobile-overlay:not([hidden]){display:block;position:fixed;inset:0;z-index:1101;background:rgba(9,20,40,.54);backdrop-filter:blur(2px);}
+  .darpan-mobile-menu{display:flex;flex:0 0 40px;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    width:40px;height:40px;border:1px solid #dbe2f0;border-radius:11px;background:transparent;color:inherit;cursor:pointer;}
+  .darpan-mobile-menu span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px;}
+  body.dark-mode .darpan-mobile-menu{border-color:#42526a;}
+  .chat-header{flex:0 0 auto;box-sizing:border-box;min-height:0;height:auto;max-width:100%;padding:10px 12px!important;gap:8px;display:flex;flex-wrap:wrap;align-content:center;align-items:center;}
+  .chat-header > div:first-of-type{flex:1 1 calc(100% - 52px);min-width:0;}
+  .chat-header>.darpan-workspace-tabs,.chat-header > div:first-of-type .darpan-workspace-tabs{display:flex;gap:4px;margin:0;padding:0;min-width:0;}
+  .darpan-workspace-tab{font-size:12px;padding:9px 9px;flex:0 1 auto;min-width:0;white-space:nowrap;}
+  .header-actions{width:100%;max-width:100%;display:flex;justify-content:flex-end;gap:8px;min-width:0;}
+  .application-selector{flex:1 1 0;min-width:0;max-width:none;}
+  .application-selector-button{box-sizing:border-box;width:100%;min-width:0;padding:8px 9px;gap:5px;min-height:39px;}
+  .selected-app-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:12px;}
+  .application-dropdown{min-width:0;max-width:min(94vw,370px);width:100%;left:0;right:auto;max-height:55dvh;overflow-y:auto;}
+  .header-actions>.theme-toggle,.header-actions>#user-menu-button,.header-actions .user-menu-button{flex:0 0 auto;}
+  .user-dropdown{position:fixed!important;top:112px!important;right:8px!important;left:auto!important;width:min(360px,calc(100vw - 16px));max-height:calc(100dvh - 125px);}
+  #darpan-chat-view{width:100%;min-width:0;overflow:hidden;}
+  .chat-area{padding:14px 11px 18px!important;min-height:0;max-width:100%;overflow-x:hidden;overscroll-behavior:contain;}
+  .message{max-width:100%;min-width:0;gap:0;}
+  .message-bubble{max-width:min(100%,calc(100vw - 78px));min-width:0;overflow-wrap:anywhere;word-break:normal;padding:11px 12px;font-size:13px;}
+  .user-message .message-bubble{max-width:calc(100vw - 36px);}
+  .avatar{width:27px;height:27px;margin-right:7px;font-size:9px;}
+  #chat-area .message.ai-message .vishakha-message-actions{left:34px;}
+  #chat-area .message.user-message .vishakha-message-actions{right:0;}
+  .vishakha-message-editor{min-width:0;width:min(100%,calc(100vw - 66px));}
+  .vishakha-message-editor-buttons{flex-wrap:wrap;}
+  .suggestions,.ai-options,.ticket-confirmation{margin-left:34px;max-width:calc(100% - 34px);}
+  .suggestions{gap:7px;}.suggestions button{padding:8px 10px;font-size:12px;}
+  .ai-options{gap:7px;}.ai-options button{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+  .confirmation-card{max-width:100%;padding:13px;}.confirmation-buttons{flex-wrap:wrap;}
+  .ai-options.vishakha-date-options{max-width:100%;margin-left:0;}
+  .ai-options.vishakha-date-options .vishakha-date-picker-wrap{max-width:100%;}
+  .darpan-analytics-report,.ticket-search-summary,.ticket-summary-card{box-sizing:border-box;max-width:100%;margin-left:0;margin-right:0;}
+  .darpan-rich-answer,.darpan-rich-answer pre{min-width:0;max-width:100%;overflow-x:auto;}
+  .darpan-rich-answer table{display:block;max-width:100%;overflow-x:auto;}
+  .chat-input-container{flex:0 0 auto;box-sizing:border-box;padding:9px 10px calc(9px + env(safe-area-inset-bottom,0px))!important;max-width:100%;}
+  .chat-input-wrapper{box-sizing:border-box;max-width:100%;min-width:0;gap:3px;padding:4px;}
+  #message-input{min-width:0;width:100%;font-size:16px!important;padding:9px 7px;max-height:30dvh;}
+  .send-button,.voice-input-button{flex:0 0 38px;width:38px;height:38px;min-height:38px;}
+  .input-help{font-size:10px;margin-top:5px;line-height:1.3;}
+  .vishakha-dictation-panel{max-width:100%;box-sizing:border-box;}
+  .vishakha-dictation-heading{flex-wrap:wrap;gap:5px;}
+  .darpan-dashboard{width:100%;min-width:0;padding:14px 11px calc(22px + env(safe-area-inset-bottom,0px))!important;}
+  .darpan-dash-intro{gap:9px;flex-wrap:wrap;}.darpan-dash-intro h2{font-size:22px;}
+  .darpan-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+  .darpan-kpi{min-width:0;padding:13px 11px;min-height:115px;}
+  .darpan-kpi strong{font-size:clamp(22px,7vw,29px);}
+  .darpan-dashboard-columns{display:grid;grid-template-columns:minmax(0,1fr);}
+  .darpan-dashboard-panel{padding:14px;min-width:0;}
+  .darpan-hero{gap:9px;padding:12px;}.darpan-hero-copy{min-width:0;}.darpan-hero-copy strong{font-size:13px;}
+  .darpan-recent-row{min-width:0;gap:8px;}
+}
+@media (max-width:360px){
+  .darpan-workspace-tab{font-size:11px;padding:8px 7px;}
+  .chat-header{padding:8px!important;gap:6px;}
+  .header-actions{gap:4px;}
+  .darpan-kpi-grid{gap:6px;}
+  .darpan-kpi{padding:11px 9px;}
+  .input-help #composer-shortcut-help{display:none;}
+}
+@media(prefers-reduced-motion:reduce){
+  #sidebar.sidebar,#sidebar.sidebar.collapsed,.darpan-mobile-overlay{transition:none!important;backdrop-filter:none;}
+}
+@media(max-width:700px){
+  body.darpan-view-dashboard #sidebar.sidebar .new-chat-button,
+  body.darpan-view-dashboard #sidebar.sidebar.collapsed .new-chat-button,
+  body.darpan-view-dashboard #sidebar.sidebar .chat-history-section,
+  body.darpan-view-dashboard #sidebar.sidebar.collapsed .chat-history-section,
+  body.darpan-view-dashboard #sidebar.sidebar .vishakha-history-tools,
+  body.darpan-view-dashboard #sidebar.sidebar.collapsed .vishakha-history-tools{display:none!important;}
+  body.darpan-view-ai #sidebar.sidebar .darpan-dashboard-side,
+  body.darpan-view-ai #sidebar.sidebar.collapsed .darpan-dashboard-side{display:none!important;}
 }
