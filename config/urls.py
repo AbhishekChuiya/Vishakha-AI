@@ -19,4 +19,6 @@ urlpatterns = [
         include("apps.assistant.urls")
     ),
 
+    path("onboarding/", include("apps.onboarding.urls")),
+
 ]

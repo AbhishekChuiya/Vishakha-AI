@@ -1,0 +1,318 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ joinee.full_name }} | Onboarding | Vishakha AI</title>
+
+    <style>
+        :root {
+            --navy: #142b4a;
+            --blue: #285ea8;
+            --bg: #f4f7fb;
+            --border: #e0e6ef;
+            --muted: #667085;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: #1d2939;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        header {
+            background: var(--navy);
+            color: white;
+            padding: 22px 28px;
+        }
+
+        header a { color: white; text-decoration: none; }
+        header h1 { margin: 17px 0 6px; font-size: 25px; }
+        header p { margin: 0; color: #d8e4f5; font-size: 13px; }
+
+        main { max-width: 1350px; margin: auto; padding: 24px; }
+
+        .panel {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 12px rgba(16, 38, 70, .04);
+        }
+
+        h2 { font-size: 19px; margin: 0 0 18px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .label { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+        .value { font-weight: 600; overflow-wrap: anywhere; }
+        .muted { color: var(--muted); font-size: 13px; }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d0d8e4;
+            border-radius: 7px;
+            background: white;
+            font: inherit;
+            font-size: 13px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        button, .button {
+            display: inline-block;
+            padding: 10px 14px;
+            background: var(--blue);
+            color: white;
+            border: 0;
+            border-radius: 7px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .code-form {
+            display: flex;
+            align-items: end;
+            gap: 10px;
+            max-width: 650px;
+        }
+
+        .code-form .field { flex: 1; }
+
+        .progress {
+            height: 10px;
+            background: #e8edf5;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 13px 0;
+        }
+
+        .progress-fill { height: 100%; background: var(--blue); }
+
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            min-width: 820px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th, td {
+            text-align: left;
+            vertical-align: top;
+            padding: 13px 10px;
+            border-bottom: 1px solid #edf0f5;
+        }
+
+        th {
+            background: #f9fafc;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 9px;
+            border-radius: 20px;
+            background: #edf2f8;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status.verified { background: #dcfce7; color: #166534; }
+        .status.pending { background: #fff3d6; color: #8a5700; }
+        .status.received { background: #dbeafe; color: #1d4ed8; }
+        .status.rejected { background: #fee2e2; color: #991b1b; }
+
+        .document-form { min-width: 190px; }
+        .document-form input, .document-form select { margin-bottom: 7px; }
+
+        @media (max-width: 750px) {
+            main { padding: 13px; }
+            .panel { padding: 16px; }
+            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            header { padding: 18px; }
+        }
+
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: 1fr; }
+            .code-form { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <a href="{% url 'onboarding:dashboard' %}">
+        ← Back to Joinee Records
+    </a>
+    <h1>{{ joinee.full_name }}</h1>
+    <p>Onboarding Reference: {{ joinee.onboarding_reference }}</p>
+</header>
+
+<main>
+    <section class="panel">
+        <h2>Joinee Information</h2>
+
+        <div class="grid">
+            <div>
+                <div class="label">Personal Email</div>
+                <div class="value">{{ joinee.personal_email|default:"—" }}</div>
+            </div>
+            <div>
+                <div class="label">Phone</div>
+                <div class="value">{{ joinee.phone|default:"—" }}</div>
+            </div>
+            <div>
+                <div class="label">Designation</div>
+                <div class="value">{{ joinee.designation|default:"—" }}</div>
+            </div>
+            <div>
+                <div class="label">Department</div>
+                <div class="value">{{ joinee.department|default:"—" }}</div>
+            </div>
+            <div>
+                <div class="label">Plant / Location</div>
+                <div class="value">{{ joinee.plant_location|default:"—" }}</div>
+            </div>
+            <div>
+                <div class="label">Expected Joining Date</div>
+                <div class="value">
+                    {{ joinee.joining_date|date:"d M Y"|default:"Not set" }}
+                </div>
+            </div>
+        </div>
+
+        <hr style="border:0;border-top:1px solid #e8edf5;margin:22px 0">
+
+        <form method="post"
+              action="{% url 'onboarding:update_employee_code' joinee.id %}">
+            {% csrf_token %}
+            <div class="code-form">
+                <div class="field">
+                    <label for="employee_code">Employee Code</label>
+                    <input id="employee_code"
+                           name="employee_code"
+                           value="{{ joinee.employee_code }}"
+                           placeholder="Enter after HR generates the code">
+                </div>
+                <button type="submit">Save Employee Code</button>
+            </div>
+        </form>
+
+        <p class="muted" style="margin-top:12px">
+            Employee Code is entered manually in this phase; PeopleStrong
+            synchronization will be added after API access is available.
+        </p>
+    </section>
+
+    <section class="panel">
+        <h2>Document Verification Progress</h2>
+
+        <strong>{{ completed_documents }} of {{ total_documents }} documents verified</strong>
+        <div class="progress">
+            <div class="progress-fill" style="width:{{ progress }}%"></div>
+        </div>
+
+        <p class="muted">
+            {{ progress }}% complete · {{ joinee.get_status_display }}
+        </p>
+    </section>
+
+    <section class="panel">
+        <h2>Document Checklist</h2>
+        <p class="muted">
+            Update each requirement separately. Add a reason in remarks
+            when a document is rejected or requires clarification.
+        </p>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Required Document</th>
+                        <th>Current Status</th>
+                        <th>Update Status / Remarks</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td>{{ doc.document_type.get_category_display }}</td>
+                        <td>
+                            <strong>{{ doc.document_type.name }}</strong>
+                            {% if doc.updated_by %}
+                                <div class="muted">
+                                    Updated by {{ doc.updated_by.get_username }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status {{ doc.status }}">
+                                {{ doc.get_status_display }}
+                            </span>
+                            {% if doc.remarks %}
+                                <p class="muted">{{ doc.remarks }}</p>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form class="document-form"
+                                  method="post"
+                                  action="{% url 'onboarding:update_document' doc.id %}">
+                                {% csrf_token %}
+
+                                <label for="status-{{ doc.id }}">Status</label>
+                                <select id="status-{{ doc.id }}" name="status">
+                                    {% for value, label in document_status_choices %}
+                                    <option value="{{ value }}"
+                                        {% if doc.status == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+
+                                <label for="remarks-{{ doc.id }}">Remarks</label>
+                                <input id="remarks-{{ doc.id }}"
+                                       name="remarks"
+                                       maxlength="500"
+                                       value="{{ doc.remarks }}"
+                                       placeholder="Optional remarks">
+
+                                <button type="submit">Save Update</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">No document requirements found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

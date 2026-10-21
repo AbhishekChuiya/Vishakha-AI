@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.assistant',
-
+    "apps.onboarding.apps.OnboardingConfig",
 ]
 
 MIDDLEWARE = [
