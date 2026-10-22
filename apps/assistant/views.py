@@ -53,7 +53,8 @@ def _rewrite_general_followup_prompt(user_message, conversation):
     last_user = next((m.content for m in recent if getattr(m, 'role', '') == 'user' and getattr(m, 'content', '').strip()), '')
     last_assistant = next((m.content for m in recent if getattr(m, 'role', '') == 'assistant' and getattr(m, 'content', '').strip()), '')
     context_blob = (str(last_user) + "\n" + str(last_assistant)).casefold()
-    if ('translate' in context_blob and 'hindi' in context_blob
+    awaiting_text = bool(re.search(r'\b(?:paste|send|provide|share)\b', last_assistant, re.I))
+    if (awaiting_text and 'translate' in context_blob and 'hindi' in context_blob
             and not re.search(r'\b(?:translate|translation|hindi|हिंदी|हिन्दी)\b', raw, re.I)):
         return (
             'Translate the following message into Hindi. Return only the Hindi '
@@ -662,6 +663,16 @@ def chat(request):
             workflow,
             chat_id=chat_id
         )
+        # UX-only projection of the actual saved SEP draft. Never supplies
+        # or changes data used by the create-ticket API.
+        if result.get("type") in ("question", "confirmation"):
+            try:
+                result["draft_progress"] = {
+                    "ticket": workflow.state.get_summary(),
+                    "current_field": workflow.state.current_question,
+                }
+            except (AttributeError, TypeError, ValueError):
+                pass
         log_turns(conversation, user_message, result)
 
 

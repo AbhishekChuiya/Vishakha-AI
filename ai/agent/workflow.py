@@ -1,4 +1,6 @@
 from ai.agent.conversation import ConversationState
+from ai.agent.followup_answers import normalize_pending_answer
+from ai.agent.multifield_details import extract_ticket_details
 from ai.agent.input_safety import meaningful_description
 from ai.agent.orchestrator import AgentOrchestrator
 from ai.tools.ticketing.ticketing_tool import TicketingTool
@@ -312,7 +314,7 @@ class AgentWorkflow:
                     "Select General in the application menu for general conversations."}
         if (not self.state.current_question
                 and re.match(r"^(?:who is|who was|what is|what are|explain|define|tell me about|write an? email|draft an? email)\b", text_for_mode, re.I)
-                and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status|[A-Z][A-Z0-9]{1,15}-\d{2,})\b", text_for_mode, re.I)):
+                and not re.search(r"\b(?:ticket|tickets|service excellence|sep|incident|request status)\b", text_for_mode, re.I)):
             return {"type": "message", "message":
                     "That looks like a general question. Select General from the application dropdown and ask me there."}
 
@@ -332,35 +334,63 @@ class AgentWorkflow:
 
             # Don't mistake ordinary field answers for a new instruction.
             new_command = bool(
-                (re.match(r"^(?:please\s+)?(?:show|list|find|search|check|count|compare|analy[sz]e|summari[sz]e)\b", lower)
-                 and re.search(r"\b(?:tickets?|categor(?:y|ies)|subcategor(?:y|ies)|analytics|report|status)\b", lower))
+                (re.match(r"^(?:please\s+)?(?:show|list|find|search|check|count|compare|analy[sz]e|summari[sz]e|give\s+me|provide|what\s+is)\b", lower)
+                 and re.search(r"\b(?:tickets?|categor(?:y|ies)|subcategor(?:y|ies)|analytics|report|status|summary|overview)\b", lower))
                 or re.match(r"^(?:please\s+)?(?:create|raise|submit)\s+(?:an?\s+|my\s+|new\s+)*tickets?\b", lower)
                 or re.match(r"^(?:please\s+)?(?:explain|define|teach|translate|what is|what are|how does|why does|write an? email|draft an? email|write a letter|draft a letter)\b", lower)
                 or re.fullmatch(r"(?:hi+|hello|hey|how are you|thank you|thanks)[!.? ]*", lower)
             )
-            if re.search(r'\b[A-Z][A-Z0-9]{1,15}-\d{2,}\b', text, re.I) and re.search(r'\b(?:who|assigned|status|details?|check)\b', lower):
-                new_command = True
             if not new_command:
+                # Keep the existing pending question authoritative, but collect
+                # other clearly stated draft values in the same message.
+                details = extract_ticket_details(user_message, LOCATIONS)
+                field = self.state.current_question
+                if field in {"description", "priority", "location"}:
+                    for key in ("priority", "location"):
+                        if key != field and key in details:
+                            setattr(self.state, key, details[key])
+                    if field in details:
+                        return self.handle_option(details[field])
+                    if field == "description" and details.get("remaining_text"):
+                        return self.handle_option(details["remaining_text"])
                 return self.handle_option(user_message)
             candidate = self.orchestrator.understand_request(
                 user_message, current_ticket_number=None, chat_id=chat_id)
             intent = candidate.get("intent")
             if intent in ("ANALYZE_TICKETS", "SEARCH_TICKETS", "CHECK_TICKET_STATUS",
                           "CREATE_TICKET", "OTHER", "GENERAL_CHAT", None):
+                # Read-only detours must not destroy an unfinished ticket form.
+                # Run them with a temporary state and restore the complete draft
+                # (including the current question) even if an API call fails.
+                if intent in ("ANALYZE_TICKETS", "SEARCH_TICKETS", "CHECK_TICKET_STATUS"):
+                    draft = self.state.to_dict()
+                    try:
+                        self.state.reset()
+                        if intent == "ANALYZE_TICKETS":
+                            answer = self.handle_ticket_analytics(candidate)
+                        else:
+                            self.state.update_from_agent(candidate)
+                            if intent == "CHECK_TICKET_STATUS":
+                                answer = self.handle_ticket_status()
+                            else:
+                                answer = self.handle_search_tickets()
+                    finally:
+                        self.state.from_dict(draft)
+                    if isinstance(answer, dict):
+                        answer["draft_preserved"] = True
+                        answer["draft_question"] = draft.get("current_question")
+                    return answer
+                if intent in ("OTHER", "GENERAL_CHAT", None):
+                    # A greeting or unrelated question must not erase the draft.
+                    return {"type": "message", "message":
+                        "This chat is for SEP tickets. Your unfinished ticket is saved. "
+                        "Switch to General for unrelated questions, or answer the "
+                        "pending ticket question to continue.",
+                        "draft_preserved": True}
+                # An explicit fresh CREATE request supersedes the draft.
                 self.state.reset()
-                if intent == "ANALYZE_TICKETS":
-                    answer = self.handle_ticket_analytics(candidate)
-                elif intent in ("OTHER", "GENERAL_CHAT", None):
-                    answer = {"type": "message", "message":
-                        "SEP mode handles tickets and SEP reports. Select General for other questions."}
-                else:
-                    self.state.update_from_agent(candidate)
-                    if self.state.intent == "CREATE_TICKET":
-                        answer = self.handle_create_ticket()
-                    elif self.state.intent == "CHECK_TICKET_STATUS":
-                        answer = self.handle_ticket_status()
-                    else:
-                        answer = self.handle_search_tickets()
+                self.state.update_from_agent(candidate)
+                answer = self.handle_create_ticket()
                 if isinstance(answer, dict):
                     answer["workflow_interrupted"] = True
                 return answer
@@ -386,12 +416,34 @@ class AgentWorkflow:
                     "SEP mode is for Service Excellence tickets, ticket statuses and analytics. Select General for other questions."}
 
         if agent_result.get("intent") == "UNRECOGNIZED":
-            return {"type": "message", "message": (
-                "I couldn't understand that request reliably. "
-                "Please rephrase it, or choose a clear ticket action such as "
-                "'Create a ticket' or 'Show my tickets'.")}
+            # Clarification suggestions are read-only prompts, not ticket actions.
+            # Do not mutate state or assume a department.
+            return {
+                "type": "clarification",
+                "message": "What would you like to do in Service Excellence?",
+                "options": [
+                    {"label": "Create a ticket", "prompt": "Create a ticket"},
+                    {"label": "My tickets", "prompt": "Show my tickets"},
+                    {"label": "Check ticket status", "prompt": "Check my ticket status"},
+                    {"label": "IT ticket summary", "prompt": "IT Department ticket summary"},
+                ],
+                "hint": "Or describe the issue in your own words.",
+            }
 
         self.state.update_from_agent(agent_result)
+
+        # CREATE_TICKET only: collect multiple explicit fields without
+        # deciding a category, ticket type, routing group or submission.
+        if self.state.intent == "CREATE_TICKET":
+            details = extract_ticket_details(user_message, LOCATIONS)
+            for field in ("location", "priority"):
+                if field in details:
+                    setattr(self.state, field, details[field])
+            # Prefer the original issue statement with location/priority
+            # stripped only when it is actually a meaningful description.
+            cleaned = details.get("remaining_text")
+            if cleaned and meaningful_description(cleaned):
+                self.state.description = cleaned
 
         # CREATE TICKET
         if self.state.intent == "CREATE_TICKET":
@@ -540,11 +592,7 @@ class AgentWorkflow:
             return {
                 "type": "question",
                 "field": "department",
-                "message": (
-                    "I couldn't confidently determine the department "
-                    "from your request. Please select the appropriate "
-                    "department below."
-                ),
+                "message": "Please select the appropriate department below.",
                 "options": departments,
             }
 
@@ -1048,6 +1096,21 @@ class AgentWorkflow:
 
         field = self.state.current_question
 
+        # Interpret short follow-ups only in the context of the requested
+        # field. Canonical values must still pass the existing validation.
+        if isinstance(option, str) and field in {
+            "department", "request_type", "category", "subcategory",
+            "location", "priority",
+        }:
+            option = normalize_pending_answer(
+                field, option,
+                departments=get_departments() if field == "department" else (),
+                request_types=REQUEST_TYPES.get(self.state.department, []) if field == "request_type" else (),
+                categories=CATEGORIES.get(self.state.department, {}).keys() if field == "category" else (),
+                subcategories=CATEGORIES.get(self.state.department, {}).get(self.state.selected_category, []) if field == "subcategory" else (),
+                locations=LOCATIONS if field == "location" else (),
+            )
+
         if not field:
             return {
                 "type": "message",
@@ -1059,6 +1122,17 @@ class AgentWorkflow:
         # ----------------------------------------------
 
         if field == "confirmation":
+
+            # Inline review-card edits use the same validated Change Details
+            # workflow. Never call confirm_ticket for an edit request.
+            if isinstance(option, str) and option.startswith("Edit: "):
+                chosen = option[6:].strip()
+                selector = self.handle_option("Change Details")
+                if selector.get("field") != "change_field":
+                    return selector
+                if chosen not in selector.get("options", []):
+                    return selector
+                return self.handle_option(chosen)
 
             if option == "Confirm & Create Ticket":
                 return self.confirm_ticket()

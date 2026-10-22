@@ -17,11 +17,28 @@ class AgentOrchestrator:
         chat_id=None,
     ):
 
+        # Deterministic, conservative Hindi/Hinglish/typo shortcuts.
+        # Leave all permissions, ticket validation and API work to SEP workflow.
+        from ai.agent.employee_phrases import classify_employee_shorthand
+        shorthand = classify_employee_shorthand(user_message)
+        if shorthand is not None:
+            return shorthand
+
         # -------------------------------------------------
         # Deterministic protection for obvious NEW IT issues
         # -------------------------------------------------
 
         message_lower = user_message.lower().strip()
+        # Explicit hardware repair ticket requests must resolve to IT before the
+        # model or generic workflow asks for a department. Never choose a category
+        # or resolver-group ID without the portal's verified configuration.
+        if (re.search(r'\b(?:create|raise|open|log|submit|make)\b', message_lower)
+                and re.search(r'\bticket\b', message_lower)
+                and re.search(r'\b(?:laptop|desktop|computer|printer|keyboard|mouse|monitor|wifi|network)\b', message_lower)):
+            return {'intent':'CREATE_TICKET', 'department':'IT Department',
+                    'request_type':None, 'category':None, 'description':user_message.strip(),
+                    'location':None, 'priority':None, 'missing_fields':[]}
+
         # Short employee shorthand should be understood before asking the LLM.
         # Do not turn a possessive pronoun into a keyword search.
         if re.fullmatch(r"(?:my|meri|mere|mera)\s+(?:all\s+)?(?:tickets?|ticket\s+status|requests?)\s*[?!.]*", message_lower) or re.fullmatch(r"(?:tickets?|requests?)\s+(?:of\s+)?mine\s*[?!.]*", message_lower) or re.fullmatch(r"(?:check|show|give|tell)\s+(?:me\s+)?my\s+ticket\s+status\s*[?!.]*", message_lower):

@@ -3292,3 +3292,222 @@ body.dark-mode .darpan-toast{background:#1b2a42;color:#eff5ff;border-color:#3850
 @keyframes darpanToastIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:700px){.darpan-toast-region{top:12px;right:12px;left:12px;max-width:none}}
 @media(prefers-reduced-motion:reduce){.darpan-toast{animation:none}.chat-input-wrapper .vishakha-voice-stop{transition:none}}
+
+/* Language preference is compact on desktop and thumb-friendly on mobile. */
+.darpan-language-control{display:inline-flex;align-items:center;gap:5px;padding:0 9px;min-height:38px;border:1px solid rgba(115,138,176,.32);border-radius:11px;background:rgba(116,144,198,.07);color:inherit;white-space:nowrap}
+.darpan-language-control span{font-size:15px}
+.darpan-language-control select{max-width:100px;padding:7px 14px 7px 1px;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.darpan-language-control select option{color:#14223b;background:#fff}
+body.dark-mode .darpan-language-control{background:#1e293b;border-color:#3b4d6b;color:#e2e8f0}
+body.dark-mode .darpan-language-control select option{background:#1e293b;color:#e2e8f0}
+@media(max-width:700px){.darpan-language-control{min-height:35px;padding:0 6px;gap:3px}.darpan-language-control select{font-size:11px;max-width:84px}}
+
+/* Branded mascot avatar with graceful fallback when no PNG has been uploaded. */
+.darpan-mascot-avatar{position:relative;overflow:hidden;isolation:isolate;border:1px solid rgba(112,147,220,.18);background:linear-gradient(135deg,#2563eb,#4f46e5)}
+.darpan-mascot-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;display:block}
+.darpan-mascot-avatar:not(.mascot-missing) .darpan-avatar-fallback{opacity:0}
+.darpan-mascot-avatar.mascot-missing .darpan-avatar-fallback{opacity:1}
+.darpan-avatar-fallback{position:relative;z-index:1;font-size:10px;color:#fff;font-weight:800;transition:opacity .2s}
+.ai-thinking-message .darpan-mascot-avatar img{animation:darpanMascotThink 2.6s ease-in-out infinite}
+@keyframes darpanMascotThink{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.darpan-draft-progress{max-width:min(600px,calc(100% - 56px));margin:6px 0 18px 46px;padding:16px 18px;border-radius:18px;background:#f7faff;border:1px solid #dbe6fa;box-shadow:0 4px 20px rgba(20,42,90,.05);box-sizing:border-box}
+.darpan-draft-heading{font-size:14px;font-weight:750;color:#17315d;margin-bottom:12px}
+.darpan-draft-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.darpan-draft-step{font-size:11px;line-height:1.3;border-radius:8px;padding:8px 5px;text-align:center;background:#e7edf7;color:#60728b;font-weight:600}
+.darpan-draft-step.is-complete{background:#d9efe8;color:#11644e}
+.darpan-draft-step.is-current{background:#dbe9ff;color:#195cbd;box-shadow:inset 0 0 0 1px #a7c6f6}
+.darpan-draft-details{display:grid;grid-template-columns:minmax(100px,35%) 1fr;gap:8px 12px;padding:12px 0 0;margin:10px 0 0;border-top:1px solid #dbe6fa;font-size:12px;line-height:1.5}
+.darpan-draft-details dt{color:#687a98}.darpan-draft-details dd{margin:0;color:#253e5f;overflow-wrap:anywhere;font-weight:600}
+.darpan-draft-note{font-size:11px;color:#657997;margin:12px 0 0}
+.darpan-draft-edit{cursor:pointer;margin-top:12px;border:1px solid #c1d3f4;background:#fff;color:#2563eb;border-radius:10px;padding:9px 14px;font:inherit;font-size:12px;font-weight:700}
+.darpan-draft-edit:hover{background:#e5f0ff}
+body.dark-mode .darpan-draft-progress{background:#172237;border-color:#34496a}body.dark-mode .darpan-draft-heading,body.dark-mode .darpan-draft-details dd{color:#ecf3ff}body.dark-mode .darpan-draft-details dt,body.dark-mode .darpan-draft-note{color:#a4b4d0}body.dark-mode .darpan-draft-step{background:#2a3850;color:#c3cde0}body.dark-mode .darpan-draft-step.is-current{background:#214574;color:#c1dcff}body.dark-mode .darpan-draft-step.is-complete{background:#174d46;color:#c7eee1}body.dark-mode .darpan-draft-edit{background:#1c3252;color:#b8d8ff;border-color:#446395}
+@media(max-width:700px){.darpan-draft-progress{max-width:calc(100% - 34px);margin-left:34px;padding:12px}.darpan-draft-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.darpan-draft-details{grid-template-columns:minmax(80px,35%) 1fr}}
+@media(prefers-reduced-motion:reduce){.ai-thinking-message .darpan-mascot-avatar img{animation:none}}
+
+/* Vishakha Mascot V2: large transparent artwork, no circular frame. */
+#chat-area .message.ai-message .avatar.darpan-mascot-avatar,
+#chat-area .ai-thinking-message .avatar.darpan-mascot-avatar,
+.darpan-mascot-avatar {
+  width: 68px !important;
+  height: 68px !important;
+  min-width: 68px !important;
+  flex: 0 0 68px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  margin: 0 12px 0 0;
+}
+.darpan-mascot-avatar img {
+  position: static !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.darpan-mascot-avatar.mascot-missing {
+  width: 44px !important; height: 44px !important;
+  min-width: 44px !important; flex-basis: 44px;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg,#2563eb,#4f46e5) !important;
+}
+.darpan-mascot-avatar .darpan-avatar-fallback {font-size:12px}
+#chat-area .message.ai-message { align-items: flex-start; }
+#chat-area .message.ai-message .message-bubble { min-width:0; }
+/* Compact, touch-friendly real workflow progress. */
+.darpan-draft-progress {max-width:min(620px,calc(100% - 80px));margin-left:80px;padding:18px 20px}
+.darpan-draft-topline {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.darpan-draft-heading {margin:0;font-size:15px}
+.darpan-draft-status {flex-shrink:0;border-radius:999px;padding:6px 10px;background:#e7efff;color:#295ec1;font-size:11px;font-weight:700}
+.darpan-draft-step {display:flex;align-items:center;justify-content:center;gap:5px;min-height:44px;border-radius:12px}
+.darpan-draft-step-number {display:grid;place-items:center;border-radius:100%;width:18px;height:18px;flex:0 0 18px;background:rgba(74,107,159,.12);font-size:10px}
+.darpan-draft-summary {font-size:12px;color:#647796;margin-top:14px;font-weight:650}
+.darpan-draft-details {margin-top:8px}
+.darpan-draft-pending {display:inline-flex;margin:12px 0 0;padding:7px 10px;border-radius:999px;background:#fff2d7;color:#8e5d06;font-size:12px;font-weight:650}
+.darpan-draft-actions {display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+.darpan-draft-continue,.darpan-draft-edit {cursor:pointer;border:1px solid #c5d5f4;background:#fff;color:#2563eb;border-radius:11px;padding:11px 15px;min-height:42px;font:inherit;font-size:12px;font-weight:700;transition:background .18s,transform .18s}
+.darpan-draft-continue:hover,.darpan-draft-edit:hover {background:#eaf2ff;transform:translateY(-1px)}
+body.dark-mode .darpan-draft-status {background:#254577;color:#c1dbff}
+body.dark-mode .darpan-draft-summary {color:#a6b9d3}
+body.dark-mode .darpan-draft-pending {background:#513c20;color:#ffe1a5}
+body.dark-mode .darpan-draft-continue {background:#1c3252;color:#b8d8ff;border-color:#446395}
+@media(max-width:700px) {
+  #chat-area .message.ai-message .avatar.darpan-mascot-avatar,.darpan-mascot-avatar {width:54px!important;height:54px!important;min-width:54px!important;flex-basis:54px;margin-right:8px}
+  .darpan-draft-progress {margin-left:0;max-width:100%;padding:13px}
+  .darpan-draft-steps {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .darpan-draft-step {min-height:40px;font-size:11px}
+}
+@media(prefers-reduced-motion:reduce) {.darpan-draft-continue,.darpan-draft-edit{transition:none}}
+
+/* Darpan General AI response actions — subtle, touch accessible. */
+#chat-area .vishakha-message-action.vishakha-rated,
+#chat-area .vishakha-message-action[aria-pressed="true"]{color:#2165cf;background:rgba(37,99,235,.11);border-color:rgba(37,99,235,.2)}
+body.dark-mode #chat-area .vishakha-message-action.vishakha-rated,
+body.dark-mode #chat-area .vishakha-message-action[aria-pressed="true"]{color:#a7c7ff;background:rgba(90,145,255,.18);border-color:rgba(90,145,255,.26)}
+#chat-area .vishakha-message-action:disabled{opacity:.4;cursor:not-allowed;transform:none}
+@media(max-width:700px){#chat-area .message.ai-message .vishakha-message-actions{display:flex;flex-wrap:wrap;gap:2px;max-width:calc(100vw - 75px)}}
+@media(max-width:370px){#chat-area .vishakha-rating-label{display:none}}
+
+/* Darpan in-chat prompt / response versions and in-app rename */
+#chat-area .darpan-version-nav{display:flex;align-items:center;gap:6px;margin:3px 0 0 4px;width:max-content;color:#64748b;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+#chat-area .message.user-message .darpan-version-nav{margin-left:auto;margin-right:6px}
+#chat-area .darpan-version-nav button{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;background:transparent;color:inherit;border-radius:9px;cursor:pointer;font-size:23px;line-height:1;transition:background .16s ease,color .16s ease}
+#chat-area .darpan-version-nav button:hover:not(:disabled){background:rgba(75,112,191,.11);color:#2563eb}
+#chat-area .darpan-version-nav button:disabled{opacity:.25;cursor:default}
+body.dark-mode #chat-area .darpan-version-nav{color:#a9b9d4}
+body.dark-mode #chat-area .darpan-version-nav button:hover:not(:disabled){color:#9ec3ff;background:rgba(106,153,230,.17)}
+.darpan-rename-overlay{position:fixed;inset:0;z-index:2200;background:rgba(9,17,34,.62);backdrop-filter:blur(5px);display:grid;place-items:center;padding:18px}
+.darpan-rename-dialog{width:min(430px,100%);box-sizing:border-box;background:#fff;border:1px solid #d9e3f5;border-radius:20px;box-shadow:0 24px 72px rgba(10,20,40,.28);padding:22px;animation:darpanRenameIn .19s ease-out}
+.darpan-rename-dialog h3{margin:0 0 6px;font-size:19px;font-weight:750;color:#162b4d}
+.darpan-rename-dialog p{margin:0 0 18px;color:#66758f;font-size:13px}
+.darpan-rename-input{display:block;box-sizing:border-box;width:100%;min-height:45px;padding:11px 13px;border:1px solid #bdcee8;border-radius:12px;font:inherit;font-size:14px;background:#f8faff;color:#142c53;outline:none}
+.darpan-rename-input:focus{border-color:#477fe4;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.darpan-rename-buttons{display:flex;justify-content:flex-end;gap:9px;margin-top:21px}
+.darpan-rename-buttons button{padding:11px 16px;border-radius:11px;border:1px solid #d9e2f0;background:#f0f4fa;color:#273d5d;font:inherit;font-weight:650;cursor:pointer}
+.darpan-rename-buttons .darpan-rename-save{border-color:#2563eb;background:#2563eb;color:#fff}
+body.dark-mode .darpan-rename-dialog{background:#172337;border-color:#354865}
+body.dark-mode .darpan-rename-dialog h3{color:#f0f5ff}
+body.dark-mode .darpan-rename-dialog p{color:#a9b9d4}
+body.dark-mode .darpan-rename-input{background:#101b2c;border-color:#3c526f;color:#f3f6ff}
+body.dark-mode .darpan-rename-buttons button{background:#25344e;color:#d9e8ff;border-color:#405674}
+body.dark-mode .darpan-rename-buttons .darpan-rename-save{background:#2563eb;color:#fff}
+@keyframes darpanRenameIn{from{opacity:0;transform:translateY(9px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.darpan-rename-dialog{animation:none}}
+#chat-area .message .darpan-version-nav{position:absolute;right:8px;bottom:0;margin:0;z-index:1}
+#chat-area .message.user-message .darpan-version-nav{right:105px;bottom:0;margin:0}
+@media(max-width:700px){#chat-area .message.ai-message .darpan-version-nav{right:0;bottom:-3px}#chat-area .message.user-message .darpan-version-nav{right:84px;bottom:-3px}}
+
+/* Review-stage inline field edits; desktop and mobile */
+.darpan-draft-details dd{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.darpan-draft-details dd > span{min-width:0;overflow-wrap:anywhere}
+.darpan-draft-field-edit{flex-shrink:0;appearance:none;border:1px solid #bbcff2;border-radius:9px;background:#f1f6ff;color:#245dc6;font:inherit;font-size:11px;font-weight:750;line-height:1;padding:8px 10px;min-height:33px;cursor:pointer;transition:background .17s,border-color .17s,transform .17s}
+.darpan-draft-field-edit:hover:not(:disabled){background:#dbeafe;border-color:#78a1ee;transform:translateY(-1px)}
+.darpan-draft-field-edit:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:2px}
+.darpan-draft-field-edit:disabled{opacity:.48;cursor:wait}
+body.dark-mode .darpan-draft-field-edit{background:#253d5c;color:#bfdcff;border-color:#486991}
+@media(max-width:700px){.darpan-draft-details dd{gap:7px}.darpan-draft-field-edit{min-height:38px;padding:9px 11px}}
+
+
+/* Darpan 4.2: application-specific, mobile-first AI welcome */
+#chat-area .suggestions.darpan-welcome {
+    box-sizing:border-box;display:flex;flex-direction:column;gap:18px;
+    width:min(760px,calc(100% - 32px));max-width:760px;
+    margin:28px auto 32px;padding:6px 0;background:transparent;
+}
+.darpan-welcome-head {display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:0 2px}
+.darpan-welcome-eyebrow {font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#356be2}
+.darpan-welcome-head h2 {margin:0;color:var(--text-primary,#17243d);font-size:clamp(22px,3.5vw,29px);line-height:1.2;letter-spacing:-.025em;font-weight:750}
+.darpan-welcome-head p {margin:0;max-width:650px;color:var(--text-secondary,#69788f);font-size:13px;line-height:1.65}
+.darpan-welcome-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;width:100%}
+#chat-area .suggestions .darpan-welcome-card {
+    display:flex;align-items:center;gap:12px;box-sizing:border-box;min-width:0;
+    padding:15px 13px;border:1px solid #e2e8f3;background:#fff;border-radius:16px;
+    color:#1d2c48;box-shadow:0 3px 12px rgba(32,57,96,.035);
+    text-align:left;white-space:normal;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s;
+}
+#chat-area .suggestions .darpan-welcome-card:hover,#chat-area .suggestions .darpan-welcome-card:focus-visible{
+    background:#f8fbff;border-color:#9bbaf4;transform:translateY(-2px);
+    box-shadow:0 8px 20px rgba(37,99,235,.1);outline:none;
+}
+.darpan-welcome-card-icon {width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;border-radius:12px;background:#eaf1ff;color:#275fda;font-size:21px;font-weight:750}
+.darpan-welcome-card-content {display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+.darpan-welcome-card-content strong {font-size:13px;font-weight:750;line-height:1.2}
+.darpan-welcome-card-content small {font-size:11.5px;font-weight:450;color:#6d7d95;line-height:1.4}
+.darpan-welcome-arrow {font-size:18px;color:#98a8bf;align-self:center}
+.darpan-welcome-foot {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.darpan-welcome-foot > span {font-size:12px;color:#6d7d95;margin-right:3px}
+#chat-area .suggestions .darpan-welcome-chip {border:1px solid #dde6f2;background:#f5f8fd;color:#415572;font-size:11.5px;font-weight:600;border-radius:999px;padding:8px 12px;transition:background .15s,border-color .15s}
+#chat-area .suggestions .darpan-welcome-chip:hover {background:#e8f0ff;border-color:#a3bcf2}
+body.dark-mode .darpan-welcome-head h2 {color:#ecf3ff}
+body.dark-mode .darpan-welcome-head p,body.dark-mode .darpan-welcome-foot > span{color:#a6b4cb}
+body.dark-mode .darpan-welcome-eyebrow{color:#89b1ff}
+body.dark-mode #chat-area .suggestions .darpan-welcome-card {background:#17253a;border-color:#34445c;color:#edf4ff;box-shadow:none}
+body.dark-mode #chat-area .suggestions .darpan-welcome-card:hover {background:#223655;border-color:#6086ce}
+body.dark-mode .darpan-welcome-card-icon{background:#233d68;color:#bad0ff}
+body.dark-mode .darpan-welcome-card-content small{color:#acbad0}
+body.dark-mode #chat-area .suggestions .darpan-welcome-chip{background:#1b2c45;color:#cad8f0;border-color:#3a4d68}
+@media(max-width:700px){
+    #chat-area .suggestions.darpan-welcome{width:calc(100% - 16px);margin:15px auto 25px;gap:14px}
+    .darpan-welcome-grid{gap:9px}
+    #chat-area .suggestions .darpan-welcome-card{padding:12px 10px;gap:9px;border-radius:13px}
+    .darpan-welcome-card-icon{width:32px;height:32px;flex-basis:32px;border-radius:10px;font-size:17px}
+    .darpan-welcome-card-content strong{font-size:12px}
+    .darpan-welcome-card-content small{font-size:10.5px}
+    .darpan-welcome-arrow{display:none}
+}
+@media(max-width:380px){.darpan-welcome-grid{grid-template-columns:1fr}.darpan-welcome-head h2{font-size:22px}}
+@media(prefers-reduced-motion:reduce){#chat-area .suggestions .darpan-welcome-card{transition:none}#chat-area .suggestions .darpan-welcome-card:hover{transform:none}}
+
+/* SEP clarification cards: neutral prompts, not one-click transactions. */
+.darpan-clarification-card {
+  margin: 8px 12px 16px 56px;
+  max-width: min(580px, calc(100% - 68px));
+  border: 1px solid var(--border-color, rgba(130,146,175,.24));
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--sidebar-bg, rgba(128,140,170,.06));
+}
+.darpan-clarification-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.darpan-clarification-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
+.darpan-clarification-choice {
+  border: 1px solid var(--border-color, rgba(130,146,175,.28));
+  border-radius: 11px; padding: 12px; background: transparent; color: inherit;
+  font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
+}
+.darpan-clarification-choice:hover:not(:disabled),
+.darpan-clarification-choice:focus-visible {
+  background: rgba(64,110,228,.10); border-color: rgba(64,110,228,.54);
+}
+.darpan-clarification-choice:disabled { opacity: .55; cursor: default; }
+.darpan-clarification-hint { font-size: 12px; opacity: .72; margin: 12px 0 0; }
+@media (max-width: 640px) {
+  .darpan-clarification-card { margin: 8px 6px 14px 6px; max-width: calc(100% - 12px); padding: 12px; }
+  .darpan-clarification-actions { grid-template-columns: 1fr; }
+}

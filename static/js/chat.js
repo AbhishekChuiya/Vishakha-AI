@@ -162,6 +162,25 @@ if (!activeChatId) {
     );
 }
 
+/* Branded assistant avatar. The image is optional until the company mascot is
+   uploaded. On a missing PNG, the existing AI fallback remains visible. */
+const DARPAN_MASCOT_SRC = '/static/images/vishakha-ai-mascot.png';
+function darpanAvatarHtml() {
+    return `<div class="avatar darpan-mascot-avatar" aria-label="Vishakha AI">
+        <img src="${DARPAN_MASCOT_SRC}" alt="" loading="lazy"
+            onerror="this.style.display='none';this.parentNode.classList.add('mascot-missing')">
+        <span class="darpan-avatar-fallback" aria-hidden="true">AI</span>
+    </div>`;
+}
+function darpanApplyMascots(root = document) {
+    root.querySelectorAll('.ai-message .avatar:not(.darpan-mascot-avatar)').forEach(avatar => {
+        if (avatar.querySelector('img')) return;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = darpanAvatarHtml();
+        avatar.replaceWith(tpl.content.firstElementChild);
+    });
+}
+
 /* =========================================================
    USER MESSAGE
 ========================================================= */
@@ -241,9 +260,7 @@ function addAIMessage(message) {
     messageDiv.className = "message ai-message";
 
     messageDiv.innerHTML = `
-        <div class="avatar">
-            AI
-        </div>
+        ${darpanAvatarHtml()}
 
         <div class="message-bubble darpan-rich-answer">
             ${darpanFormatMessage(message)}
@@ -263,9 +280,7 @@ function addDepartmentDetectionMessage(message) {
     messageDiv.className = "message ai-message";
 
     messageDiv.innerHTML = `
-        <div class="avatar">
-            AI
-        </div>
+        ${darpanAvatarHtml()}
 
         <div class="message-bubble">
             <p>${escapeHtml(message)}</p>
@@ -587,6 +602,176 @@ function addOptionButtons(options) {
 }
 
 
+/* Action choices for ambiguous SEP questions. Buttons send a fresh text
+   request through the normal chat route, not a pending form-field answer. */
+function darpanShowClarification(result) {
+    if (selectedVishakhaApp !== 'ticketing') return;
+    addAIMessage(result.message || 'What would you like to do?');
+    const card = document.createElement('section');
+    card.className = 'darpan-clarification-card';
+    card.setAttribute('aria-label', 'Choose a ticket action');
+    const heading = document.createElement('div');
+    heading.className = 'darpan-clarification-title';
+    heading.textContent = 'Choose an action';
+    card.appendChild(heading);
+    const grid = document.createElement('div');
+    grid.className = 'darpan-clarification-actions';
+    const allowed = new Set(['Create a ticket', 'Show my tickets',
+        'Check my ticket status', 'IT Department ticket summary']);
+    (Array.isArray(result.options) ? result.options : []).forEach(option => {
+        if (!option || !allowed.has(option.prompt)) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'darpan-clarification-choice';
+        button.dataset.clarificationPrompt = option.prompt;
+        button.textContent = option.label || option.prompt;
+        grid.appendChild(button);
+    });
+    card.appendChild(grid);
+    const hint = document.createElement('p');
+    hint.className = 'darpan-clarification-hint';
+    hint.textContent = result.hint || 'You can also type your request below.';
+    card.appendChild(hint);
+    chatMessages.appendChild(card);
+    saveChatHistory();
+    scrollToBottom();
+}
+
+// Delegation ensures clarification cards also work when reopening saved chats.
+document.addEventListener('click', function (event) {
+    const button = event.target.closest('.darpan-clarification-choice');
+    if (!button || button.disabled || selectedVishakhaApp !== 'ticketing' || isAIResponding) return;
+    const prompt = button.dataset.clarificationPrompt;
+    const safePrompts = new Set(['Create a ticket', 'Show my tickets',
+        'Check my ticket status', 'IT Department ticket summary']);
+    if (!safePrompts.has(prompt)) return;
+    const parent = button.closest('.darpan-clarification-card');
+    parent?.querySelectorAll('.darpan-clarification-choice').forEach(b => b.disabled = true);
+    addUserMessage(prompt);
+    setAutomaticChatTitle(prompt);
+    sendToBackend(prompt, 'text');
+});
+
+/* A lightweight read-only SEP draft overview, built only from server state.
+   No synthetic ticket fields; corrections are performed by Change Details at review. */
+function darpanUpdateDraftProgress(progress, {review = false} = {}) {
+    if (selectedVishakhaApp !== 'ticketing' || !progress || !progress.ticket) return;
+    chatMessages.querySelectorAll('.darpan-draft-progress').forEach(el => el.remove());
+    const ticket = progress.ticket;
+    const completed = {
+        department: Boolean(ticket.department),
+        request_type: Boolean(ticket.request_type),
+        details: Boolean(ticket.description && ticket.category && ticket.location),
+        review: Boolean(review)
+    };
+    const stepsData = [
+        ['department', 'Department'], ['request_type', 'Request type'],
+        ['details', 'Details'], ['review', 'Review']
+    ];
+    const activeIndex = review ? 3 : !completed.department ? 0 : !completed.request_type ? 1 : 2;
+    const section = document.createElement('section');
+    section.className = 'darpan-draft-progress';
+    section.setAttribute('aria-label', 'Current ticket draft');
+    const header = document.createElement('div');
+    header.className = 'darpan-draft-topline';
+    const title = document.createElement('div');
+    title.className = 'darpan-draft-heading';
+    title.textContent = review ? 'Review your ticket' : 'Ticket in progress';
+    const chip = document.createElement('span');
+    chip.className = 'darpan-draft-status';
+    chip.textContent = review ? 'Review' : `Step ${activeIndex + 1} of 4`;
+    header.append(title, chip);
+    section.append(header);
+    const steps = document.createElement('div');
+    steps.className = 'darpan-draft-steps';
+    stepsData.forEach(([key, label], index) => {
+        const step = document.createElement('div');
+        step.className = 'darpan-draft-step' + (completed[key] ? ' is-complete' : '') + (index === activeIndex ? ' is-current' : '');
+        const symbol = document.createElement('span');
+        symbol.textContent = completed[key] ? '✓' : String(index + 1);
+        symbol.className = 'darpan-draft-step-number';
+        const text = document.createElement('span');
+        text.textContent = label;
+        step.append(symbol, text);
+        steps.append(step);
+    });
+    section.append(steps);
+    const allFields = [
+        ['Department',ticket.department],['Request type',ticket.request_type],
+        ['Category',ticket.category],['Subcategory',ticket.subcategory],
+        ['Issue',ticket.description],['Location',ticket.location],
+        ['Priority',ticket.priority],['Target date',ticket.target_date],
+        ['Business justification',ticket.business_justification]
+    ];
+    const collected = allFields.filter(([,value]) => value != null && String(value).trim() !== '');
+    const summary = document.createElement('div');
+    summary.className = 'darpan-draft-summary';
+    summary.textContent = `${collected.length} details collected`;
+    section.append(summary);
+    if (collected.length) {
+        const details = document.createElement('dl');
+        details.className = 'darpan-draft-details';
+        collected.forEach(([label,value]) => {
+            const dt = document.createElement('dt'); dt.textContent = label;
+            const dd = document.createElement('dd');
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = String(value);
+            dd.append(valueSpan);
+            // Only review-stage fields supported by the existing Change Details
+            // state machine can be edited. No direct SEP API writes occur here.
+            const editName = {'Issue':'Description', 'Request type':'Request Type',
+                'Target date':'Target Date', 'Business justification':'Business Justification',
+                'Subcategory':'Subcategory', 'Category':'Category',
+                'Department':'Department', 'Location':'Location', 'Priority':'Priority'}[label];
+            if (review && editName) {
+                const editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'darpan-draft-field-edit';
+                editButton.setAttribute('aria-label', `Edit ${label}`);
+                editButton.title = `Edit ${label}`;
+                editButton.textContent = 'Edit';
+                editButton.dataset.editField = editName;
+                dd.append(editButton);
+            }
+            details.append(dt, dd);
+        });
+        section.append(details);
+    }
+    const field = String(progress.current_field || '').trim();
+    if (!review && field && !['confirmation','none'].includes(field.toLowerCase())) {
+        const pending = document.createElement('p');
+        pending.className = 'darpan-draft-pending';
+        pending.textContent = `Next: ${field.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())}`;
+        section.append(pending);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'darpan-draft-actions';
+    if (!review) {
+        const continueBtn = document.createElement('button');
+        continueBtn.type = 'button';
+        continueBtn.className = 'darpan-draft-continue';
+        continueBtn.textContent = 'Continue in chat →';
+        continueBtn.addEventListener('click', () => {
+            document.getElementById('message-input')?.focus();
+        });
+        actions.append(continueBtn);
+    } else {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'darpan-draft-edit';
+        edit.textContent = '✎ Edit ticket details';
+        edit.addEventListener('click', () => {
+            const change = chatMessages.querySelector('.ticket-confirmation .change-details-button');
+            if (change && !change.disabled) change.click();
+        });
+        actions.append(edit);
+    }
+    section.append(actions);
+    chatMessages.append(section);
+    saveChatHistory();
+    scrollToBottom();
+}
+
 /* =========================================================
    CONFIRMATION CARD
 ========================================================= */
@@ -794,7 +979,7 @@ function addLoadingMessage() {
     messageDiv.className = 'message ai-message ai-thinking-message';
     // The animation represents activity, not verified backend progress.
     messageDiv.innerHTML = `
-        <div class="avatar ai-thinking-avatar" aria-hidden="true">✦</div>
+        ${darpanAvatarHtml()}
         <div class="ai-thinking-bubble" role="status" aria-live="off" aria-label="Vishakha AI is preparing a response">
             <div class="vishakha-thinking-orb" aria-hidden="true"><span></span><span></span><span></span></div>
             <div class="ai-thinking-content"><span class="ai-thinking-text" id="ai-thinking-text">Working on your request…</span></div>
@@ -1246,7 +1431,7 @@ chats.forEach(function(chat) {
 
     renameButton.addEventListener(
         "click",
-        function(event) {
+        async function(event) {
 
             event.stopPropagation();
 
@@ -1255,11 +1440,7 @@ chats.forEach(function(chat) {
                 "New Chat";
 
 
-            const newTitle =
-                prompt(
-                    "Rename chat:",
-                    currentTitle
-                );
+            const newTitle = await darpanRenameChatDialog(currentTitle);
 
 
             if (
@@ -1483,19 +1664,7 @@ chats.forEach(function(chat) {
                     suggestions.className =
                         "suggestions";
 
-                    suggestions.innerHTML = `
-                        <button>
-                            Create a laptop repair ticket
-                        </button>
-
-                        <button>
-                            Report a network issue
-                        </button>
-
-                        <button>
-                            Check my ticket status
-                        </button>
-                    `;
+                    renderApplicationSuggestions(suggestions);
 
 
                     chatMessages.appendChild(
@@ -1551,6 +1720,15 @@ chats.forEach(function(chat) {
 }
 
 function restoreButtonEvents() {
+    document.querySelectorAll('.darpan-draft-edit').forEach(button => {
+        if (button.dataset.darpanRestored) return;
+        button.dataset.darpanRestored = '1';
+        button.addEventListener('click', () => {
+            const edit = chatMessages.querySelector('.ticket-confirmation .change-details-button');
+            if (edit && !edit.disabled) edit.click();
+        });
+    });
+
 
     const optionButtons =
         document.querySelectorAll(
@@ -2216,6 +2394,16 @@ async function sendMessage() {
    SEND OPTION
 ========================================================= */
 
+// Delegated handler works for cards restored from persistent history as well.
+document.addEventListener('click', function (event) {
+    const button = event.target.closest('.darpan-draft-field-edit');
+    if (!button || button.disabled || selectedVishakhaApp !== 'ticketing') return;
+    const field = button.dataset.editField;
+    if (!field || isAIResponding) return;
+    button.disabled = true;
+    sendOption('Edit: ' + field);
+});
+
 async function sendOption(option) {
 
     addUserMessage(option);
@@ -2236,6 +2424,8 @@ async function sendToBackend(
     messageType
 ) {
 
+    const requestChatId = activeChatId;
+    const requestApp = selectedVishakhaApp;
     addLoadingMessage();
 
     try {
@@ -2287,6 +2477,9 @@ async function sendToBackend(
         }
         const data = await response.json();
 
+        if (activeChatId !== requestChatId || selectedVishakhaApp !== requestApp) {
+            return; // Never render a delayed reply in another conversation.
+        }
         removeLoadingMessage();
 
 
@@ -2364,6 +2557,12 @@ function handleAIResponse(result) {
     }
 
 
+    /* RECOVERABLE SEP CLARIFICATION (no ticket API side effects). */
+    if (result.type === "clarification") {
+        darpanShowClarification(result);
+        return;
+    }
+
     /* STRUCTURED ANALYTICS REPORT */
     if (result.type === "ticket_analytics" && result.analytics) {
         addTicketAnalyticsCard(result.analytics, result.analytics_view || "OVERVIEW");
@@ -2432,6 +2631,7 @@ function handleAIResponse(result) {
 
         }
 
+        darpanUpdateDraftProgress(result.draft_progress);
         return;
     }
 
@@ -2446,7 +2646,7 @@ function handleAIResponse(result) {
         addConfirmation(
             result.ticket
         );
-
+        darpanUpdateDraftProgress(result.draft_progress || {ticket:result.ticket,current_field:'confirmation'}, {review:true});
         return;
     }
 
@@ -2969,9 +3169,7 @@ function addTicketLink(url) {
 
     messageDiv.innerHTML = `
 
-        <div class="avatar">
-            AI
-        </div>
+        ${darpanAvatarHtml()}
 
         <div class="message-bubble">
 
@@ -3001,45 +3199,102 @@ function addTicketLink(url) {
 /* =========================================================
    SUGGESTION BUTTONS
 ========================================================= */
-// One delegated handler supports buttons inserted by New Chat, history restore,
-// and application switching. No per-button listeners (avoids duplicate submits).
-const VISH_GENERAL_SUGGESTIONS = [
-    'Help me write a professional email',
-    'Explain how agentic AI works',
-    'Summarize the benefits of automation',
-    'Help me plan a meeting',
-    'Translate a message into Hindi',
-    'Prepare a project update'
-];
-const VISH_SEP_SUGGESTIONS = [
-    'Create a ticket',
-    'Show my tickets',
-    'Check my ticket status',
-    'Raise an Admin ticket',
-    'Show my open tickets',
-    'Show my resolved tickets',
-    'Give me summary of IT Department',
-    'Show top 10 IT Application',
-    'Create a Safety ticket',
-    'Who is assigned to my ticket?'
-];
+// Welcome action cards use the existing read-only chat/send path.
+// Each button sends a normal employee message; SEP actions still require
+// the workflow's existing confirmation before creating a ticket.
+const VISH_WELCOME = {
+    general: {
+        eyebrow: 'GENERAL AI',
+        title: 'How can I help you today?',
+        description: 'Ask naturally in English, Hindi or Hinglish. Choose a starting point or type your own question.',
+        cards: [
+            { icon: '✉', title: 'Write an email', detail: 'Draft a professional message', prompt: 'Help me write a professional email' },
+            { icon: '✦', title: 'Explain a topic', detail: 'Get clear, simple explanations', prompt: 'Explain how agentic AI works' },
+            { icon: '文', title: 'Translate text', detail: 'Hindi, English and Hinglish', prompt: 'Translate a message into Hindi' },
+            { icon: '▤', title: 'Summarize text', detail: 'Turn long text into key points', prompt: 'Help me summarize a document' },
+            { icon: '◷', title: 'Plan a meeting', detail: 'Agenda, actions and follow-ups', prompt: 'Help me plan a meeting' },
+            { icon: '✎', title: 'Project update', detail: 'Write a concise status report', prompt: 'Prepare a project update' }
+        ],
+        chips: ['Improve my writing', 'Explain AI simply', 'Help me brainstorm']
+    },
+    ticketing: {
+        eyebrow: 'SERVICE EXCELLENCE',
+        title: 'What would you like to do?',
+        description: 'Manage requests, track tickets and view permitted reports. You can also describe your issue in your own words.',
+        cards: [
+            { icon: '＋', title: 'Create a ticket', detail: 'Report an issue or request help', prompt: 'Create a ticket' },
+            { icon: '▤', title: 'My tickets', detail: 'See requests you have raised', prompt: 'Show my tickets' },
+            { icon: '◷', title: 'Track status', detail: 'Check updates on your tickets', prompt: 'Check my ticket status' },
+            { icon: '▥', title: 'Department summary', detail: 'View authorized ticket analytics', prompt: 'Give me summary of IT Department' },
+            { icon: '⌁', title: 'Admin support', detail: 'Raise an Admin service request', prompt: 'Raise an Admin ticket' },
+            { icon: '▦', title: 'Top IT applications', detail: 'See application-wise ticket trends', prompt: 'Show top 10 IT Application' }
+        ],
+        chips: ['My open tickets', 'Show my resolved tickets', 'Create a Safety ticket']
+    }
+};
 function setupSuggestionButtons(container) {
-    // The container is handled through the delegated chat-area listener.
-    // Keep this function for compatibility with existing callers.
     if (container) container.querySelectorAll('button').forEach(btn => btn.type = 'button');
 }
 function renderApplicationSuggestions(container) {
     const target = container || document.createElement('div');
-    target.className = 'suggestions';
+    const data = VISH_WELCOME[selectedVishakhaApp === 'general' ? 'general' : 'ticketing'];
+    target.className = 'suggestions darpan-welcome';
+    target.dataset.application = selectedVishakhaApp;
     target.replaceChildren();
-    const prompts = selectedVishakhaApp === 'general'
-        ? VISH_GENERAL_SUGGESTIONS : VISH_SEP_SUGGESTIONS;
-    prompts.forEach(prompt => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = prompt;
-        target.appendChild(btn);
-    });
+
+    const header = document.createElement('div');
+    header.className = 'darpan-welcome-head';
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'darpan-welcome-eyebrow';
+    eyebrow.textContent = data.eyebrow;
+    const title = document.createElement('h2');
+    title.textContent = data.title;
+    const description = document.createElement('p');
+    description.textContent = data.description;
+    header.append(eyebrow, title, description);
+    target.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'darpan-welcome-grid';
+    for (const card of data.cards) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'darpan-welcome-card';
+        button.dataset.prompt = card.prompt;
+        button.setAttribute('aria-label', `${card.title}: ${card.detail}`);
+        const icon = document.createElement('span');
+        icon.className = 'darpan-welcome-card-icon';
+        icon.textContent = card.icon;
+        icon.setAttribute('aria-hidden', 'true');
+        const content = document.createElement('span');
+        content.className = 'darpan-welcome-card-content';
+        const label = document.createElement('strong');
+        label.textContent = card.title;
+        const detail = document.createElement('small');
+        detail.textContent = card.detail;
+        content.append(label, detail);
+        const arrow = document.createElement('span');
+        arrow.className = 'darpan-welcome-arrow';
+        arrow.textContent = '↗';
+        arrow.setAttribute('aria-hidden', 'true');
+        button.append(icon, content, arrow);
+        grid.appendChild(button);
+    }
+    target.appendChild(grid);
+    const foot = document.createElement('div');
+    foot.className = 'darpan-welcome-foot';
+    const label = document.createElement('span');
+    label.textContent = 'Or try';
+    foot.appendChild(label);
+    for (const prompt of data.chips) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'darpan-welcome-chip';
+        chip.dataset.prompt = prompt;
+        chip.textContent = prompt;
+        foot.appendChild(chip);
+    }
+    target.appendChild(foot);
     return target;
 }
 function setupSuggestions() {
@@ -3050,9 +3305,8 @@ chatMessages.addEventListener('click', function(event) {
     const button = event.target.closest('.suggestions button');
     if (!button || !chatMessages.contains(button) || isAIResponding || button.disabled) return;
     event.preventDefault();
-    const prompt = button.textContent.trim();
+    const prompt = (button.dataset.prompt || button.textContent || '').trim();
     if (!prompt) return;
-    // A quick prompt is a normal chat message, not an option answer.
     addUserMessage(prompt);
     setAutomaticChatTitle(prompt);
     chatInput.value = '';
@@ -3331,6 +3585,41 @@ function showDarpanConfirmModal(options = {}) {
     });
 }
 
+
+/* In-app rename: works on desktop and touch browsers; no native prompt. */
+function darpanRenameChatDialog(currentTitle) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'darpan-rename-overlay';
+        overlay.innerHTML = '<div class="darpan-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="darpan-rename-title"><h3 id="darpan-rename-title">Rename chat</h3><p>Give this conversation a memorable name.</p><input class="darpan-rename-input" maxlength="120" aria-label="Chat name"/><div class="darpan-rename-buttons"><button class="darpan-rename-cancel" type="button">Cancel</button><button class="darpan-rename-save" type="button">Save name</button></div></div>';
+        const input = overlay.querySelector('input');
+        input.value = currentTitle || '';
+        document.body.appendChild(overlay);
+        let closed = false;
+        function finish(value) {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            resolve(value);
+        }
+        function onKey(event) {
+            if (event.key === 'Escape') finish(null);
+            if (event.key === 'Enter' && document.activeElement === input) { event.preventDefault(); save(); }
+        }
+        function save() {
+            const value = input.value.trim();
+            if (!value) { input.focus(); return; }
+            finish(value);
+        }
+        overlay.querySelector('.darpan-rename-cancel').addEventListener('click', () => finish(null));
+        overlay.querySelector('.darpan-rename-save').addEventListener('click', save);
+        overlay.addEventListener('click', event => { if (event.target === overlay) finish(null); });
+        document.addEventListener('keydown', onKey);
+        input.focus(); input.select();
+    });
+}
+
 /* =========================================================
    NEW CHAT
 ========================================================= */
@@ -3412,14 +3701,7 @@ async function startNewChat() {
         chatMessages.innerHTML = "";
 
 
-        /* Show initial AI message */
-
-        addAIMessage(
-            "Hello! 👋\n\n" +
-            (selectedVishakhaApp === "general"
-                ? "General mode: ask me anything, brainstorm, or draft writing. I won't perform company actions in this mode."
-                : "SEP mode: I can create tickets, check statuses, search requests, and show authorized analytics.")
-        );
+        /* Welcome action cards replace the former generic greeting bubble. */
 
 
         /* Show suggestions */
@@ -3492,7 +3774,6 @@ setupSuggestions();
 const vishakhaChatRestored = restoreChatHistory();
 if (selectedVishakhaApp === 'general' && !vishakhaChatRestored) {
     chatMessages.replaceChildren();
-    addAIMessage('General mode is ready. Ask questions, get explanations, or draft writing.');
     chatMessages.appendChild(renderApplicationSuggestions());
 }
 renderRecentChats();
@@ -3885,9 +4166,6 @@ if (applicationSelectorButton && applicationDropdown) {
             restoreButtonEvents();
             if (nextApp === 'ticketing') restoreConversationState();
         } else {
-            addAIMessage(nextApp === 'general'
-                ? 'General mode is ready. Ask a question, learn something, or draft a message.'
-                : 'Service Excellence Portal is selected. I can help with tickets, status checks and analytics.');
             chatMessages.appendChild(renderApplicationSuggestions());
         }
         // Previously saved chats retain the suggestion buttons they had at the time.
@@ -4455,8 +4733,87 @@ document.addEventListener('click', function(event) {
     const ICONS = {
         copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
         check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>',
+        regenerate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.5 6.3"/><path d="M3 4v7h7"/></svg>',
+        continue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 9 7-9 7V5Z"/></svg>',
+        up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10h3ZM10 10l4-7 1 7h5c1 0 1.4.6 1 2l-2 8H10V10Z"/></svg>',
+        down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14V3H4v11h3ZM10 14l4 7 1-7h5c1 0 1.4-.6 1-2l-2-8H10v10Z"/></svg>',
         edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg>'
     };
+    // Message versions stay in the SAME saved conversation. Versions are stored
+    // on the visible message nodes and survive database-backed HTML snapshots.
+    function readVersions(message, selector) {
+        try {
+            const stored = JSON.parse(message.dataset.darpanVersions || '[]');
+            if (Array.isArray(stored) && stored.length) return stored;
+        } catch (_) {}
+        const element = message.querySelector(selector);
+        return element ? [selector === '.vishakha-user-text' ? element.textContent : element.innerHTML] : [];
+    }
+    function displayVersion(message, selector) {
+        const versions = readVersions(message, selector);
+        if (!versions.length) return;
+        const index = Math.max(0, Math.min(versions.length - 1, Number(message.dataset.darpanVersionIndex || versions.length - 1)));
+        message.dataset.darpanVersionIndex = String(index);
+        const element = message.querySelector(selector);
+        if (!element) return;
+        if (selector === '.vishakha-user-text') {
+            if (element.textContent !== versions[index]) element.textContent = versions[index];
+        } else if (element.innerHTML !== versions[index]) element.innerHTML = versions[index];
+        let nav = message.querySelector(':scope > .darpan-version-nav');
+        if (versions.length < 2) {nav?.remove(); return;}
+        if (!nav) {
+            nav = document.createElement('div'); nav.className = 'darpan-version-nav';
+            nav.innerHTML = '<button type="button" data-version-step="-1" aria-label="Previous version">‹</button><span></span><button type="button" data-version-step="1" aria-label="Next version">›</button>';
+            message.appendChild(nav);
+        }
+        const countLabel = `${index+1}/${versions.length}`;
+        if (nav.querySelector('span').textContent !== countLabel) nav.querySelector('span').textContent = countLabel;
+        nav.querySelector('[data-version-step="-1"]').disabled = index === 0;
+        nav.querySelector('[data-version-step="1"]').disabled = index === versions.length - 1;
+    }
+    function storeVersion(message, selector, value) {
+        const versions = readVersions(message, selector);
+        versions.push(value);
+        message.dataset.darpanVersions = JSON.stringify(versions);
+        message.dataset.darpanVersionIndex = String(versions.length - 1);
+        displayVersion(message, selector);
+        return versions.length;
+    }
+    function latestPair(aiMessage) {
+        if (!aiMessage || aiMessage !== [...chatMessages.querySelectorAll('.message.ai-message')].at(-1)) return null;
+        let user = aiMessage.previousElementSibling;
+        while (user && !user.classList.contains('user-message')) user = user.previousElementSibling;
+        if (!user) return null;
+        if (user !== [...chatMessages.querySelectorAll('.message.user-message')].at(-1)) return null;
+        return {user, ai:aiMessage};
+    }
+    async function requestAlternative(prompt, pair, edited=false) {
+        const chatId = activeChatId;
+        const app = selectedVishakhaApp;
+        if (app !== 'general') return false;
+        const originalHtml = pair.ai.querySelector(':scope > .message-bubble')?.innerHTML;
+        if (!originalHtml) return false;
+        const initialMessages = new Set(chatMessages.children);
+        try {
+            // Uses the existing authenticated General endpoint. Never calls SEP.
+            await sendToBackend(prompt, 'regenerate');
+            if (activeChatId !== chatId || selectedVishakhaApp !== app) return false;
+            const additions = [...chatMessages.children].filter(node => !initialMessages.has(node));
+            const reply = additions.filter(node => node.classList.contains('ai-message')).at(-1);
+            if (!reply) { additions.forEach(node => node.remove()); return false; }
+            const newHtml = reply.querySelector(':scope > .message-bubble')?.innerHTML;
+            if (!newHtml || /Sorry, I (?:encountered|could not)/i.test(reply.textContent)) { additions.forEach(node=>node.remove()); return false; }
+            storeVersion(pair.ai, ':scope > .message-bubble', newHtml);
+            additions.forEach(node => node.remove());
+            if (edited) displayVersion(pair.user, '.vishakha-user-text');
+            saveChatHistory();
+            return true;
+        } catch (error) {
+            console.error('Version regeneration failed', error);
+            [...chatMessages.children].filter(node=>!initialMessages.has(node)).forEach(node=>node.remove());
+            return false;
+        }
+    }
     function addActions(message) {
         if (message.id === 'ai-loading' || message.classList.contains('ai-thinking-message') || message.querySelector(':scope > .vishakha-message-actions')) return;
         const isUser = message.classList.contains('user-message');
@@ -4473,6 +4830,35 @@ document.addEventListener('click', function(event) {
         copy.setAttribute('aria-label', copy.title);
         copy.innerHTML = ICONS.copy + '<span>Copy</span>';
         actions.appendChild(copy);
+        if (isAI) {
+            // SEP actions are transactional: never expose replay controls there.
+            if (selectedVishakhaApp === 'general') {
+                for (const [name, icon, label] of [
+                    ['regenerate', ICONS.regenerate, 'Regenerate'],
+                    ['continue', ICONS.continue, 'Continue']
+                ]) {
+                    const action = document.createElement('button');
+                    action.type = 'button'; action.className = 'vishakha-message-action';
+                    action.dataset.messageAction = name;
+                    action.title = label + ' (General AI only)';
+                    action.setAttribute('aria-label', action.title);
+                    action.innerHTML = icon + '<span>' + label + '</span>';
+                    actions.appendChild(action);
+                }
+            }
+            for (const [name, icon, label] of [
+                ['helpful', ICONS.up, 'Helpful'],
+                ['unhelpful', ICONS.down, 'Not helpful']
+            ]) {
+                const rating = document.createElement('button');
+                rating.type = 'button'; rating.className = 'vishakha-message-action';
+                rating.dataset.messageAction = name;
+                rating.title = label; rating.setAttribute('aria-label', label);
+                rating.setAttribute('aria-pressed', String(message.dataset.darpanRating === name));
+                rating.innerHTML = icon + '<span class="vishakha-rating-label">' + label + '</span>';
+                actions.appendChild(rating);
+            }
+        }
         if (isUser) {
             const edit = document.createElement('button');
             edit.type = 'button'; edit.className = 'vishakha-message-action';
@@ -4484,15 +4870,83 @@ document.addEventListener('click', function(event) {
         message.appendChild(actions);
     }
     function decorate() {
-        chatMessages.querySelectorAll('.message.user-message, .message.ai-message').forEach(addActions);
+        chatMessages.querySelectorAll('.message.user-message, .message.ai-message').forEach(message => {
+            addActions(message);
+            if (message.dataset.darpanVersions) displayVersion(message, message.classList.contains('user-message') ? '.vishakha-user-text' : ':scope > .message-bubble');
+        });
     }
     // Use event delegation: restored database snapshots don't preserve listeners.
     chatMessages.addEventListener('click', async function(event) {
+        const versionButton = event.target.closest('button[data-version-step]');
+        if (versionButton && chatMessages.contains(versionButton)) {
+            const target = versionButton.closest('.message');
+            if (!target) return;
+            const versions = readVersions(target, target.classList.contains('user-message') ? '.vishakha-user-text' : ':scope > .message-bubble');
+            target.dataset.darpanVersionIndex = String(Math.max(0, Math.min(versions.length - 1, Number(target.dataset.darpanVersionIndex || versions.length - 1) + Number(versionButton.dataset.versionStep))));
+            displayVersion(target, target.classList.contains('user-message') ? '.vishakha-user-text' : ':scope > .message-bubble');
+            // Keep prompt/reply versions paired when both sides have the same
+            // number of versions (the ChatGPT-style edit-and-reply case).
+            const other = target.classList.contains('user-message')
+                ? [...chatMessages.querySelectorAll('.message.ai-message')].at(-1)
+                : [...chatMessages.querySelectorAll('.message.user-message')].at(-1);
+            const pair = target.classList.contains('user-message') ? latestPair(other) : latestPair(target);
+            if (pair && (pair.user === target || pair.ai === target)) {
+                const otherSelector = other.classList.contains('user-message') ? '.vishakha-user-text' : ':scope > .message-bubble';
+                const otherVersions = readVersions(other, otherSelector);
+                if (versions.length === otherVersions.length && otherVersions.length > 1) {
+                    other.dataset.darpanVersionIndex = target.dataset.darpanVersionIndex;
+                    displayVersion(other, otherSelector);
+                }
+            }
+            saveChatHistory();
+            return;
+        }
         const button = event.target.closest('button[data-message-action]');
         if (!button || !chatMessages.contains(button)) return;
         const message = button.closest('.message');
         const bubble = message?.querySelector(':scope > .message-bubble');
         if (!message || !bubble) return;
+        const actionName = button.dataset.messageAction;
+        if (actionName === 'helpful' || actionName === 'unhelpful') {
+            const newRating = message.dataset.darpanRating === actionName ? '' : actionName;
+            if (newRating) message.dataset.darpanRating = newRating;
+            else delete message.dataset.darpanRating;
+            message.querySelectorAll('button[data-message-action="helpful"],button[data-message-action="unhelpful"]').forEach(el => {
+                const selected = el.dataset.messageAction === newRating;
+                el.setAttribute('aria-pressed', String(selected));
+                el.classList.toggle('vishakha-rated', selected);
+            });
+            saveChatHistory();
+            darpanNotify(newRating ? 'Thanks for your feedback.' : 'Feedback cleared.');
+            return;
+        }
+        if (actionName === 'regenerate' || actionName === 'continue') {
+            // Never replay tool calls or submissions. These actions only run in
+            // General AI, never in Service Excellence or a ticket draft.
+            if (selectedVishakhaApp !== 'general' || !message.classList.contains('ai-message')) {
+                darpanNotify('This action is available in General AI only.');
+                return;
+            }
+            if (isAIResponding) {
+                darpanNotify('Stop the current response before continuing.');
+                return;
+            }
+            const initialId = activeChatId;
+            if (actionName === 'continue') {
+                addUserMessage('Continue your previous response.');
+                await sendToBackend('Continue your previous response.', 'text');
+                return;
+            }
+            const pair = latestPair(message);
+            if (!pair) { darpanNotify('Regenerate the latest answer in this conversation.'); return; }
+            const originalPrompt = pair.user.querySelector('.vishakha-user-text')?.textContent?.trim();
+            if (!originalPrompt) { darpanNotify('I could not find the original prompt.'); return; }
+            button.disabled = true;
+            const ok = await requestAlternative(originalPrompt, pair);
+            if (!ok) darpanNotify('The previous answer is unchanged. Please try again.');
+            button.disabled = false;
+            return;
+        }
         if (button.dataset.messageAction === 'copy') {
             // Clone just the response content. Never copy embedded action labels,
             // change/select buttons, ticket form controls or the message toolbar.
@@ -4558,6 +5012,25 @@ document.addEventListener('click', function(event) {
                 if (newText === oldText) { finish(); return; }
                 save.disabled = true;
                 cancel.disabled = true;
+                if (selectedVishakhaApp === 'general') {
+                    const ai = [...chatMessages.querySelectorAll('.message.ai-message')].at(-1);
+                    const pair = latestPair(ai);
+                    if (pair && pair.user === message) {
+                        // Edit the latest prompt in-place. Keep both prompt and response versions.
+                        finish();
+                        storeVersion(message, '.vishakha-user-text', newText);
+                        const ok = await requestAlternative(newText, pair, true);
+                        if (!ok) {
+                            // Keep the version but show its earlier answer until regeneration succeeds.
+                            darpanNotify('Your edit was saved, but the new answer could not be generated.');
+                        }
+                        saveChatHistory();
+                        return;
+                    }
+                    darpanNotify('Edit the latest prompt to see versions in this chat.');
+                    save.disabled = false; cancel.disabled = false;
+                    return;
+                }
                 try {
                     // Editing branches into a fresh chat. Reusing an earlier SEP
                     // workflow ID could replay an action or use stale ticket fields.
@@ -4685,3 +5158,19 @@ document.addEventListener('click', function(event) {
   });
   field.addEventListener('keydown', e => {if(e.key==='Escape'){e.preventDefault();setOpen(false);toggle.focus();}});
 })();
+
+/* Support legacy cached conversations whose avatar HTML still reads “AI”. */
+(function darpanObserveMascots() {
+    const root = document.getElementById('chat-area');
+    if (!root) return;
+    darpanApplyMascots(root);
+    const observer = new MutationObserver(() => darpanApplyMascots(root));
+    observer.observe(root, {childList:true, subtree:true});
+})();
+
+/* Restored ticket draft cards: continue is a focus-only action, never a SEP write. */
+document.addEventListener('click', function darpanRestoredDraftContinue(event) {
+    const button = event.target.closest('.darpan-draft-continue');
+    if (!button || !document.getElementById('chat-area')?.contains(button)) return;
+    document.getElementById('message-input')?.focus();
+});

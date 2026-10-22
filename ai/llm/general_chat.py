@@ -1,6 +1,7 @@
 """General-purpose local Llama conversation (no business system actions)."""
 import hashlib
 import logging
+import re
 
 from django.core.cache import cache
 
@@ -12,7 +13,12 @@ MAX_MESSAGE_CHARS = 6000
 
 SYSTEM_PROMPT = """You are Vishakha AI, a helpful employee assistant for Vishakha.
 Speak naturally and answer general questions, explain topics, help draft writing,
-and assist with ideas and code. Match the user's language when practical.
+and assist with ideas and code. Answer in the language of the CURRENT user message:
+English in English, Devanagari Hindi in Hindi, and Roman-script Hindi-English
+(Hinglish) in Hinglish. An explicit instruction to translate overrides this.
+Never invent facts about private employees, assignments or the user's company.
+When someone asks 'SRK kon hai?', interpret SRK as Shah Rukh Khan unless
+the context clearly identifies another SRK. Do not pretend he is an employee.
 You can explain how employee processes work in general, but you do NOT have
 live access to private HR data, company policies, ticket records or the internet
 from this chat mode. Never invent private company details or pretend to have
@@ -35,6 +41,19 @@ Preserve the meaning and structure of pasted text, including its line breaks.
 Be clear, concise, and helpful."""
 
 
+
+def _response_language_instruction(text):
+    """Use the current turn, never a persisted per-account language preference."""
+    if re.search(r'[\u0900-\u097f]', text):
+        return 'Respond in natural Hindi using Devanagari script, unless the user explicitly asks for translation into another language.'
+    # Conservative Hinglish detection: require more than a single ambiguous word.
+    words = set(re.findall(r"[a-z]+", text.casefold()))
+    hinglish_markers = {'ka', 'ki', 'ke', 'kya', 'hai', 'hain', 'mujhe', 'mera', 'meri', 'mere', 'batao', 'dikhao', 'karna', 'chahiye', 'nahi', 'kaun', 'kon', 'banao', 'wala', 'karo', 'kal', 'kitne'}
+    if len(words & hinglish_markers) >= 2 or (('kon' in words or 'kaun' in words) and 'hai' in words):
+        return 'Respond naturally in Hinglish (Roman-script Hindi mixed with English), unless an explicit translation request asks otherwise.'
+    return 'Respond in English, unless the user explicitly asks for a translation or a different language.'
+
+
 def _history_key(chat_id, requester_email):
     # No cross-account sharing, no raw emails in cache keys.
     if not chat_id:
@@ -50,6 +69,15 @@ def respond_to_general_chat(user_message, chat_id=None, requester_email=None, ll
         return {'type': 'message', 'message': 'What would you like to talk about?'}
     if len(user_message) > MAX_MESSAGE_CHARS:
         return {'type': 'message', 'message': 'Please shorten your message to 6,000 characters.'}
+
+    # Avoid inventing a company employee when asked about a widely-known name.
+    normalized = re.sub(r'[?!.]+$', '', user_message.strip().casefold()).strip()
+    if normalized in ('srk kon hai', 'srk kaun hai', 'srk कौन है', 'who is srk'):
+        if normalized.startswith('who'):
+            answer = 'SRK usually refers to Shah Rukh Khan, the Indian actor and film producer. Did you mean someone else?'
+        else:
+            answer = 'SRK aam taur par Shah Rukh Khan ko kehte hain. Woh ek mashhoor Indian actor aur film producer hain. Kya aap kisi aur SRK ki baat kar rahe hain?'
+        return {'type': 'message', 'message': answer}
 
     if llm is None:
         from ai.llm.client import LocalLLM
@@ -67,7 +95,7 @@ def respond_to_general_chat(user_message, chat_id=None, requester_email=None, ll
     previous = [entry for entry in previous[-MAX_HISTORY_MESSAGES:]
                 if isinstance(entry, dict) and entry.get('role') in ('user', 'assistant')
                 and isinstance(entry.get('content'), str)]
-    messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+    messages = [{'role': 'system', 'content': SYSTEM_PROMPT + '\n\n' + _response_language_instruction(user_message)}]
     messages.extend(previous)
     messages.append({'role': 'user', 'content': user_message.strip()})
 
