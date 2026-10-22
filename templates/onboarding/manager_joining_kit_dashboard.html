@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding Asset Requests | Vishakha AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            color: #172b4d;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        header {
+            background: #142b4a;
+            color: white;
+            padding: 22px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        header h1 { margin: 0 0 5px; font-size: 23px; }
+        header p { margin: 0; color: #d8e4f5; font-size: 13px; }
+        header a { color: white; text-decoration: none; }
+        main { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+        .intro { margin-bottom: 22px; }
+        .intro h2 { margin-bottom: 6px; }
+        .muted { color: #667085; font-size: 14px; }
+        .request {
+            background: white;
+            border: 1px solid #e0e6ef;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 16px;
+            box-shadow: 0 3px 12px rgba(16, 38, 70, .04);
+        }
+        .request-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .request h3 { margin: 0 0 8px; }
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #fff1cc;
+            color: #875d00;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .status.submitted { background: #dcfce7; color: #166534; }
+        .status.in_progress { background: #dbeafe; color: #1d4ed8; }
+        .status.fulfilled { background: #e9d5ff; color: #6b21a8; }
+        .button {
+            display: inline-block;
+            margin-top: 16px;
+            background: #285ea8;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .empty {
+            background: white;
+            padding: 35px;
+            text-align: center;
+            border: 1px solid #e0e6ef;
+            border-radius: 14px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>Onboarding Asset Requests</h1>
+        <p>Vishakha AI · Manager Workspace</p>
+    </div>
+    <a href="/">Back to Vishakha AI</a>
+</header>
+
+<main>
+    <div class="intro">
+        <h2>Your assigned requests</h2>
+        <p class="muted">
+            Review each new joiner and submit the required assets.
+            Submitted requests remain available for reference.
+        </p>
+    </div>
+
+    {% for item in joining_kit_requests %}
+        <section class="request">
+            <div class="request-top">
+                <div>
+                    <h3>{{ item.joinee.full_name }}</h3>
+                    <div class="muted">
+                        Employee Code:
+                        {{ item.joinee.employee_code|default:"Not available" }}
+                    </div>
+                    <div class="muted">
+                        Department:
+                        {{ item.joinee.department|default:"Not specified" }}
+                    </div>
+                    <div class="muted">
+                        Joining Date:
+                        {{ item.joinee.joining_date|date:"d M Y"|default:"Not specified" }}
+                    </div>
+                </div>
+                <span class="status {{ item.status }}">
+                    {{ item.get_status_display }}
+                </span>
+            </div>
+
+            <a class="button"
+               href="{% url 'onboarding:joining_kit_detail' item.id %}">
+                {% if item.status == "pending" %}
+                    Select Assets
+                {% else %}
+                    View Request
+                {% endif %}
+            </a>
+        </section>
+    {% empty %}
+        <div class="empty">
+            <h3>No requests assigned</h3>
+            <p class="muted">
+                New requests will appear here after HR triggers a Joining Kit.
+            </p>
+        </div>
+    {% endfor %}
+</main>
+</body>
+</html>

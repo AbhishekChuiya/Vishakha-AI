@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joining Kit Request | Vishakha AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            color: #172b4d;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        header {
+            background: #142b4a;
+            color: white;
+            padding: 22px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        header h1 { margin: 0 0 5px; font-size: 22px; }
+        header p { margin: 0; color: #d8e4f5; font-size: 13px; }
+        header a { color: white; text-decoration: none; }
+        main { max-width: 850px; margin: 30px auto; padding: 0 20px; }
+        .panel {
+            background: white;
+            border: 1px solid #e0e6ef;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        h2 { margin-top: 0; font-size: 19px; }
+        .muted { color: #667085; font-size: 14px; }
+        .assets {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin: 18px 0;
+        }
+        .asset {
+            border: 1px solid #e0e6ef;
+            border-radius: 9px;
+            padding: 13px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #cfd7e3;
+            border-radius: 8px;
+            font: inherit;
+            margin-top: 7px;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        label.field-label {
+            display: block;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+        .button {
+            display: inline-block;
+            background: #285ea8;
+            color: white;
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #fff1cc;
+            color: #875d00;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .notice {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f0f5ff;
+            color: #234b82;
+            margin-top: 15px;
+        }
+        @media (max-width: 550px) {
+            .assets { grid-template-columns: 1fr; }
+            .panel { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    {% if is_hr_view %}
+        <a href="{% url 'onboarding:dashboard' %}">
+            ← Back to Onboarding
+        </a>
+    {% else %}
+        <a href="{% url 'onboarding:manager_joining_kit_dashboard' %}">
+            ← Back to Onboarding
+        </a>
+    {% endif %}
+
+    <div>
+        <h1>Joining Kit Request</h1>
+        <p>Vishakha AI · Onboarding</p>
+    </div>
+
+    {% if is_hr_view %}
+        <a href="{% url 'onboarding:dashboard' %}">
+            Back to HR Dashboard
+        </a>
+    {% else %}
+        <a href="{% url 'onboarding:manager_joining_kit_dashboard' %}">
+            Back to My Requests
+        </a>
+    {% endif %}
+</header>
+
+<main>
+    <section class="panel">
+        <h2>{{ joining_kit_request.joinee.full_name }}</h2>
+        <p class="muted">
+            Employee Code:
+            {{ joining_kit_request.joinee.employee_code|default:"Not available" }}
+        </p>
+        <p class="muted">
+            Department:
+            {{ joining_kit_request.joinee.department|default:"Not specified" }}
+        </p>
+        <p class="muted">
+            Joining Date:
+            {{ joining_kit_request.joinee.joining_date|date:"d M Y"|default:"Not specified" }}
+        </p>
+        <p>
+            Status:
+            <span class="status">
+                {{ joining_kit_request.get_status_display }}
+            </span>
+        </p>
+        {% if joining_kit_request.manager_submitted_at %}
+            <p class="muted">
+                Submitted:
+                {{ joining_kit_request.manager_submitted_at|date:"d M Y, h:i A" }}
+            </p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Asset Selection</h2>
+
+        {% if can_edit %}
+            <p class="muted">
+                Select the assets required for this new joiner, then submit
+                the request.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="assets">
+                    {% for value, label in asset_options %}
+                        <label class="asset">
+                            <input
+                                type="checkbox"
+                                name="selected_assets"
+                                value="{{ value }}"
+                                {% if value in joining_kit_request.selected_assets %}
+                                    checked
+                                {% endif %}
+                            >
+                            <span>{{ label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <label class="field-label" for="required_by">
+                    Required By
+                </label>
+                <input
+                    type="text"
+                    id="required_by"
+                    name="required_by"
+                    value="{{ joining_kit_request.required_by }}"
+                    maxlength="100"
+                    placeholder="e.g. Before joining date"
+                >
+
+                <label class="field-label" for="notes">
+                    Notes
+                </label>
+                <textarea
+                    id="notes"
+                    name="notes"
+                    maxlength="2000"
+                    placeholder="Add any asset specifications or instructions"
+                >{{ joining_kit_request.notes }}</textarea>
+
+                <button class="button" type="submit">
+                    Submit Asset Request
+                </button>
+            </form>
+        {% else %}
+            <div class="assets">
+                {% for value, label in asset_options %}
+                    {% if value in joining_kit_request.selected_assets %}
+                        <div class="asset">
+                            <span aria-hidden="true">✓</span>
+                            <span>{{ label }}</span>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <p class="muted">No asset options are configured.</p>
+                {% endfor %}
+            </div>
+
+            {% if not joining_kit_request.selected_assets %}
+                <p class="muted">No assets have been selected.</p>
+            {% endif %}
+
+            <label class="field-label">Required By</label>
+            <p>{{ joining_kit_request.required_by|default:"Not specified" }}</p>
+
+            <label class="field-label">Manager Notes</label>
+            <p>{{ joining_kit_request.notes|default:"No notes added." }}</p>
+
+            <div class="notice">
+                {% if is_hr_view %}
+                    This is a read-only view for HR.
+                {% else %}
+                    This request is no longer editable.
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

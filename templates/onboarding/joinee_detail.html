@@ -57,7 +57,7 @@
         .value { font-weight: 600; overflow-wrap: anywhere; }
         .muted { color: var(--muted); font-size: 13px; }
 
-        input, select {
+        input, select, textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #d0d8e4;
@@ -85,8 +85,9 @@
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
-            white-space: nowrap;
         }
+
+        button:hover, .button:hover { background: #1d4c8d; }
 
         .code-form {
             display: flex;
@@ -147,15 +148,59 @@
         .document-form { min-width: 190px; }
         .document-form input, .document-form select { margin-bottom: 7px; }
 
+        .kit-option {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0;
+            font-size: 13px;
+        }
+
+        .kit-option input {
+            width: 17px;
+            height: 17px;
+            flex-shrink: 0;
+        }
+
+        .kit-assets {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .kit-fields { margin-top: 18px; }
+        .kit-fields label { margin-top: 14px; }
+        .kit-fields textarea { min-height: 85px; resize: vertical; }
+
+        .kit-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .kit-notice {
+            padding: 12px;
+            background: #f1f6ff;
+            border: 1px solid #d7e6ff;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
         @media (max-width: 750px) {
             main { padding: 13px; }
             .panel { padding: 16px; }
-            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .grid, .kit-assets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             header { padding: 18px; }
         }
 
         @media (max-width: 480px) {
-            .grid { grid-template-columns: 1fr; }
+            .grid, .kit-assets { grid-template-columns: 1fr; }
             .code-form { flex-direction: column; align-items: stretch; }
         }
     </style>
@@ -163,9 +208,7 @@
 
 <body>
 <header>
-    <a href="{% url 'onboarding:dashboard' %}">
-        ← Back to Joinee Records
-    </a>
+    <a href="{% url 'onboarding:dashboard' %}">← Back to Joinee Records</a>
     <h1>{{ joinee.full_name }}</h1>
     <p>Onboarding Reference: {{ joinee.onboarding_reference }}</p>
 </header>
@@ -221,15 +264,83 @@
         </form>
 
         <p class="muted" style="margin-top:12px">
-            Employee Code is entered manually in this phase; PeopleStrong
+            Employee Code is entered manually in this phase. PeopleStrong
             synchronization will be added after API access is available.
         </p>
+    </section>
+
+    <section class="panel">
+        <h2>Joining Kit & Asset Request</h2>
+
+        {% if joinee.employee_code %}
+            {% with kit_request=joinee.joining_kit_requests.first %}
+                {% if kit_request %}
+                    <div class="kit-notice">
+                        <strong>Request status:</strong>
+                        <span class="status {{ kit_request.status }}">
+                            {{ kit_request.get_status_display }}
+                        </span>
+                    </div>
+
+                    <p class="muted">
+                        Manager: {{ kit_request.manager_email }}
+                    </p>
+
+                    {% if kit_request.selected_assets %}
+                        <p><strong>Selected assets</strong></p>
+                        <ul>
+                            {% for key in kit_request.selected_assets %}
+                                <li>{{ key|cut:"_"|title }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="muted">
+                            The manager has not submitted asset selections yet.
+                        </p>
+                    {% endif %}
+
+                    <div class="kit-actions">
+                        <a class="button"
+                           href="{% url 'onboarding:joining_kit_detail' kit_request.id %}">
+                            View Joining Kit Request
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="kit-notice">
+                        The Employee Code is available. You can now prepare
+                        the manager's Joining Kit request.
+                    </div>
+
+                    <form method="post"
+                          action="{% url 'onboarding:create_joining_kit_request' joinee.id %}">
+                        {% csrf_token %}
+
+                        <label class="kit-option">
+                            <input type="checkbox"
+                                   name="trigger_joining_kit"
+                                   value="yes"
+                                   required>
+                            <span>Initiate Joining Kit request for the manager</span>
+                        </label>
+
+                        <div class="kit-actions">
+                            <button type="submit">Prepare Manager Request</button>
+                        </div>
+                    </form>
+                {% endif %}
+            {% endwith %}
+        {% else %}
+            <p class="muted">
+                Enter and save the Employee Code to enable Joining Kit requests.
+            </p>
+        {% endif %}
     </section>
 
     <section class="panel">
         <h2>Document Verification Progress</h2>
 
         <strong>{{ completed_documents }} of {{ total_documents }} documents verified</strong>
+
         <div class="progress">
             <div class="progress-fill" style="width:{{ progress }}%"></div>
         </div>
@@ -241,6 +352,7 @@
 
     <section class="panel">
         <h2>Document Checklist</h2>
+
         <p class="muted">
             Update each requirement separately. Add a reason in remarks
             when a document is rejected or requires clarification.
@@ -256,7 +368,6 @@
                         <th>Update Status / Remarks</th>
                     </tr>
                 </thead>
-
                 <tbody>
                     {% for doc in documents %}
                     <tr>

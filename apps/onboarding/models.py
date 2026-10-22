@@ -119,3 +119,76 @@ class JoineeDocument(models.Model):
 
     def __str__(self):
         return f"{self.joinee.full_name} - {self.document_type.name}"
+
+
+class JoiningKitRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Awaiting Manager Response"),
+        ("submitted", "Submitted by Manager"),
+        ("in_progress", "In Progress"),
+        ("fulfilled", "Fulfilled"),
+    ]
+
+    ASSET_CHOICES = [
+        ("laptop", "Laptop"),
+        ("desktop", "Desktop Computer"),
+        ("monitor", "Monitor"),
+        ("keyboard_mouse", "Keyboard and Mouse"),
+        ("headset", "Headset"),
+        ("mobile", "Mobile Phone"),
+        ("sim", "SIM Card"),
+        ("tablet", "Tablet"),
+        ("email", "Email Account"),
+        ("sap", "ERP / SAP Access"),
+        ("peoplestrong", "PeopleStrong Access"),
+        ("software", "Software / Licences"),
+        ("access_card", "Access Card"),
+        ("safety_shoes", "Safety Shoes"),
+        ("helmet", "Safety Helmet"),
+        ("safety_glasses", "Safety Glasses"),
+        ("uniform", "Uniform"),
+        ("other_ppe", "Other PPE / Safety Kit"),
+        ("desk_chair", "Office Desk and Chair"),
+        ("tools", "Job-Specific Tools"),
+        ("other", "Other Asset"),
+    ]
+
+    joinee = models.ForeignKey(
+        "Joinee",
+        on_delete=models.CASCADE,
+        related_name="joining_kit_requests",
+    )
+    manager_email = models.EmailField(
+        default="abhishek.chuiya@vishakha.com"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    selected_assets = models.JSONField(default=list, blank=True)
+    required_by = models.CharField(
+        max_length=40,
+        default="Before joining date",
+    )
+    notes = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="joining_kit_requests_created",
+    )
+    manager_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return (
+            f"Joining Kit - {self.joinee.full_name} "
+            f"({self.joinee.employee_code})"
+        )

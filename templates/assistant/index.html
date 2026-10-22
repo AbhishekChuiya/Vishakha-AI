@@ -149,14 +149,52 @@ body.dark-mode .darpan-account-initial{background:#273b60;color:#bdd5ff}
 
         </div>
 
-
+<!-- 
         <div id="darpan-dashboard-side" class="darpan-dashboard-side" hidden>
           <div class="menu-title">WORKSPACE</div>
           <button type="button" class="darpan-side-action active" data-darpan-side="overview">▦ <span>Overview</span></button>
           <button type="button" class="darpan-side-action" data-darpan-side="tickets">▤ <span>My tickets</span></button>
           <button type="button" class="darpan-side-action" data-darpan-side="quick">⚡ <span>Quick actions</span></button>
           <div class="darpan-side-connector"><span class="darpan-app-dot"></span><span>Service Excellence Portal</span><small>Connected</small></div>
+        </div> -->
+
+                
+        <div id="darpan-dashboard-side" class="darpan-dashboard-side" hidden>
+        <div class="menu-title">WORKSPACE</div>
+
+        <button type="button"
+                class="darpan-side-action active"
+                data-darpan-side="overview">
+            ▦ <span>Overview</span>
+        </button>
+
+        <button type="button"
+                class="darpan-side-action"
+                data-darpan-side="tickets">
+            ▤ <span>My tickets</span>
+        </button>
+
+        <button type="button"
+                class="darpan-side-action"
+                data-darpan-side="quick">
+            ⚡ <span>Quick actions</span>
+        </button>
+
+        <a href="{% url 'onboarding:dashboard' %}"
+            class="darpan-side-action"
+            style="display:flex; align-items:center; gap:10px; text-decoration:none;">
+            <span aria-hidden="true">▣</span>
+            <span>Onboarding</span>
+        </a>
+
+        <div class="darpan-side-connector">
+            <span class="darpan-app-dot"></span>
+            <span>Service Excellence Portal</span>
+            <small>Connected</small>
         </div>
+        </div>
+
+
         <!-- ================= RECENT CHATS ================= -->
 
         <div class="vishakha-history-tools">
