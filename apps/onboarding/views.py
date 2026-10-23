@@ -258,6 +258,7 @@ def update_document(request, document_id):
 @login_required
 @require_POST
 def add_document_type(request):
+    require_hr(request.user)
     name = request.POST.get("name", "").strip()
     category = request.POST.get("category", "other").strip()
 
@@ -292,6 +293,53 @@ def add_document_type(request):
 
     return redirect("onboarding:dashboard")
 
+
+@login_required
+def manage_document_types(request):
+    require_hr(request.user)
+
+    document_types = DocumentType.objects.all().order_by(
+        "category", "name"
+    )
+
+    active_count = DocumentType.objects.filter(is_active=True).count()
+    inactive_count = DocumentType.objects.filter(is_active=False).count()
+
+    return render(
+        request,
+        "onboarding/manage_document_types.html",
+        {
+            "document_types": document_types,
+            "active_count": active_count,
+            "inactive_count": inactive_count,
+            "category_choices": DocumentType.CATEGORY_CHOICES,
+        },
+    )
+
+
+@login_required
+@require_POST
+def toggle_document_type(request, document_type_id):
+    require_hr(request.user)
+
+    document_type = get_object_or_404(
+        DocumentType,
+        pk=document_type_id,
+    )
+
+    document_type.is_active = not document_type.is_active
+    document_type.save(update_fields=["is_active"])
+
+    if document_type.is_active:
+        # Add the reactivated requirement to existing joinees
+        # only where the checklist entry does not already exist.
+        for joinee in Joinee.objects.all():
+            JoineeDocument.objects.get_or_create(
+                joinee=joinee,
+                document_type=document_type,
+            )
+
+    return redirect("onboarding:manage_document_types")
 
 @login_required
 @require_POST

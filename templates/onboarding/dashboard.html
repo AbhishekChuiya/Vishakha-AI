@@ -346,7 +346,7 @@
         </form>
     </section>
 
-    <section class="panel">
+    <!-- <section class="panel">
         <h2>Manage Document Requirements</h2>
         <p class="muted">
             New requirements will be added to existing joinees and future joinees.
@@ -378,7 +378,25 @@
                 <button type="submit">Add Requirement</button>
             </div>
         </form>
+    </section> -->
+    
+    <section class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Manage Document Requirements</h2>
+                <div class="muted">
+                    View current requirements, add new documents,
+                    or deactivate requirements that are no longer needed.
+                </div>
+            </div>
+
+            <a class="button"
+            href="{% url 'onboarding:manage_document_types' %}">
+                Manage Documents →
+            </a>
+        </div>
     </section>
+
 
     <section class="panel">
         <div class="section-heading">

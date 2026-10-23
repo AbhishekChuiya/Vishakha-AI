@@ -60,4 +60,14 @@ urlpatterns = [
         views.joining_kit_detail,
         name="joining_kit_detail",
     ),
+    path(
+    "document-types/",
+    views.manage_document_types,
+    name="manage_document_types",
+    ),
+    path(
+        "document-types/<int:document_type_id>/toggle/",
+        views.toggle_document_type,
+        name="toggle_document_type",
+    ),
 ]
