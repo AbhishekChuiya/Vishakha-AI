@@ -212,6 +212,8 @@ def add_joinee(request):
             ).strip(),
             phone=request.POST.get("phone", "").strip(),
             designation=request.POST.get("designation", "").strip(),
+            level=request.POST.get("level", "").strip().upper(),
+            grade=request.POST.get("grade", "").strip().upper(),
             department=request.POST.get("department", "").strip(),
             plant_location=request.POST.get(
                 "plant_location", ""
@@ -491,7 +493,120 @@ ASSET_OPTIONS = [
     ("tools", "Job-Specific Tools"),
     ("other", "Other Asset"),
 ]
+# Department-specific computer eligibility.
+# "yes" means recommend a laptop by default.
+# "no" means do not preselect a computer.
+# "need_base" means the manager must decide.
 
+DEPARTMENT_COMPUTER_RULES = {
+    "ADMINISTRATION": "yes",
+    "ENVIRONMENT HEALTH & SAFETY": "need_base",
+    "ANODIZING": "no",
+    "ASSEMBLY": "no",
+    "PROCESS AUDIT": "yes",
+    "BUSINESS DEVELOPMENT": "yes",
+    "BUSINESS / OPERATIONAL EXCELLENCE": "yes",
+    "CIVIL": "no",
+    "CONVERTING": "no",
+    "CORPORATE AFFAIRS": "yes",
+    "CORPORATE COMMUNICATION": "yes",
+    "HUMAN RESOURCE": "yes",
+    "INFORMATION TECHNOLOGY": "yes",
+    "CORPORATE PROCUREMENT": "yes",
+    "TRAVEL DESK": "yes",
+    "DATA ANALYTICS": "yes",
+    "DEEP PROCESS": "no",
+    "DESIGN": "yes",
+    "DIRECTOR'S OFFICE": "yes",
+    "DISPATCH": "need_base",
+    "ENGINEERING": "no",
+    "EXIM": "yes",
+    "EXTRUSION": "no",
+    "FINANCE/ACCOUNTS": "yes",
+    "FURNACE/FOUNDRY": "no",
+    "GRAPHICS": "yes",
+    "LAMINATION": "no",
+    "LEGAL": "yes",
+    "LOGISTIC": "yes",
+    "MACHINE SHOP": "no",
+    "MANAGEMENT AUDIT/ASSURANCE SERVICES": "yes",
+    "MOULDING": "no",
+    "MR & DOCUMENTATION": "yes",
+    "NEW PRODUCT DEVELOPMENT": "yes",
+    "OPERATIONS": "yes",
+    "PE": "no",
+    "PLANNING/STRATEGY": "yes",
+    "EXPORT": "yes",
+    "POUCH": "no",
+    "PRINTING": "no",
+    "PROCUREMENT": "yes",
+    "PRODUCTION": "no",
+    "PRODUCTION PLANNING & CONTROL": "yes",
+    "PROJECT PLANNING & CONTROL": "yes",
+    "PROJECTS": "no",
+    "SUPPLY CHAIN MANAGEMENT": "need_base",
+    "PROJECTS CIVIL & STRUCTURE": "need_base",
+    "QUALITY CONTROL": "no",
+    "PVC": "no",
+    "QAME": "no",
+    "RECYCLING": "no",
+    "RESEARCH DEVELOPMENT": "yes",
+    "REWINDING": "no",
+    "RM PROCUREMENT": "yes",
+    "ROLLED GLASS": "no",
+    "SALES & MARKETING": "yes",
+    "SAND": "no",
+    "SECRETARIAL": "yes",
+    "SECURITY": "no",
+    "SLITTING": "no",
+    "STORES": "need_base",
+    "TOOL ROOM": "no",
+}
+
+
+def get_recommended_assets(joinee):
+    """
+    Return default asset keys for a joinee.
+    These are recommendations only; the manager may change them.
+    """
+    level = (joinee.level or "").strip().upper()
+    grade = (joinee.grade or "").strip().upper()
+    department = " ".join(
+        (joinee.department or "").upper().replace("\u00a0", " ").split()
+    )
+
+    computer_rule = DEPARTMENT_COMPUTER_RULES.get(
+        department,
+        "need_base",
+    )
+
+    recommended = []
+
+    # L2, L3 and L4-D1 have standard laptop and email defaults.
+    if level in ("L2", "L3") or (
+        level == "L4" and grade == "D1"
+    ):
+        recommended.extend(["laptop", "email"])
+
+    # L4-D2/D3 and all L5/L6 use department computer rules.
+    elif (
+        (level == "L4" and grade in ("D2", "D3"))
+        or level in ("L5", "L6")
+    ):
+        if computer_rule == "yes":
+            recommended.append("laptop")
+
+        # Email is only auto-recommended for Support departments
+        # in L5/L6; production email exceptions are not specified yet.
+        if level == "L4" or (
+            level in ("L5", "L6")
+            and computer_rule == "yes"
+        ):
+            recommended.append("email")
+
+    # Do not preselect desktop alongside laptop.
+    # Manager can still select Desktop or any other available asset.
+    return recommended
 
 # @login_required
 # @require_POST
@@ -702,22 +817,40 @@ def joining_kit_detail(request, request_id):
                 status=400,
             )
 
+
         selected_assets = request.POST.getlist("selected_assets")
 
-        # Accept only asset identifiers present in the configured options.
+        # Build the allowed asset identifiers from the configured options.
         valid_asset_values = {
-            str(value) for value, label in ASSET_OPTIONS
+            str(value).strip()
+            for value, label in ASSET_OPTIONS
         }
 
-        if any(asset not in valid_asset_values for asset in selected_assets):
+        # Normalize submitted values and remove duplicate selections.
+        selected_assets = list(dict.fromkeys(
+            asset.strip()
+            for asset in selected_assets
+            if asset.strip()
+        ))
+
+        # Validate every selected asset against the configured options.
+        invalid_assets = [
+            asset for asset in selected_assets
+            if asset not in valid_asset_values
+        ]
+
+        if invalid_assets:
             return HttpResponse(
-                "Invalid asset selection. Please reload the page and try again.",
+                "DEBUG - Invalid asset values received: "
+                f"{invalid_assets!r}. "
+                f"Allowed values: {sorted(valid_asset_values)!r}",
                 status=400,
             )
 
         joining_kit_request.selected_assets = selected_assets
         joining_kit_request.required_by = (
-            request.POST.get("required_by", "").strip()[:100]
+            request.POST.get("required_by", "Before joining date").strip()[:100]
+            or "Before joining date"
         )
         joining_kit_request.notes = (
             request.POST.get("notes", "").strip()[:2000]
@@ -741,12 +874,16 @@ def joining_kit_detail(request, request_id):
             request_id=joining_kit_request.pk,
         )
 
+
     return render(
         request,
         "onboarding/joining_kit_detail.html",
         {
             "joining_kit_request": joining_kit_request,
             "asset_options": ASSET_OPTIONS,
+            "recommended_assets": get_recommended_assets(
+                joining_kit_request.joinee
+            ),
             "can_edit": (
                 is_manager
                 and joining_kit_request.status == "pending"

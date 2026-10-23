@@ -295,6 +295,39 @@
                     <input id="designation" name="designation">
                 </div>
                 <div>
+                    <label for="level">Level *</label>
+                    <select id="level" name="level" required>
+                        <option value="">Select Level</option>
+                        <option value="L2">L2</option>
+                        <option value="L3">L3</option>
+                        <option value="L4">L4</option>
+                        <option value="L5">L5</option>
+                        <option value="L6">L6</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="grade">Grade *</label>
+                    <select id="grade" name="grade" required>
+                        <option value="">Select Grade</option>
+                        <option value="B1">B1</option>
+                        <option value="B2">B2</option>
+                        <option value="B3">B3</option>
+                        <option value="C1">C1</option>
+                        <option value="C2">C2</option>
+                        <option value="C3">C3</option>
+                        <option value="D1">D1</option>
+                        <option value="D2">D2</option>
+                        <option value="D3">D3</option>
+                        <option value="E1">E1</option>
+                        <option value="E2">E2</option>
+                        <option value="E3">E3</option>
+                        <option value="F1">F1</option>
+                        <option value="F2">F2</option>
+                        <option value="F3">F3</option>
+                    </select>
+                </div>
+                <div>
                     <label for="department">Department</label>
                     <input id="department" name="department">
                 </div>
@@ -374,6 +407,8 @@
                     <tr>
                         <th>Joinee</th>
                         <th>Designation</th>
+                        <th>Level</th>
+                        <th>Grade</th>
                         <th>Department</th>
                         <th>Plant / Location</th>
                         <th>Joining Date</th>
@@ -401,6 +436,8 @@
                         </td>
 
                         <td>{{ joinee.designation|default:"—" }}</td>
+                        <td>{{ joinee.level|default:"—" }}</td>
+                        <td>{{ joinee.grade|default:"—" }}</td>
                         <td>{{ joinee.department|default:"—" }}</td>
                         <td>{{ joinee.plant_location|default:"—" }}</td>
                         <td>{{ joinee.joining_date|date:"d M Y"|default:"—" }}</td>

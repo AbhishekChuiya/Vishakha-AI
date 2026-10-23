@@ -45,6 +45,42 @@ class Joinee(models.Model):
     personal_email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
     designation = models.CharField(max_length=150, blank=True)
+    LEVEL_CHOICES = [
+        ("L2", "L2"),
+        ("L3", "L3"),
+        ("L4", "L4"),
+        ("L5", "L5"),
+        ("L6", "L6"),
+    ]
+
+    GRADE_CHOICES = [
+        ("B1", "B1"),
+        ("B2", "B2"),
+        ("B3", "B3"),
+        ("C1", "C1"),
+        ("C2", "C2"),
+        ("C3", "C3"),
+        ("D1", "D1"),
+        ("D2", "D2"),
+        ("D3", "D3"),
+        ("E1", "E1"),
+        ("E2", "E2"),
+        ("E3", "E3"),
+        ("F1", "F1"),
+        ("F2", "F2"),
+        ("F3", "F3"),
+    ]
+
+    level = models.CharField(
+        max_length=2,
+        choices=LEVEL_CHOICES,
+        blank=True,
+    )
+    grade = models.CharField(
+        max_length=2,
+        choices=GRADE_CHOICES,
+        blank=True,
+    )
     department = models.CharField(max_length=150, blank=True)
     plant_location = models.CharField(max_length=150, blank=True)
     joining_date = models.DateField(null=True, blank=True)

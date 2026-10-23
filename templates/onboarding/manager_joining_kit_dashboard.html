@@ -109,6 +109,12 @@
                         {{ item.joinee.department|default:"Not specified" }}
                     </div>
                     <div class="muted">
+                        Level: {{ item.joinee.level|default:"Not specified" }}
+                    </div>
+                    <div class="muted">
+                        Grade: {{ item.joinee.grade|default:"Not specified" }}
+                    </div>
+                    <div class="muted">
                         Joining Date:
                         {{ item.joinee.joining_date|date:"d M Y"|default:"Not specified" }}
                     </div>
