@@ -228,3 +228,46 @@ class JoiningKitRequest(models.Model):
             f"Joining Kit - {self.joinee.full_name} "
             f"({self.joinee.employee_code})"
         )
+
+
+
+
+class JoiningKitTicket(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("creating", "Creating"),
+        ("created", "Created"),
+        ("failed", "Failed"),
+    ]
+
+    joining_kit_request = models.ForeignKey(
+        "JoiningKitRequest",
+        on_delete=models.CASCADE,
+        related_name="generated_tickets",
+    )
+    asset_key = models.CharField(max_length=50)
+    asset_label = models.CharField(max_length=150)
+    ticket_number = models.CharField(max_length=100, blank=True)
+    ticket_id = models.CharField(max_length=100, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["joining_kit_request", "asset_key"],
+                name="unique_joining_kit_asset_ticket",
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.asset_label} - "
+            f"{self.ticket_number or self.status}"
+        )

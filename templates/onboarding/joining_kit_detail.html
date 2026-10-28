@@ -163,6 +163,16 @@
     <section class="panel">
         <h2>Asset Selection</h2>
 
+        {% if messages %}
+            {% for message in messages %}
+                <div class="notice" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if error %}
+            <div class="notice" role="alert">{{ error }}</div>
+        {% endif %}
+
         {% if can_edit %}
             <p class="muted">
                 Select the assets required for this new joiner, then submit
@@ -179,15 +189,11 @@
                                 type="checkbox"
                                 name="selected_assets"
                                 value="{{ value }}"
-                                    {% if value in joining_kit_request.selected_assets %}
-                                        checked
-                                    {% else %}
-                                        {% if not joining_kit_request.selected_assets %}
-                                            {% if value in recommended_assets %}
-                                                checked
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endif %}
+                                {% if value in joining_kit_request.selected_assets %}
+                                    checked
+                                {% elif not joining_kit_request.selected_assets and value in recommended_assets %}
+                                    checked
+                                {% endif %}
                             >
                             <span>{{ label }}</span>
                         </label>
@@ -206,9 +212,7 @@
                     placeholder="e.g. Before joining date"
                 >
 
-                <label class="field-label" for="notes">
-                    Notes
-                </label>
+                <label class="field-label" for="notes">Notes</label>
                 <textarea
                     id="notes"
                     name="notes"
@@ -229,8 +233,6 @@
                             <span>{{ label }}</span>
                         </div>
                     {% endif %}
-                {% empty %}
-                    <p class="muted">No asset options are configured.</p>
                 {% endfor %}
             </div>
 
@@ -252,6 +254,7 @@
                 {% endif %}
             </div>
         {% endif %}
+
     </section>
 </main>
 </body>

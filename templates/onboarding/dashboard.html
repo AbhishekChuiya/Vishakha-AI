@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Onboarding | Vishakha AI</title>
+    <title>Asset Request Management | Vishakha AI</title>
 
     <style>
         :root {
@@ -13,6 +14,10 @@
             --border: #e0e6ef;
             --text: #1d2939;
             --muted: #667085;
+            --green: #166534;
+            --green-bg: #dcfce7;
+            --amber: #8a5700;
+            --amber-bg: #fff3d6;
         }
 
         * { box-sizing: border-box; }
@@ -36,7 +41,7 @@
         }
 
         .topbar h1 { margin: 0 0 5px; font-size: 23px; }
-        .topbar p { margin: 0; font-size: 13px; color: #d8e4f5; }
+        .topbar p { margin: 0; color: #d8e4f5; font-size: 13px; }
 
         .topbar a {
             color: white;
@@ -46,11 +51,15 @@
             padding: 10px 14px;
         }
 
-        main { max-width: 1500px; padding: 25px; margin: auto; }
+        main {
+            max-width: 1500px;
+            padding: 25px;
+            margin: auto;
+        }
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 16px;
             margin-bottom: 22px;
         }
@@ -67,7 +76,17 @@
         .label, .muted { color: var(--muted); font-size: 13px; }
         .label { margin-top: 5px; }
         .panel { padding: 22px; margin-bottom: 22px; }
-        h2 { font-size: 19px; margin: 0 0 15px; }
+
+        h2 { font-size: 19px; margin: 0 0 8px; }
+
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
 
         .form-grid {
             display: grid;
@@ -110,34 +129,15 @@
         }
 
         button:hover, .button:hover { background: #1d4c8d; }
-
         .form-actions { margin-top: 17px; }
+        .search { max-width: 480px; margin: 0 0 16px; }
 
-        .doc-form {
-            display: grid;
-            grid-template-columns: minmax(140px, 1fr)
-                minmax(150px, 1fr) minmax(140px, 1fr) auto;
-            gap: 10px;
-            align-items: end;
-        }
-
-        .section-heading {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-
-        .section-heading h2 { margin-bottom: 5px; }
-        .search { max-width: 440px; margin-bottom: 16px; }
         .table-wrap { width: 100%; overflow-x: auto; }
 
         table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 1100px;
+            min-width: 1150px;
             font-size: 13px;
         }
 
@@ -158,15 +158,8 @@
 
         tbody tr:hover { background: #f7faff; }
 
-        .person-link {
-            color: var(--navy);
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        .person-link:hover { color: var(--blue); text-decoration: underline; }
-
-        .status {
+        .person { font-weight: 700; color: var(--navy); }
+        .pill {
             display: inline-block;
             padding: 6px 9px;
             border-radius: 20px;
@@ -177,66 +170,31 @@
             white-space: nowrap;
         }
 
-        .status.verified, .status.employee_code_generated {
-            background: #dcfce7;
-            color: #166534;
-        }
+        .pill.green { background: var(--green-bg); color: var(--green); }
+        .pill.amber { background: var(--amber-bg); color: var(--amber); }
+        .empty { padding: 35px; text-align: center; color: var(--muted); }
+        .helper { font-size: 12px; color: var(--muted); margin-top: 6px; }
+        .inline-form { margin: 0; }
+        .button-small { padding: 8px 11px; font-size: 12px; }
 
-        .status.pending, .status.pre_joining {
-            background: #fff3d6;
-            color: #8a5700;
-        }
-
-        .status.received { background: #dbeafe; color: #1d4ed8; }
-        .status.rejected { background: #fee2e2; color: #991b1b; }
-
-        .progress {
-            height: 7px;
-            background: #e8edf5;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-top: 7px;
-            min-width: 85px;
-        }
-
-        .progress-fill { height: 100%; background: #285ea8; }
-
-        .empty {
-            padding: 35px;
-            text-align: center;
+        .notice {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 9px;
+            padding: 12px 14px;
+            margin-bottom: 18px;
             color: var(--muted);
+            font-size: 13px;
         }
-
-        .kit-trigger {
-            min-width: 145px;
-        }
-
-        .kit-trigger label {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            margin-bottom: 9px;
-            cursor: pointer;
-        }
-
-        .kit-trigger input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            flex-shrink: 0;
-        }
-
-        .kit-trigger button { white-space: normal; }
 
         @media (max-width: 850px) {
             main { padding: 15px; }
-            .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .doc-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .panel { padding: 17px; }
         }
 
         @media (max-width: 520px) {
-            .stats, .form-grid, .doc-form { grid-template-columns: 1fr; }
+            .stats, .form-grid { grid-template-columns: 1fr; }
             .topbar { padding: 17px; }
             .topbar h1 { font-size: 20px; }
             main { padding: 12px; }
@@ -247,57 +205,80 @@
 <body>
 <header class="topbar">
     <div>
-        <h1>Employee Onboarding</h1>
+        <h1>Asset Request Management</h1>
         <p>Vishakha AI · HR Operations</p>
     </div>
     <a href="/">Back to Vishakha AI</a>
 </header>
 
 <main>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="notice">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
     <section class="stats">
         <div class="stat">
             <div class="number">{{ total }}</div>
-            <div class="label">Total Joinees</div>
+            <div class="label">Employee Records</div>
         </div>
         <div class="stat">
-            <div class="number">{{ pending }}</div>
-            <div class="label">Documents Pending / Rejected</div>
+            <div class="number">{{ requests_sent }}</div>
+            <div class="label">Asset Forms Sent</div>
         </div>
         <div class="stat">
-            <div class="number">{{ verified }}</div>
-            <div class="label">Documents Verified</div>
-        </div>
-        <div class="stat">
-            <div class="number">{{ code_generated }}</div>
-            <div class="label">Employee Codes Entered</div>
+            <div class="number">{{ awaiting_manager }}</div>
+            <div class="label">Awaiting Manager Submission</div>
         </div>
     </section>
 
     <section class="panel">
-        <h2>Add New Joinee</h2>
+        <h2>Add Test Employee</h2>
+        <p class="muted">
+            Add a test record until the PeopleStrong employee API is connected.
+            Level and grade help determine the recommended assets.
+        </p>
+
         <form method="post" action="{% url 'onboarding:add_joinee' %}">
             {% csrf_token %}
+
             <div class="form-grid">
                 <div>
-                    <label for="full_name">Full Name *</label>
+                    <label for="full_name">Employee Name *</label>
                     <input id="full_name" name="full_name" required>
                 </div>
+
                 <div>
-                    <label for="personal_email">Personal Email</label>
+                    <label for="employee_code">Employee Code (E-Code)</label>
+                    <input id="employee_code" name="employee_code"
+                           placeholder="Enter generated E-Code">
+                </div>
+
+                <div>
+                    <label for="personal_email">Personal / Work Email</label>
                     <input id="personal_email" name="personal_email" type="email">
                 </div>
+
                 <div>
                     <label for="phone">Phone</label>
                     <input id="phone" name="phone" type="tel">
                 </div>
+
                 <div>
                     <label for="designation">Designation</label>
                     <input id="designation" name="designation">
                 </div>
+
                 <div>
-                    <label for="level">Level *</label>
-                    <select id="level" name="level" required>
-                        <option value="">Select Level</option>
+                    <label for="department">Department</label>
+                    <input id="department" name="department">
+                </div>
+
+                <div>
+                    <label for="level">Level</label>
+                    <select id="level" name="level">
+                        <option value="">Select level</option>
                         <option value="L2">L2</option>
                         <option value="L3">L3</option>
                         <option value="L4">L4</option>
@@ -307,9 +288,9 @@
                 </div>
 
                 <div>
-                    <label for="grade">Grade *</label>
-                    <select id="grade" name="grade" required>
-                        <option value="">Select Grade</option>
+                    <label for="grade">Grade</label>
+                    <select id="grade" name="grade">
+                        <option value="">Select grade</option>
                         <option value="B1">B1</option>
                         <option value="B2">B2</option>
                         <option value="B3">B3</option>
@@ -327,127 +308,63 @@
                         <option value="F3">F3</option>
                     </select>
                 </div>
-                <div>
-                    <label for="department">Department</label>
-                    <input id="department" name="department">
-                </div>
+
                 <div>
                     <label for="plant_location">Plant / Location</label>
-                    <input id="plant_location" name="plant_location">
+                    <input id="plant_location" name="plant_location"
+                           placeholder="e.g. VGPL">
                 </div>
+
                 <div>
                     <label for="joining_date">Expected Joining Date</label>
                     <input id="joining_date" name="joining_date" type="date">
                 </div>
             </div>
+
             <div class="form-actions">
-                <button type="submit">+ Add Joinee</button>
+                <button type="submit">+ Add Test Employee</button>
             </div>
         </form>
     </section>
 
-    <!-- <section class="panel">
-        <h2>Manage Document Requirements</h2>
-        <p class="muted">
-            New requirements will be added to existing joinees and future joinees.
-        </p>
-
-        <form method="post" action="{% url 'onboarding:add_document_type' %}">
-            {% csrf_token %}
-            <div class="doc-form">
-                <div>
-                    <label for="document_name">Document Name</label>
-                    <input id="document_name" name="name" required
-                           placeholder="e.g. Experience Letter">
-                </div>
-                <div>
-                    <label for="document_category">Category</label>
-                    <select id="document_category" name="category">
-                        <option value="identity">Identity Documents</option>
-                        <option value="financial">Financial Documents</option>
-                        <option value="educational">Educational Documents</option>
-                        <option value="other">Other Documents</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="active_requirements">Active Requirements</label>
-                    <input id="active_requirements"
-                           value="{{ document_types|length }} document types"
-                           readonly>
-                </div>
-                <button type="submit">Add Requirement</button>
-            </div>
-        </form>
-    </section> -->
-    
     <section class="panel">
         <div class="section-heading">
             <div>
-                <h2>Manage Document Requirements</h2>
+                <h2>Employee Asset Requests</h2>
                 <div class="muted">
-                    View current requirements, add new documents,
-                    or deactivate requirements that are no longer needed.
+                    Search employees, check E-Codes and send asset forms to managers.
                 </div>
             </div>
-
-            <a class="button"
-            href="{% url 'onboarding:manage_document_types' %}">
-                Manage Documents →
-            </a>
-        </div>
-    </section>
-
-
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>Joinee Records</h2>
-                <div class="muted">
-                    Select a name or open the details page to track documents.
-                </div>
-            </div>
-            <a class="button" href="{% url 'onboarding:export_excel' %}">
-                Export Excel
-            </a>
+            <span class="pill">Manual test records</span>
         </div>
 
-        <input
-            class="search"
-            id="joineeSearch"
-            type="search"
-            placeholder="Search name, department, plant or Employee Code..."
-            aria-label="Search joinees"
-        >
+        <input class="search" id="employeeSearch" type="search"
+               placeholder="Search name, E-Code, department, designation or location..."
+               aria-label="Search employees">
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Joinee</th>
+                        <th>Employee</th>
                         <th>Designation</th>
                         <th>Level</th>
                         <th>Grade</th>
                         <th>Department</th>
                         <th>Plant / Location</th>
                         <th>Joining Date</th>
-                        <th>Document Progress</th>
                         <th>Employee Code</th>
-                        <th>Overall Status</th>
-                        <th>Details</th>
-                        <th>Joining Kit</th>
+                        <th>Asset Form</th>
                     </tr>
                 </thead>
 
-                <tbody id="joineeTableBody">
-                    {% for joinee in joinees %}
-                    <tr class="joinee-row"
-                        data-search="{{ joinee.full_name|lower }} {{ joinee.designation|lower }} {{ joinee.department|lower }} {{ joinee.plant_location|lower }} {{ joinee.employee_code|lower }}">
+                <tbody>
+                {% for joinee in joinees %}
+                    <tr class="employee-row"
+                        data-search="{{ joinee.full_name|lower }} {{ joinee.designation|lower }} {{ joinee.department|lower }} {{ joinee.plant_location|lower }} {{ joinee.employee_code|lower }} {{ joinee.level|lower }} {{ joinee.grade|lower }}">
 
                         <td>
-                            <a class="person-link"
-                               href="{% url 'onboarding:joinee_detail' joinee.id %}">
-                                {{ joinee.full_name }}
-                            </a>
+                            <div class="person">{{ joinee.full_name }}</div>
                             <div class="muted">
                                 {{ joinee.personal_email|default:"No email added" }}
                             </div>
@@ -461,97 +378,76 @@
                         <td>{{ joinee.joining_date|date:"d M Y"|default:"—" }}</td>
 
                         <td>
-                            <strong>
-                                {{ joinee.document_completed }}/{{ joinee.document_total }}
-                            </strong>
-                            verified
-
-                            <div class="progress">
-                                <div class="progress-fill"
-                                     style="width:{% if joinee.document_total %}{% widthratio joinee.document_completed joinee.document_total 100 %}{% else %}0{% endif %}%">
-                                </div>
-                            </div>
-                        </td>
-
-                        <td>{{ joinee.employee_code|default:"Not generated" }}</td>
-
-                        <td>
-                            <span class="status {{ joinee.status }}">
-                                {{ joinee.get_status_display }}
-                            </span>
-                        </td>
-
-                        <td>
-                            <a class="button"
-                               href="{% url 'onboarding:joinee_detail' joinee.id %}">
-                                View Details →
-                            </a>
-                        </td>
-
-                        <td>
                             {% if joinee.employee_code %}
-                                {% with kit_request=joinee.joining_kit_requests.first %}
-                                    {% if kit_request %}
-                                        <a class="button"
-                                           href="{% url 'onboarding:joining_kit_detail' kit_request.id %}">
-                                            {% if kit_request.status == "pending" %}
-                                                Open Request
-                                            {% else %}
-                                                View Request
-                                            {% endif %}
-                                        </a>
-                                        <div class="muted" style="margin-top:7px">
-                                            {{ kit_request.get_status_display }}
-                                        </div>
-                                    {% else %}
-                                        <form class="kit-trigger"
-                                              method="post"
-                                              action="{% url 'onboarding:create_joining_kit_request' joinee.id %}">
-                                            {% csrf_token %}
-
-                                            <label>
-                                                <input type="checkbox"
-                                                       name="trigger_joining_kit"
-                                                       value="yes"
-                                                       required>
-                                                
-                                                Trigger Joining Kit request
-                                                <span>Request assets</span>
-                                            </label>
-
-                                            <button type="submit">
-                                                Prepare Request
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                {% endwith %}
+                                <span class="pill green">
+                                    {{ joinee.employee_code }}
+                                </span>
                             {% else %}
-                                <span class="muted">Awaiting E-Code</span>
+                                <span class="pill amber">Not entered</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if joinee.latest_kit_request %}
+                                <a class="button button-small"
+                                   href="{% url 'onboarding:joining_kit_detail' joinee.latest_kit_request.id %}">
+                                    {% if joinee.latest_kit_request.status == "pending" %}
+                                        Open Request
+                                    {% else %}
+                                        View Request
+                                    {% endif %}
+                                </a>
+                                <div class="helper">
+                                    {{ joinee.latest_kit_request.get_status_display }}
+                                </div>
+
+                            {% elif joinee.employee_code %}
+                                <form class="inline-form" method="post"
+                                      action="{% url 'onboarding:create_joining_kit_request' joinee.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="trigger_joining_kit"
+                                           value="yes">
+                                    <button class="button-small" type="submit">
+                                        Send Asset Form
+                                    </button>
+                                </form>
+
+                            {% else %}
+                                <form class="inline-form" method="post"
+                                      action="{% url 'onboarding:update_employee_code' joinee.id %}">
+                                    {% csrf_token %}
+                                    <input name="employee_code"
+                                           aria-label="Employee Code"
+                                           placeholder="Enter E-Code"
+                                           required style="margin-bottom:6px">
+                                    <button class="button-small" type="submit">
+                                        Save E-Code
+                                    </button>
+                                </form>
                             {% endif %}
                         </td>
                     </tr>
-
-                    {% empty %}
+                {% empty %}
                     <tr>
-                        <td colspan="10" class="empty">
-                            <strong>No joinees added yet</strong>
-                            <p>Add your first joinee using the form above.</p>
+                        <td colspan="9" class="empty">
+                            <strong>No employee records yet</strong>
+                            <p>Add a test employee above to begin.</p>
                         </td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
 
         <p id="noSearchResults" class="muted" hidden>
-            No matching joinees found.
+            No matching employees found.
         </p>
     </section>
 </main>
 
 <script>
-    const searchInput = document.getElementById("joineeSearch");
-    const rows = Array.from(document.querySelectorAll(".joinee-row"));
+    const searchInput = document.getElementById("employeeSearch");
+    const rows = Array.from(document.querySelectorAll(".employee-row"));
     const noResults = document.getElementById("noSearchResults");
 
     searchInput.addEventListener("input", function () {
