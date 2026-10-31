@@ -61,6 +61,45 @@ class TicketingClient:
         
         url = f"{self.base_url}/api/itsm/v1/tickets"
 
+        # response = requests.post(
+        #     url,
+        #     headers=headers,
+        #     json=payload,
+        #     timeout=30,
+        # )
+
+        # print("\n========== SEP API RESPONSE ==========")
+        # print("HTTP Status:", response.status_code)
+        # print("Response Body:", response.text)
+        # print("Request Payload:", payload)
+        # print("======================================\n")
+
+        # response.raise_for_status()
+        # return response.json()
+        headers = {
+            "Authorization": f"Bearer {self.pat}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        
+        # Send the request only after headers and payload are built.
+        # response = requests.post(
+        #     url,
+        #     headers=headers,
+        #     # json=payload,
+        #     timeout=30,
+        # )
+
+        # # Log SEP's validation error without exposing employee payload data.
+        # if not response.ok:
+        #     print("\n========== SEP API ERROR ==========")
+        #     print("HTTP Status:", response.status_code)
+        #     print("Response Body:", response.text[:4000])
+        #     print("===================================\n")
+
+        # response.raise_for_status()
+        # return response.json()
+
         headers = {
             "Authorization": f"Bearer {self.pat}",
             "Content-Type": "application/json",
@@ -154,6 +193,15 @@ class TicketingClient:
             json=payload,
             timeout=30,
         )
+
+        if not response.ok:
+            print("\n========== SEP API ERROR ==========")
+            print("HTTP Status:", response.status_code)
+            print("Response Body:", response.text[:4000])
+            print("===================================\n")
+
+        response.raise_for_status()
+        return response.json()
 
         # Avoid logging raw SEP responses that may contain employee information.
 

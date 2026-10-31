@@ -256,6 +256,70 @@
         {% endif %}
 
     </section>
+    
+    {% if can_create_tickets %}
+        <section class="panel">
+            <h2>Create Service Excellence Tickets</h2>
+            <p class="muted">
+                Your asset selections have been submitted. Create the
+                tickets when you are ready. Existing successful tickets
+                will not be recreated.
+            </p>
+
+            <form
+                method="post"
+                action="{% url 'onboarding:create_joining_kit_tickets' joining_kit_request.id %}"
+                onsubmit="return confirm('Create Service Excellence tickets for the selected assets?');"
+            >
+                {% csrf_token %}
+                <button class="button" type="submit">
+                    Create Tickets
+                </button>
+            </form>
+        </section>
+    {% endif %}
+
+    {% if generated_tickets %}
+        <section class="panel">
+            <h2>Ticket Status</h2>
+
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;padding:10px;">Asset</th>
+                            <th style="text-align:left;padding:10px;">Ticket Number</th>
+                            <th style="text-align:left;padding:10px;">Status</th>
+                            <th style="text-align:left;padding:10px;">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in generated_tickets %}
+                            <tr>
+                                <td style="padding:10px;border-top:1px solid #e0e6ef;">
+                                    {{ ticket.asset_label }}
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #e0e6ef;">
+                                    {{ ticket.ticket_number|default:ticket.ticket_id|default:"Not created" }}
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #e0e6ef;">
+                                    {{ ticket.get_status_display }}
+                                </td>
+                                <td style="padding:10px;border-top:1px solid #e0e6ef;">
+                                    {% if ticket.error_message %}
+                                        {{ ticket.error_message }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
 </main>
 </body>
 </html>

@@ -161,11 +161,37 @@ class TicketingTool:
         print("Group ID:", group_id)
         print("==================================\n")
 
-        # Build ticket title
+        # # Build ticket title
+        # if subcategory:
+        #     title = f"{category} - {subcategory} - {description}"
+        # else:
+        #     title = f"{category} - {description}"
+
+
+        # SEP accepts titles between 1 and 200 characters.
         if subcategory:
-            title = f"{category} - {subcategory} - {description}"
+            title_prefix = f"{category} - {subcategory} - "
         else:
-            title = f"{category} - {description}"
+            title_prefix = f"{category} - "
+
+        title_prefix = title_prefix.strip()
+        available_length = 200 - len(title_prefix)
+
+        if available_length < 1:
+            raise ValueError(
+                "Category and subcategory leave no room for a ticket title."
+            )
+
+        description_for_title = (
+            description.strip() if isinstance(description, str) else ""
+        )
+
+        title = (
+            f"{title_prefix}{description_for_title[:available_length]}"
+        ).strip()
+
+        if not title:
+            raise ValueError("A meaningful ticket title is required.")
 
         # Structured fields already carry route/category metadata to SEP.
         # Keep the portal description exactly as the employee authored it.

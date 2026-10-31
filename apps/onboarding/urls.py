@@ -37,4 +37,9 @@ urlpatterns = [
         views.joining_kit_detail,
         name="joining_kit_detail",
     ),
+    path(
+    "joining-kit/<int:request_id>/create-tickets/",
+    views.create_joining_kit_tickets_view,
+    name="create_joining_kit_tickets",
+    ),
 ]

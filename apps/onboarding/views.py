@@ -575,6 +575,161 @@ def manager_joining_kit_dashboard(request):
     )
 
 
+# @login_required
+# def joining_kit_detail(request, request_id):
+#     from django.contrib import messages
+
+#     joining_kit_request = get_object_or_404(
+#         JoiningKitRequest.objects.select_related(
+#             "joinee",
+#             "requested_by",
+#         ),
+#         pk=request_id,
+#     )
+
+#     is_manager = is_joining_kit_manager(request.user)
+#     is_hr = is_hr_user(request.user)
+
+#     if not (is_manager or is_hr):
+#         raise PermissionDenied(
+#             "You are not authorized to access this request."
+#         )
+
+#     if is_manager:
+#         require_assigned_manager(request.user, joining_kit_request)
+
+#     # Only the assigned manager can submit the asset selections.
+#     if request.method == "POST":
+#         if not is_manager:
+#             raise PermissionDenied(
+#                 "HR can view the request but cannot submit manager selections."
+#             )
+
+#         if joining_kit_request.status != "pending":
+#             messages.info(
+#                 request,
+#                 "This request has already been submitted or processed.",
+#             )
+#             return redirect(
+#                 "onboarding:joining_kit_detail",
+#                 request_id=joining_kit_request.pk,
+#             )
+
+#         selected_assets = request.POST.getlist("selected_assets")
+
+#         valid_asset_values = {
+#             value for value, label in ASSET_OPTIONS
+#         }
+
+#         selected_assets = list(dict.fromkeys(
+#             asset.strip()
+#             for asset in selected_assets
+#             if asset.strip() in valid_asset_values
+#         ))
+
+#         if not selected_assets:
+#             return render(
+#                 request,
+#                 "onboarding/joining_kit_detail.html",
+#                 {
+#                     "joining_kit_request": joining_kit_request,
+#                     "asset_options": ASSET_OPTIONS,
+#                     "recommended_assets": get_recommended_assets(
+#                         joining_kit_request.joinee
+#                     ),
+#                     "can_edit": True,
+#                     "is_hr_view": False,
+#                     "error": "Please select at least one asset before submitting.",
+#                 },
+#                 status=400,
+#             )
+
+#         joining_kit_request.selected_assets = selected_assets
+#         joining_kit_request.required_by = (
+#             request.POST.get(
+#                 "required_by",
+#                 "Before joining date",
+#             ).strip()[:100]
+#             or "Before joining date"
+#         )
+#         joining_kit_request.notes = (
+#             request.POST.get("notes", "").strip()[:2000]
+#         )
+#         joining_kit_request.status = "submitted"
+#         joining_kit_request.manager_submitted_at = timezone.now()
+
+#         joining_kit_request.save(
+#             update_fields=[
+#                 "selected_assets",
+#                 "required_by",
+#                 "notes",
+#                 "status",
+#                 "manager_submitted_at",
+#                 "updated_at",
+#             ]
+#         )
+
+#         # Create Service Excellence tickets only after a real submission.
+#         try:
+#             ticket_results = create_joining_kit_tickets(
+#                 joining_kit_request
+#             )
+
+#             created_count = sum(
+#                 ticket.status == "created"
+#                 for ticket in ticket_results
+#             )
+#             failed_count = sum(
+#                 ticket.status == "failed"
+#                 for ticket in ticket_results
+#             )
+
+#             if failed_count:
+#                 messages.warning(
+#                     request,
+#                     f"Joining Kit submitted. {created_count} ticket(s) "
+#                     f"created; {failed_count} need attention.",
+#                 )
+#             else:
+#                 messages.success(
+#                     request,
+#                     f"Joining Kit submitted successfully. "
+#                     f"{created_count} ticket(s) created.",
+#                 )
+
+#         except Exception:
+#             # Keep the submission saved if ticket creation fails.
+#             # Do not silently change the request back to pending.
+#             messages.warning(
+#                 request,
+#                 "The asset request was submitted, but ticket creation "
+#                 "encountered an error. Please check the server logs.",
+#             )
+
+#         return redirect(
+#             "onboarding:joining_kit_detail",
+#             request_id=joining_kit_request.pk,
+#         )
+
+#     # GET requests must only display the page. Never save or redirect here.
+#     return render(
+#         request,
+#         "onboarding/joining_kit_detail.html",
+#         {
+#             "joining_kit_request": joining_kit_request,
+#             "asset_options": ASSET_OPTIONS,
+#             "recommended_assets": get_recommended_assets(
+#                 joining_kit_request.joinee
+#             ),
+#             "can_edit": (
+#                 is_manager
+#                 and joining_kit_request.status == "pending"
+#             ),
+#             "is_hr_view": is_hr,
+#         },
+#     )
+
+
 @login_required
 def joining_kit_detail(request, request_id):
     from django.contrib import messages
@@ -583,7 +738,7 @@ def joining_kit_detail(request, request_id):
         JoiningKitRequest.objects.select_related(
             "joinee",
             "requested_by",
-        ),
+        ).prefetch_related("generated_tickets"),
         pk=request_id,
     )
 
@@ -598,17 +753,16 @@ def joining_kit_detail(request, request_id):
     if is_manager:
         require_assigned_manager(request.user, joining_kit_request)
 
-    # Only the assigned manager can submit the asset selections.
     if request.method == "POST":
         if not is_manager:
             raise PermissionDenied(
-                "HR can view the request but cannot submit manager selections."
+                "Only the assigned manager can submit asset selections."
             )
 
         if joining_kit_request.status != "pending":
             messages.info(
                 request,
-                "This request has already been submitted or processed.",
+                "The asset request has already been submitted.",
             )
             return redirect(
                 "onboarding:joining_kit_detail",
@@ -616,7 +770,6 @@ def joining_kit_detail(request, request_id):
             )
 
         selected_assets = request.POST.getlist("selected_assets")
-
         valid_asset_values = {
             value for value, label in ASSET_OPTIONS
         }
@@ -639,7 +792,14 @@ def joining_kit_detail(request, request_id):
                     ),
                     "can_edit": True,
                     "is_hr_view": False,
-                    "error": "Please select at least one asset before submitting.",
+                    "error": (
+                        "Please select at least one asset "
+                        "before submitting."
+                    ),
+                    "generated_tickets": (
+                        joining_kit_request.generated_tickets.all()
+                    ),
+                    "can_create_tickets": False,
                 },
                 status=400,
             )
@@ -669,49 +829,39 @@ def joining_kit_detail(request, request_id):
             ]
         )
 
-        # Create Service Excellence tickets only after a real submission.
-        try:
-            ticket_results = create_joining_kit_tickets(
-                joining_kit_request
-            )
-
-            created_count = sum(
-                ticket.status == "created"
-                for ticket in ticket_results
-            )
-            failed_count = sum(
-                ticket.status == "failed"
-                for ticket in ticket_results
-            )
-
-            if failed_count:
-                messages.warning(
-                    request,
-                    f"Joining Kit submitted. {created_count} ticket(s) "
-                    f"created; {failed_count} need attention.",
-                )
-            else:
-                messages.success(
-                    request,
-                    f"Joining Kit submitted successfully. "
-                    f"{created_count} ticket(s) created.",
-                )
-
-        except Exception:
-            # Keep the submission saved if ticket creation fails.
-            # Do not silently change the request back to pending.
-            messages.warning(
-                request,
-                "The asset request was submitted, but ticket creation "
-                "encountered an error. Please check the server logs.",
-            )
+        messages.success(
+            request,
+            "Assets submitted successfully. Review the request, "
+            "then select Create Tickets when you are ready.",
+        )
 
         return redirect(
             "onboarding:joining_kit_detail",
             request_id=joining_kit_request.pk,
         )
 
-    # GET requests must only display the page. Never save or redirect here.
+    generated_tickets = list(
+        joining_kit_request.generated_tickets.all().order_by("id")
+    )
+
+    # Enable ticket creation only after manager submission.
+    # Do not expose the action to HR's read-only view.
+    can_create_tickets = (
+        is_manager
+        and joining_kit_request.status in ("submitted", "in_progress")
+        and bool(joining_kit_request.selected_assets)
+        and any(
+            ticket.status in ("pending", "failed")
+            for ticket in generated_tickets
+        )
+        or (
+            is_manager
+            and joining_kit_request.status in ("submitted", "in_progress")
+            and bool(joining_kit_request.selected_assets)
+            and not generated_tickets
+        )
+    )
+
     return render(
         request,
         "onboarding/joining_kit_detail.html",
@@ -726,5 +876,91 @@ def joining_kit_detail(request, request_id):
                 and joining_kit_request.status == "pending"
             ),
             "is_hr_view": is_hr,
+            "generated_tickets": generated_tickets,
+            "can_create_tickets": can_create_tickets,
         },
+    )
+
+
+@login_required
+@require_POST
+def create_joining_kit_tickets_view(request, request_id):
+    from django.contrib import messages
+
+    joining_kit_request = get_object_or_404(
+        JoiningKitRequest.objects.select_related("joinee"),
+        pk=request_id,
+    )
+
+    require_assigned_manager(request.user, joining_kit_request)
+
+    if joining_kit_request.status not in ("submitted", "in_progress"):
+        messages.error(
+            request,
+            "Submit the asset selections before creating tickets.",
+        )
+        return redirect(
+            "onboarding:joining_kit_detail",
+            request_id=joining_kit_request.pk,
+        )
+
+    if not joining_kit_request.selected_assets:
+        messages.error(
+            request,
+            "No selected assets were found for this request.",
+        )
+        return redirect(
+            "onboarding:joining_kit_detail",
+            request_id=joining_kit_request.pk,
+        )
+
+    try:
+        ticket_results = create_joining_kit_tickets(
+            joining_kit_request
+        )
+
+        created_count = sum(
+            ticket.status == "created"
+            for ticket in ticket_results
+        )
+        failed_count = sum(
+            ticket.status == "failed"
+            for ticket in ticket_results
+        )
+        pending_count = sum(
+            ticket.status in ("pending", "creating")
+            for ticket in ticket_results
+        )
+
+        if failed_count or pending_count:
+            messages.warning(
+                request,
+                f"Ticket processing finished: {created_count} created, "
+                f"{failed_count} failed, {pending_count} pending or "
+                "requiring investigation. Review the ticket statuses "
+                "before retrying.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Ticket processing finished. {created_count} ticket(s) "
+                "are recorded as created.",
+            )
+
+        if created_count:
+            joining_kit_request.status = "in_progress"
+            joining_kit_request.save(
+                update_fields=["status", "updated_at"]
+            )
+
+    except Exception:
+        messages.error(
+            request,
+            "Ticket creation could not be completed. Check the server "
+            "logs and ticket statuses before trying again.",
+        )
+
+    return redirect(
+        "onboarding:joining_kit_detail",
+        request_id=joining_kit_request.pk,
     )

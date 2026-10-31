@@ -44,7 +44,7 @@ ASSET_TICKET_MAPPING = {
         "subcategory": "SAP BASIS",
     },
     "peoplestrong": {
-        "department": "IT Department",
+        "department": "HR Department",
         "category": "Software & Tools",
         "subcategory": "People Strong",
     },
@@ -69,7 +69,7 @@ ASSET_TICKET_MAPPING = {
         "subcategory": "PPE Issuance",
     },
     "uniform": {
-        "department": "Safety",
+        "department": "Admin",
         "category": "PPE Compliance",
         "subcategory": "PPE Issuance",
     },
