@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -320,6 +320,632 @@
         </section>
     {% endif %}
 
+</main>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joining Kit Request | Vishakha AI</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            color: #172b4d;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        header {
+            background: #142b4a;
+            color: white;
+            padding: 22px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        header h1 { margin: 0 0 5px; font-size: 22px; }
+        header p { margin: 0; color: #d8e4f5; font-size: 13px; }
+        header a { color: white; text-decoration: none; }
+
+        main {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #e0e6ef;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        h2 { margin-top: 0; font-size: 19px; }
+        h3 { margin: 0 0 15px; font-size: 16px; }
+        .muted { color: #667085; font-size: 14px; }
+
+        .assets {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin: 18px 0;
+        }
+
+        .asset {
+            border: 1px solid #e0e6ef;
+            border-radius: 9px;
+            padding: 13px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #cfd7e3;
+            border-radius: 8px;
+            font: inherit;
+            margin-top: 7px;
+            background: white;
+            color: #172b4d;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        label.field-label {
+            display: block;
+            margin-top: 18px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .button {
+            display: inline-block;
+            background: #285ea8;
+            color: white;
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .button.secondary {
+            background: #edf2f8;
+            color: #23436c;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #fff1cc;
+            color: #875d00;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .notice {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f0f5ff;
+            color: #234b82;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .ticket-card {
+            border: 1px solid #dce4ef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 18px;
+            background: #fbfcfe;
+        }
+
+        .ticket-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .ticket-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .ticket-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #475467;
+        }
+
+        .ticket-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .ticket-field textarea {
+            min-height: 130px;
+        }
+
+        .required-mark { color: #c0392b; }
+
+        .warning {
+            background: #fff7e6;
+            color: #805400;
+            border: 1px solid #f2d28b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+            font-size: 13px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid #e7ecf3;
+            vertical-align: top;
+        }
+
+        th {
+            color: #667085;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 650px) {
+            .assets,
+            .ticket-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ticket-field.full {
+                grid-column: auto;
+            }
+
+            .panel { padding: 18px; }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    {% if is_hr_view %}
+        <a href="{% url 'onboarding:dashboard' %}">
+            ← Back to Onboarding
+        </a>
+    {% else %}
+        <a href="{% url 'onboarding:manager_joining_kit_dashboard' %}">
+            ← Back to Onboarding
+        </a>
+    {% endif %}
+
+    <div>
+        <h1>Joining Kit Request</h1>
+        <p>Vishakha AI · Onboarding</p>
+    </div>
+
+    {% if is_hr_view %}
+        <a href="{% url 'onboarding:dashboard' %}">
+            Back to HR Dashboard
+        </a>
+    {% else %}
+        <a href="{% url 'onboarding:manager_joining_kit_dashboard' %}">
+            Back to My Requests
+        </a>
+    {% endif %}
+</header>
+
+<main>
+    <section class="panel">
+        <h2>{{ joining_kit_request.joinee.full_name }}</h2>
+
+        <p class="muted">
+            Employee Code:
+            {{ joining_kit_request.joinee.employee_code|default:"Not available" }}
+        </p>
+
+        <p class="muted">
+            Department:
+            {{ joining_kit_request.joinee.department|default:"Not specified" }}
+        </p>
+
+        <p class="muted">
+            Level: {{ joining_kit_request.joinee.level|default:"Not specified" }}
+        </p>
+
+        <p class="muted">
+            Grade: {{ joining_kit_request.joinee.grade|default:"Not specified" }}
+        </p>
+
+        <p class="muted">
+            Joining Date:
+            {{ joining_kit_request.joinee.joining_date|date:"d M Y"|default:"Not specified" }}
+        </p>
+
+        <p>
+            Status:
+            <span class="status">
+                {{ joining_kit_request.get_status_display }}
+            </span>
+        </p>
+
+        {% if joining_kit_request.manager_submitted_at %}
+            <p class="muted">
+                Submitted:
+                {{ joining_kit_request.manager_submitted_at|date:"d M Y, h:i A" }}
+            </p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Asset Selection</h2>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="notice" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if error %}
+            <div class="notice" role="alert">{{ error }}</div>
+        {% endif %}
+
+        {% if can_edit %}
+            <p class="muted">
+                Select the assets required for this new joiner, then submit
+                the request.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="assets">
+                    {% for value, label in asset_options %}
+                        <label class="asset">
+                            <input
+                                type="checkbox"
+                                name="selected_assets"
+                                value="{{ value }}"
+                                {% if value in joining_kit_request.selected_assets %}
+                                    checked
+                                {% elif not joining_kit_request.selected_assets and value in recommended_assets %}
+                                    checked
+                                {% endif %}
+                            >
+                            <span>{{ label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <label class="field-label" for="required_by">
+                    Required By
+                </label>
+                <input
+                    type="text"
+                    id="required_by"
+                    name="required_by"
+                    value="{{ joining_kit_request.required_by }}"
+                    maxlength="100"
+                    placeholder="e.g. Before joining date"
+                >
+
+                <label class="field-label" for="notes">Notes</label>
+                <textarea
+                    id="notes"
+                    name="notes"
+                    maxlength="2000"
+                    placeholder="Add any asset specifications or instructions"
+                >{{ joining_kit_request.notes }}</textarea>
+
+                <button class="button" type="submit">
+                    Submit Asset Request
+                </button>
+            </form>
+        {% else %}
+            <div class="assets">
+                {% for value, label in asset_options %}
+                    {% if value in joining_kit_request.selected_assets %}
+                        <div class="asset">
+                            <span aria-hidden="true">✓</span>
+                            <span>{{ label }}</span>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if not joining_kit_request.selected_assets %}
+                <p class="muted">No assets have been selected.</p>
+            {% endif %}
+
+            <label class="field-label">Required By</label>
+            <p>{{ joining_kit_request.required_by|default:"Not specified" }}</p>
+
+            <label class="field-label">Manager Notes</label>
+            <p>{{ joining_kit_request.notes|default:"No notes added." }}</p>
+
+            <div class="notice">
+                {% if is_hr_view %}
+                    This is a read-only view for HR.
+                {% else %}
+                    This request is no longer editable.
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+    {% if can_create_tickets and not show_ticket_review %}
+        <section class="panel">
+            <h2>Create Service Excellence Tickets</h2>
+
+            <p class="muted">
+                Review the details that will be sent to Service Excellence.
+                You can edit the ticket fields before confirming creation.
+            </p>
+
+            <a
+                class="button"
+                href="{% url 'onboarding:create_joining_kit_tickets' joining_kit_request.id %}"
+            >
+                Review Ticket Details
+            </a>
+        </section>
+    {% endif %}
+
+    {% if show_ticket_review %}
+        <section class="panel">
+            <h2>Review Service Excellence Tickets</h2>
+
+            <p class="muted">
+                Check each ticket carefully. You can edit the fields below.
+                No tickets will be created until you select
+                <strong>Confirm &amp; Create Tickets</strong>.
+            </p>
+
+            <form
+                method="post"
+                action="{% url 'onboarding:create_joining_kit_tickets' joining_kit_request.id %}"
+            >
+                {% csrf_token %}
+
+                {% for preview in ticket_previews %}
+                    <div class="ticket-card">
+                        <div class="ticket-card-header">
+                            <h3>{{ preview.asset_label }}</h3>
+
+                            {% if preview.already_created %}
+                                <span class="status">Already created</span>
+                            {% else %}
+                                <span class="status">Awaiting confirmation</span>
+                            {% endif %}
+                        </div>
+
+                        {% if preview.already_created %}
+                            <div class="notice">
+                                A successful ticket already exists for this
+                                asset. It will not be created again.
+                            </div>
+                        {% else %}
+                            {% if preview.mapping_missing %}
+                                <div class="warning">
+                                    No default SEP mapping exists for this
+                                    asset. Please enter and verify the
+                                    department, category and subcategory
+                                    before confirming.
+                                </div>
+                            {% endif %}
+
+                            <div class="ticket-grid">
+                                <div class="ticket-field">
+                                    <label>
+                                        Department <span class="required-mark">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ preview.asset_key }}__department"
+                                        value="{{ preview.department }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>
+                                        Category <span class="required-mark">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ preview.asset_key }}__category"
+                                        value="{{ preview.category }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>
+                                        Subcategory <span class="required-mark">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ preview.asset_key }}__subcategory"
+                                        value="{{ preview.subcategory }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>
+                                        Request Type <span class="required-mark">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ preview.asset_key }}__request_type"
+                                        value="{{ preview.request_type }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>
+                                        Priority <span class="required-mark">*</span>
+                                    </label>
+                                    <select
+                                        name="{{ preview.asset_key }}__priority"
+                                        required
+                                    >
+                                        <option value="Low"
+                                            {% if preview.priority == "Low" %}selected{% endif %}>
+                                            Low
+                                        </option>
+                                        <option value="Medium"
+                                            {% if preview.priority == "Medium" %}selected{% endif %}>
+                                            Medium
+                                        </option>
+                                        <option value="High"
+                                            {% if preview.priority == "High" %}selected{% endif %}>
+                                            High
+                                        </option>
+                                        <option value="Critical"
+                                            {% if preview.priority == "Critical" %}selected{% endif %}>
+                                            Critical
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>Location <span class="required-mark">*</span></label>
+                                    <input
+                                        type="text"
+                                        name="{{ preview.asset_key }}__location"
+                                        value="{{ preview.location }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="ticket-field">
+                                    <label>Target Date</label>
+                                    <input
+                                        type="date"
+                                        name="{{ preview.asset_key }}__target_date"
+                                        value="{{ preview.target_date }}"
+                                    >
+                                </div>
+
+                                <div class="ticket-field full">
+                                    <label>
+                                        Description <span class="required-mark">*</span>
+                                    </label>
+                                    <textarea
+                                        name="{{ preview.asset_key }}__description"
+                                        required
+                                    >{{ preview.description }}</textarea>
+                                </div>
+
+                                <div class="ticket-field full">
+                                    <label>Business Justification</label>
+                                    <textarea
+                                        name="{{ preview.asset_key }}__business_justification"
+                                    >{{ preview.business_justification }}</textarea>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="notice">
+                    Requester and actor will use the assigned manager's
+                    account email. These identity fields are not editable
+                    from this review screen.
+                </div>
+
+                <button
+                    class="button"
+                    type="submit"
+                    onclick="return confirm('Confirm the reviewed details and create the Service Excellence tickets?');"
+                >
+                    Confirm &amp; Create Tickets
+                </button>
+
+                <a
+                    class="button secondary"
+                    href="{% url 'onboarding:joining_kit_detail' joining_kit_request.id %}"
+                >
+                    Cancel Review
+                </a>
+            </form>
+        </section>
+    {% endif %}
+
+    {% if generated_tickets %}
+        <section class="panel">
+            <h2>Ticket Status</h2>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Ticket Number</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for ticket in generated_tickets %}
+                            <tr>
+                                <td>{{ ticket.asset_label }}</td>
+                                <td>
+                                    {{ ticket.ticket_number|default:ticket.ticket_id|default:"Not created" }}
+                                </td>
+                                <td>{{ ticket.get_status_display }}</td>
+                                <td>
+                                    {% if ticket.error_message %}
+                                        {{ ticket.error_message }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
 </main>
 </body>
 </html>
