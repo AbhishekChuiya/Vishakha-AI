@@ -3,7 +3,7 @@ from .models import JoiningKitRequest
 
 from datetime import datetime
 from io import BytesIO
-
+from ai.tools.ticketing.ticketing_tool import TicketingTool
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -23,6 +23,7 @@ from .models import (
     Joinee,
     JoineeDocument,
     JoiningKitRequest,
+    JoiningKitTicket,
 )
 
 HR_EMAIL = "niranshu.mittal@vishakha.com"
@@ -476,40 +477,6 @@ def get_recommended_assets(joinee):
     # Manager can still select Desktop or any other available asset.
     return recommended
 
-# @login_required
-# @require_POST
-# def create_joining_kit_request(request, joinee_id):
-#     joinee = get_object_or_404(Joinee, pk=joinee_id)
-
-#     if not joinee.employee_code.strip():
-#         return HttpResponse(
-#             "Enter the Employee Code before creating a Joining Kit request.",
-#             status=400,
-#         )
-
-#     # Avoid creating another open request for the same joinee.
-#     existing = JoiningKitRequest.objects.filter(
-#         joinee=joinee,
-#         status__in=["pending", "submitted", "in_progress"],
-#     ).first()
-
-#     if existing:
-#         return redirect(
-#             "onboarding:joining_kit_detail",
-#             request_id=existing.pk,
-#         )
-
-#     kit_request = JoiningKitRequest.objects.create(
-#         joinee=joinee,
-#         manager_email="abhishek.chuiya@vishakha.com",
-#         requested_by=request.user,
-#     )
-
-#     return redirect(
-#         "onboarding:joining_kit_detail",
-#         request_id=kit_request.pk,
-#     )
-
 
 @login_required
 @require_POST
@@ -574,244 +541,6 @@ def manager_joining_kit_dashboard(request):
             "joining_kit_requests": joining_kit_requests,
         },
     )
-
-
-# @login_required
-# def joining_kit_detail(request, request_id):
-#     from django.contrib import messages
-
-#     joining_kit_request = get_object_or_404(
-#         JoiningKitRequest.objects.select_related(
-#             "joinee",
-#             "requested_by",
-#         ).prefetch_related("generated_tickets"),
-#         pk=request_id,
-#     )
-
-#     is_manager = is_joining_kit_manager(request.user)
-#     is_hr = is_hr_user(request.user)
-
-#     if not (is_manager or is_hr):
-#         raise PermissionDenied(
-#             "You are not authorized to access this request."
-#         )
-
-#     if is_manager:
-#         require_assigned_manager(request.user, joining_kit_request)
-
-#     if request.method == "POST":
-#         if not is_manager:
-#             raise PermissionDenied(
-#                 "Only the assigned manager can submit asset selections."
-#             )
-
-#         if joining_kit_request.status != "pending":
-#             messages.info(
-#                 request,
-#                 "The asset request has already been submitted.",
-#             )
-#             return redirect(
-#                 "onboarding:joining_kit_detail",
-#                 request_id=joining_kit_request.pk,
-#             )
-
-#         selected_assets = request.POST.getlist("selected_assets")
-#         valid_asset_values = {
-#             value for value, label in ASSET_OPTIONS
-#         }
-
-#         selected_assets = list(dict.fromkeys(
-#             asset.strip()
-#             for asset in selected_assets
-#             if asset.strip() in valid_asset_values
-#         ))
-
-#         if not selected_assets:
-#             return render(
-#                 request,
-#                 "onboarding/joining_kit_detail.html",
-#                 {
-#                     "joining_kit_request": joining_kit_request,
-#                     "asset_options": ASSET_OPTIONS,
-#                     "recommended_assets": get_recommended_assets(
-#                         joining_kit_request.joinee
-#                     ),
-#                     "can_edit": True,
-#                     "is_hr_view": False,
-#                     "error": (
-#                         "Please select at least one asset "
-#                         "before submitting."
-#                     ),
-#                     "generated_tickets": (
-#                         joining_kit_request.generated_tickets.all()
-#                     ),
-#                     "can_create_tickets": False,
-#                 },
-#                 status=400,
-#             )
-
-#         joining_kit_request.selected_assets = selected_assets
-#         joining_kit_request.required_by = (
-#             request.POST.get(
-#                 "required_by",
-#                 "Before joining date",
-#             ).strip()[:100]
-#             or "Before joining date"
-#         )
-#         joining_kit_request.notes = (
-#             request.POST.get("notes", "").strip()[:2000]
-#         )
-#         joining_kit_request.status = "submitted"
-#         joining_kit_request.manager_submitted_at = timezone.now()
-
-#         joining_kit_request.save(
-#             update_fields=[
-#                 "selected_assets",
-#                 "required_by",
-#                 "notes",
-#                 "status",
-#                 "manager_submitted_at",
-#                 "updated_at",
-#             ]
-#         )
-
-#         messages.success(
-#             request,
-#             "Assets submitted successfully. Review the request, "
-#             "then select Create Tickets when you are ready.",
-#         )
-
-#         return redirect(
-#             "onboarding:joining_kit_detail",
-#             request_id=joining_kit_request.pk,
-#         )
-
-#     generated_tickets = list(
-#         joining_kit_request.generated_tickets.all().order_by("id")
-#     )
-
-#     # Enable ticket creation only after manager submission.
-#     # Do not expose the action to HR's read-only view.
-#     can_create_tickets = (
-#         is_manager
-#         and joining_kit_request.status in ("submitted", "in_progress")
-#         and bool(joining_kit_request.selected_assets)
-#         and any(
-#             ticket.status in ("pending", "failed")
-#             for ticket in generated_tickets
-#         )
-#         or (
-#             is_manager
-#             and joining_kit_request.status in ("submitted", "in_progress")
-#             and bool(joining_kit_request.selected_assets)
-#             and not generated_tickets
-#         )
-#     )
-
-#     return render(
-#         request,
-#         "onboarding/joining_kit_detail.html",
-#         {
-#             "joining_kit_request": joining_kit_request,
-#             "asset_options": ASSET_OPTIONS,
-#             "recommended_assets": get_recommended_assets(
-#                 joining_kit_request.joinee
-#             ),
-#             "can_edit": (
-#                 is_manager
-#                 and joining_kit_request.status == "pending"
-#             ),
-#             "is_hr_view": is_hr,
-#             "generated_tickets": generated_tickets,
-#             "can_create_tickets": can_create_tickets,
-#         },
-#     )
-
-
-# @login_required
-# @require_POST
-# def create_joining_kit_tickets_view(request, request_id):
-#     from django.contrib import messages
-
-#     joining_kit_request = get_object_or_404(
-#         JoiningKitRequest.objects.select_related("joinee"),
-#         pk=request_id,
-#     )
-
-#     require_assigned_manager(request.user, joining_kit_request)
-
-#     if joining_kit_request.status not in ("submitted", "in_progress"):
-#         messages.error(
-#             request,
-#             "Submit the asset selections before creating tickets.",
-#         )
-#         return redirect(
-#             "onboarding:joining_kit_detail",
-#             request_id=joining_kit_request.pk,
-#         )
-
-#     if not joining_kit_request.selected_assets:
-#         messages.error(
-#             request,
-#             "No selected assets were found for this request.",
-#         )
-#         return redirect(
-#             "onboarding:joining_kit_detail",
-#             request_id=joining_kit_request.pk,
-#         )
-
-#     try:
-#         ticket_results = create_joining_kit_tickets(
-#             joining_kit_request
-#         )
-
-#         created_count = sum(
-#             ticket.status == "created"
-#             for ticket in ticket_results
-#         )
-#         failed_count = sum(
-#             ticket.status == "failed"
-#             for ticket in ticket_results
-#         )
-#         pending_count = sum(
-#             ticket.status in ("pending", "creating")
-#             for ticket in ticket_results
-#         )
-
-#         if failed_count or pending_count:
-#             messages.warning(
-#                 request,
-#                 f"Ticket processing finished: {created_count} created, "
-#                 f"{failed_count} failed, {pending_count} pending or "
-#                 "requiring investigation. Review the ticket statuses "
-#                 "before retrying.",
-#             )
-#         else:
-#             messages.success(
-#                 request,
-#                 f"Ticket processing finished. {created_count} ticket(s) "
-#                 "are recorded as created.",
-#             )
-
-#         if created_count:
-#             joining_kit_request.status = "in_progress"
-#             joining_kit_request.save(
-#                 update_fields=["status", "updated_at"]
-#             )
-
-#     except Exception:
-#         messages.error(
-#             request,
-#             "Ticket creation could not be completed. Check the server "
-#             "logs and ticket statuses before trying again.",
-#         )
-
-#     return redirect(
-#         "onboarding:joining_kit_detail",
-#         request_id=joining_kit_request.pk,
-#     )
-
-
 
 
 
@@ -886,16 +615,16 @@ def joining_kit_detail(request, request_id):
         joining_kit_request.notes = (
             request.POST.get("notes", "").strip()[:2000]
         )
-        joining_kit_request.status = "submitted"
-        joining_kit_request.manager_submitted_at = timezone.now()
+        # joining_kit_request.status = "submitted"
+        # joining_kit_request.manager_submitted_at = timezone.now()
 
         joining_kit_request.save(
             update_fields=[
                 "selected_assets",
                 "required_by",
                 "notes",
-                "status",
-                "manager_submitted_at",
+                # "status",
+                # "manager_submitted_at",
                 "updated_at",
             ]
         )
@@ -914,19 +643,43 @@ def joining_kit_detail(request, request_id):
     generated_tickets = list(
         joining_kit_request.generated_tickets.all().order_by("id")
     )
+    all_tickets_created = (
+    bool(joining_kit_request.selected_assets)
+    and len(generated_tickets) == len(
+        joining_kit_request.selected_assets
+    )
+    and all(
+        ticket.creation_status == "created"
+        for ticket in generated_tickets
+    )
+)
 
+    # can_create_tickets = (
+    #     is_manager
+    #     and joining_kit_request.status in ("submitted", "in_progress")
+    #     and bool(joining_kit_request.selected_assets)
+    #     and (
+    #         not generated_tickets
+    #         or any(
+    #             ticket.creation_status in ("pending", "failed")
+    #             for ticket in generated_tickets
+    #         )
+    #     )
+    # )
+    
     can_create_tickets = (
         is_manager
-        and joining_kit_request.status in ("submitted", "in_progress")
+        and joining_kit_request.status == "pending"
         and bool(joining_kit_request.selected_assets)
         and (
             not generated_tickets
             or any(
-                ticket.status in ("pending", "failed")
+                ticket.creation_status in ("pending", "failed")
                 for ticket in generated_tickets
             )
         )
     )
+
 
     return render(
         request,
@@ -937,191 +690,21 @@ def joining_kit_detail(request, request_id):
             "recommended_assets": get_recommended_assets(
                 joining_kit_request.joinee
             ),
+            # "can_edit": (
+            #     is_manager
+            #     and joining_kit_request.status == "pending"
+            # ),
             "can_edit": (
                 is_manager
                 and joining_kit_request.status == "pending"
+                and not joining_kit_request.selected_assets
             ),
             "is_hr_view": is_hr,
             "generated_tickets": generated_tickets,
             "can_create_tickets": can_create_tickets,
+            "all_tickets_created": all_tickets_created,
         },
     )
-
-
-# @login_required
-# def create_joining_kit_tickets_view(request, request_id):
-#     """
-#     GET: show editable ticket review cards on the same Joining Kit page.
-#     POST: validate reviewed fields and create SEP tickets.
-#     """
-#     from django.contrib import messages
-
-#     joining_kit_request = get_object_or_404(
-#         JoiningKitRequest.objects.select_related(
-#             "joinee",
-#             "requested_by",
-#         ).prefetch_related("generated_tickets"),
-#         pk=request_id,
-#     )
-
-#     require_assigned_manager(request.user, joining_kit_request)
-
-#     if joining_kit_request.status not in ("submitted", "in_progress"):
-#         raise PermissionDenied(
-#             "Submit the asset selections before reviewing tickets."
-#         )
-
-#     if not joining_kit_request.selected_assets:
-#         messages.error(
-#             request,
-#             "No selected assets were found for this request.",
-#         )
-#         return redirect(
-#             "onboarding:joining_kit_detail",
-#             request_id=joining_kit_request.pk,
-#         )
-
-#     previews = build_ticket_previews(joining_kit_request)
-
-#     if request.method == "GET":
-#         return render(
-#             request,
-#             "onboarding/joining_kit_detail.html",
-#             {
-#                 "joining_kit_request": joining_kit_request,
-#                 "asset_options": ASSET_OPTIONS,
-#                 "recommended_assets": get_recommended_assets(
-#                     joining_kit_request.joinee
-#                 ),
-#                 "can_edit": False,
-#                 "is_hr_view": False,
-#                 "generated_tickets": list(
-#                     joining_kit_request.generated_tickets.all()
-#                 ),
-#                 "can_create_tickets": True,
-#                 "show_ticket_review": True,
-#                 "ticket_previews": previews,
-#             },
-#         )
-
-#     if request.method != "POST":
-#         return HttpResponse(status=405)
-
-#     # Build the submitted, editable fields per asset.
-#     ticket_overrides = {}
-#     required_fields = (
-#         "department",
-#         "category",
-#         "subcategory",
-#         "description",
-#         "location",
-#         "priority",
-#         "request_type",
-#         "target_date",
-#         "business_justification",
-#     )
-
-#     for preview in previews:
-#         asset_key = preview["asset_key"]
-
-#         # A successful ticket must never be recreated or edited here.
-#         if preview["already_created"]:
-#             continue
-
-#         ticket_overrides[asset_key] = {
-#             field: request.POST.get(
-#                 f"{asset_key}__{field}", ""
-#             ).strip()
-#             for field in required_fields
-#         }
-
-#         missing = [
-#             field.replace("_", " ").title()
-#             for field in required_fields[:7]
-#             if not ticket_overrides[asset_key].get(field)
-#         ]
-
-#         if missing:
-#             messages.error(
-#                 request,
-#                 f"{preview['asset_label']}: complete "
-#                 + ", ".join(missing)
-#                 + " before confirming.",
-#             )
-#             return render(
-#                 request,
-#                 "onboarding/joining_kit_detail.html",
-#                 {
-#                     "joining_kit_request": joining_kit_request,
-#                     "asset_options": ASSET_OPTIONS,
-#                     "recommended_assets": get_recommended_assets(
-#                         joining_kit_request.joinee
-#                     ),
-#                     "can_edit": False,
-#                     "is_hr_view": False,
-#                     "generated_tickets": list(
-#                         joining_kit_request.generated_tickets.all()
-#                     ),
-#                     "can_create_tickets": True,
-#                     "show_ticket_review": True,
-#                     "ticket_previews": previews,
-#                     "submitted_ticket_overrides": ticket_overrides,
-#                 },
-#                 status=400,
-#             )
-
-#     try:
-#         ticket_results = create_joining_kit_tickets(
-#             joining_kit_request,
-#             ticket_overrides=ticket_overrides,
-#         )
-
-#         created_count = sum(
-#             ticket.status == "created"
-#             for ticket in ticket_results
-#         )
-#         failed_count = sum(
-#             ticket.status == "failed"
-#             for ticket in ticket_results
-#         )
-#         pending_count = sum(
-#             ticket.status in ("pending", "creating")
-#             for ticket in ticket_results
-#         )
-
-#         if created_count:
-#             joining_kit_request.status = "in_progress"
-#             joining_kit_request.save(
-#                 update_fields=["status", "updated_at"]
-#             )
-
-#         if failed_count or pending_count:
-#             messages.warning(
-#                 request,
-#                 f"Ticket processing finished: {created_count} created, "
-#                 f"{failed_count} failed, {pending_count} pending or "
-#                 "requiring investigation. Check ticket statuses before "
-#                 "retrying.",
-#             )
-#         else:
-#             messages.success(
-#                 request,
-#                 f"Successfully created/recorded {created_count} "
-#                 "Service Excellence ticket(s).",
-#             )
-
-#     except Exception:
-#         messages.error(
-#             request,
-#             "Ticket creation could not be completed. Check the server "
-#             "logs and ticket statuses before retrying.",
-#         )
-
-#     return redirect(
-#         "onboarding:joining_kit_detail",
-#         request_id=joining_kit_request.pk,
-#     )
-
 
 
 @login_required
@@ -1142,9 +725,10 @@ def create_joining_kit_tickets_view(request, request_id):
 
     require_assigned_manager(request.user, joining_kit_request)
 
-    if joining_kit_request.status not in ("submitted", "in_progress"):
+    # if joining_kit_request.status not in ("submitted", "in_progress"):
+    if joining_kit_request.status != "pending":
         raise PermissionDenied(
-            "Submit the asset selections before reviewing tickets."
+            "Complete the asset selection before reviewing tickets."
         )
 
     if not joining_kit_request.selected_assets:
@@ -1261,25 +845,25 @@ def create_joining_kit_tickets_view(request, request_id):
         )
 
         created_count = sum(
-            ticket.status == "created"
+            ticket.creation_status == "created"
             for ticket in ticket_results
         )
 
         failed_count = sum(
-            ticket.status == "failed"
+            ticket.creation_status == "failed"
             for ticket in ticket_results
         )
 
         pending_count = sum(
-            ticket.status in ("pending", "creating")
+            ticket.creation_status in ("pending", "creating")
             for ticket in ticket_results
         )
 
-        if created_count:
-            joining_kit_request.status = "in_progress"
-            joining_kit_request.save(
-                update_fields=["status", "updated_at"]
-            )
+        # if created_count:
+        #     joining_kit_request.status = "in_progress"
+        #     joining_kit_request.save(
+        #         update_fields=["status", "updated_at"]
+        #     )
 
         if failed_count or pending_count:
             messages.warning(
@@ -1306,4 +890,204 @@ def create_joining_kit_tickets_view(request, request_id):
     return redirect(
         "onboarding:joining_kit_detail",
         request_id=joining_kit_request.pk,
+    )
+
+@login_required
+@require_POST
+def refresh_joining_kit_ticket_status(request, request_id):
+    """
+    Fetch the latest actual status of every created SEP ticket.
+    The same database records are displayed to HR and Manager.
+    """
+    from django.contrib import messages
+
+    joining_kit_request = get_object_or_404(
+        JoiningKitRequest.objects.select_related(
+            "joinee",
+            "requested_by",
+        ),
+        pk=request_id,
+    )
+
+    is_manager = is_joining_kit_manager(request.user)
+    is_hr = is_hr_user(request.user)
+
+    if not (is_manager or is_hr):
+        raise PermissionDenied(
+            "You are not authorized to refresh these tickets."
+        )
+
+    if is_manager:
+        require_assigned_manager(
+            request.user,
+            joining_kit_request,
+        )
+
+    local_tickets = list(
+        joining_kit_request.generated_tickets.exclude(
+            ticket_number=""
+        ).exclude(
+            creation_status="failed"
+        ).order_by("id")
+    )
+
+    if not local_tickets:
+        messages.info(
+            request,
+            "No created Service Excellence tickets were found."
+        )
+        return redirect(
+            "onboarding:joining_kit_detail",
+            request_id=joining_kit_request.pk,
+        )
+
+    ticketing_tool = TicketingTool()
+
+    updated_count = 0
+    failed_count = 0
+
+    for local_ticket in local_tickets:
+        try:
+            sep_ticket = ticketing_tool.get_ticket_by_number(
+                local_ticket.ticket_number
+            )
+
+            if not isinstance(sep_ticket, dict):
+                raise ValueError(
+                    "Invalid response received from Service Excellence."
+                )
+
+            status_data = sep_ticket.get("status")
+
+            if not isinstance(status_data, dict):
+                raise ValueError(
+                    "SEP response did not contain a valid status object."
+                )
+
+            external_status = str(
+                status_data.get("status") or ""
+            ).strip()
+
+            external_status_id = status_data.get("id")
+
+            if not external_status:
+                raise ValueError(
+                    "Service Excellence returned an empty status."
+                )
+
+            local_ticket.status = external_status
+            local_ticket.external_status_id = (
+                str(external_status_id)
+                if external_status_id is not None
+                else ""
+            )
+            local_ticket.last_synced_at = timezone.now()
+            local_ticket.sync_error = ""
+
+            local_ticket.save(
+                update_fields=[
+                    "status",
+                    "external_status_id",
+                    "last_synced_at",
+                    "sync_error",
+                    "updated_at",
+                ]
+            )
+
+            updated_count += 1
+
+        except Exception as exc:
+            local_ticket.sync_error = str(exc)[:2000]
+            local_ticket.save(
+                update_fields=[
+                    "sync_error",
+                    "updated_at",
+                ]
+            )
+            failed_count += 1
+
+    if failed_count:
+        messages.warning(
+            request,
+            (
+                f"Status refresh completed: {updated_count} updated, "
+                f"{failed_count} could not be refreshed. "
+                "Check the ticket sync errors."
+            ),
+        )
+    else:
+        messages.success(
+            request,
+            f"Successfully refreshed {updated_count} ticket status(es) "
+            "from Service Excellence.",
+        )
+
+    return redirect(
+        "onboarding:joining_kit_detail",
+        request_id=joining_kit_request.pk,
+    )
+
+
+
+
+@login_required
+@require_POST
+def submit_joining_kit_request(request, request_id):
+    from django.contrib import messages
+
+    joining_kit_request = get_object_or_404(
+        JoiningKitRequest,
+        pk=request_id,
+    )
+
+    require_assigned_manager(request.user, joining_kit_request)
+
+    if joining_kit_request.status != "pending":
+        messages.info(request, "This request has already been submitted.")
+        return redirect(
+            "onboarding:joining_kit_detail",
+            request_id=request_id,
+        )
+
+    selected_assets = joining_kit_request.selected_assets or []
+    tickets = list(joining_kit_request.generated_tickets.all())
+
+    all_tickets_created = (
+        bool(selected_assets)
+        and len(tickets) == len(selected_assets)
+        and all(
+            ticket.creation_status == "created"
+            for ticket in tickets
+        )
+    )
+
+    if not all_tickets_created:
+        messages.error(
+            request,
+            "Not all required tickets have been created successfully. "
+            "Please resolve the ticket creation issues before submitting."
+        )
+        return redirect(
+            "onboarding:joining_kit_detail",
+            request_id=request_id,
+        )
+
+    joining_kit_request.status = "submitted"
+    joining_kit_request.manager_submitted_at = timezone.now()
+    joining_kit_request.save(
+        update_fields=[
+            "status",
+            "manager_submitted_at",
+            "updated_at",
+        ]
+    )
+
+    messages.success(
+        request,
+        "Joining Kit request successfully submitted."
+    )
+
+    return redirect(
+        "onboarding:joining_kit_detail",
+        request_id=request_id,
     )
